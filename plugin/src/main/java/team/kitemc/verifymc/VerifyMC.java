@@ -36,8 +36,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 public class VerifyMC extends JavaPlugin implements Listener {
-    private ResourceBundle messagesZh;
-    private ResourceBundle messagesEn;
+    private ResourceBundle messages;
     private WebServer webServer;
     private ReviewWebSocketServer wsServer;
     // User data access object interface
@@ -62,8 +61,7 @@ public class VerifyMC extends JavaPlugin implements Listener {
     }
 
     private String getConfigLanguage() {
-        String lang = getConfig().getString("language", "zh");
-        return ("en".equalsIgnoreCase(lang)) ? "en" : "zh";
+        return getConfig().getString("language", "en");
     }
 
     private String getMessage(String key) {
@@ -71,11 +69,10 @@ public class VerifyMC extends JavaPlugin implements Listener {
     }
 
     private String getMessage(String key, String language) {
-        if ("en".equals(language)) {
-            return messagesEn != null && messagesEn.containsKey(key) ? messagesEn.getString(key) : key;
-        } else {
-            return messagesZh != null && messagesZh.containsKey(key) ? messagesZh.getString(key) : key;
+        if (messages != null && messages.containsKey(key)) {
+            return messages.getString(key);
         }
+        return key;
     }
 
     @Override
@@ -94,23 +91,22 @@ public class VerifyMC extends JavaPlugin implements Listener {
         // Check and update resources
         ResourceUpdater resourceUpdater = new ResourceUpdater(this);
         resourceUpdater.checkAndUpdateResources();
-        // Load i18n resource bundles
-        ResourceBundle[] bundles = resourceManager.loadI18nBundles();
-        messagesZh = bundles[0];
-        messagesEn = bundles[1];
+        // Load i18n resource bundle for configured language
+        String configLang = getConfigLanguage();
+        messages = resourceManager.loadI18nBundle(configLang);
         // Initialize services
         codeService = new VerifyCodeService(this);
         mailService = new MailService(this, this::getMessage);
         authmeService = new AuthmeService(this);
         versionCheckService = new VersionCheckService(this);
         String storageType = getConfig().getString("storage.type", "data");
-        String lang = getConfig().getString("language", "zh");
+        String lang = getConfig().getString("language", "en");
         ResourceBundle messages;
         try {
             messages = ResourceBundle.getBundle("i18n/messages_" + lang);
         } catch (MissingResourceException e) {
             messages = ResourceBundle.getBundle("i18n/messages_en");
-            getLogger().warning("No messages_" + lang + ".properties found, fallback to English.");
+            getLogger().warning("[VerifyMC] No messages_" + lang + ".properties found, fallback to English.");
         }
 
         if ("mysql".equalsIgnoreCase(storageType)) {
@@ -154,7 +150,7 @@ public class VerifyMC extends JavaPlugin implements Listener {
         // Start web server
         String theme = config.getString("frontend.theme", "default");
         String staticDir = resourceManager.getThemeStaticDir(theme);
-        webServer = new WebServer(port, staticDir, this, codeService, mailService, userDao, auditDao, authmeService, wsServer, messagesZh, messagesEn);
+        webServer = new WebServer(port, staticDir, this, codeService, mailService, userDao, auditDao, authmeService, wsServer, messages);
         try {
             webServer.start();
             getLogger().info(getMessage("web.start_success") + ": " + port);
@@ -175,25 +171,25 @@ public class VerifyMC extends JavaPlugin implements Listener {
         }
         // Compatibility detection and hints
         String serverName = getServer().getName().toLowerCase();
-        getLogger().info("[VerifyMC] Supported server cores: Bukkit, Spigot, Paper, Purpur, Folia, Velocity, Canvas, Waterfall (MC 1.12 - 1.21.8)");
+        getLogger().info(getMessage("server.cores_supported"));
         if (serverName.contains("folia")) {
-            getLogger().info("[VerifyMC] Detected Folia: Async compatibility is experimental, most features should work.");
+            getLogger().info(getMessage("server.detected.folia"));
         } else if (serverName.contains("purpur")) {
-            getLogger().info("[VerifyMC] Detected Purpur: Fully supported.");
+            getLogger().info(getMessage("server.detected.purpur"));
         } else if (serverName.contains("paper")) {
-            getLogger().info("[VerifyMC] Detected Paper: Fully supported.");
+            getLogger().info(getMessage("server.detected.paper"));
         } else if (serverName.contains("spigot")) {
-            getLogger().info("[VerifyMC] Detected Spigot: Fully supported.");
+            getLogger().info(getMessage("server.detected.spigot"));
         } else if (serverName.contains("bukkit")) {
-            getLogger().info("[VerifyMC] Detected Bukkit: Fully supported.");
+            getLogger().info(getMessage("server.detected.bukkit"));
         } else if (serverName.contains("velocity")) {
-            getLogger().info("[VerifyMC] Detected Velocity proxy: Please ensure plugin is installed on backend servers. Some features may not work on proxy directly.");
+            getLogger().info(getMessage("server.detected.velocity"));
         } else if (serverName.contains("waterfall")) {
-            getLogger().info("[VerifyMC] Detected Waterfall proxy: Please ensure plugin is installed on backend servers. Some features may not work on proxy directly.");
+            getLogger().info(getMessage("server.detected.waterfall"));
         } else if (serverName.contains("canvas")) {
-            getLogger().info("[VerifyMC] Detected Canvas: Experimental support. Please report issues if any.");
+            getLogger().info(getMessage("server.detected.canvas"));
         } else {
-            getLogger().info("[VerifyMC] Unknown server type, attempting to run in compatibility mode.");
+            getLogger().info(getMessage("server.detected.unknown"));
         }
         getLogger().info(getMessage("plugin.enabled"));
         
@@ -335,21 +331,22 @@ public class VerifyMC extends JavaPlugin implements Listener {
             java.util.regex.Matcher m = java.util.regex.Pattern.compile("frontend.theme\\s*:\\s*(\\w+)").matcher(configContent);
             if (m.find()) newTheme = m.group(1);
             boolean themeChanged = !oldTheme.equals(newTheme);
-            sender.sendMessage("§a" + getMessage("command.restart_starting", language));
+            sender.sendMessage("§aRestarting plugin...");
             Bukkit.getScheduler().runTask(this, () -> {
                 try {
                     Bukkit.getPluginManager().disablePlugin(this);
                     Bukkit.getPluginManager().enablePlugin(this);
-                    sender.sendMessage("§a" + getMessage("command.restart_success", language));
+                    sender.sendMessage("§aPlugin restart successful");
+                    sender.sendMessage("§7Note: /vmc reload can only reload partial plugin configurations. For a complete reload, please restart the server.");
                     if (themeChanged) {
-                        sender.sendMessage("§e" + getMessage("command.theme_reload_hint", language));
+                        sender.sendMessage("§ePlease restart server to switch frontend theme");
                     }
                 } catch (Exception e) {
-                    sender.sendMessage("§c" + getMessage("command.restart_failed", language) + ": " + e.getMessage());
+                    sender.sendMessage("§cPlugin restart failed: " + e.getMessage());
                 }
             });
         } catch (Exception e) {
-            sender.sendMessage("§c" + getMessage("command.restart_failed", language) + ": " + e.getMessage());
+            sender.sendMessage("§cPlugin restart failed: " + e.getMessage());
         }
     }
 
@@ -403,7 +400,7 @@ public class VerifyMC extends JavaPlugin implements Listener {
                     // If Authme integration is enabled, register to Authme
                     if (authmeService.isAuthmeEnabled()) {
                         authmeService.registerToAuthme(targetName, password);
-                        sender.sendMessage("§a已将用户 " + targetName + " 注册到Authme");
+                        sender.sendMessage("§a" + getMessage("authme.register_success", language).replace("{player}", targetName));
                     }
                 }
             } else {
@@ -413,7 +410,7 @@ public class VerifyMC extends JavaPlugin implements Listener {
                     // If Authme integration is enabled, register to Authme
                     if (authmeService.isAuthmeEnabled()) {
                         authmeService.registerToAuthme(targetName, password);
-                        sender.sendMessage("§a已将用户 " + targetName + " 注册到Authme");
+                        sender.sendMessage("§a" + getMessage("authme.register_success", language).replace("{player}", targetName));
                     }
                 } else {
                     ok = userDao.registerUser(uuid, targetName, email, "approved");
@@ -508,14 +505,8 @@ public class VerifyMC extends JavaPlugin implements Listener {
             .filter(u -> player.getName().equalsIgnoreCase((String)u.get("username")) && "approved".equals(u.get("status")))
             .findFirst().orElse(null) : null;
         if (user == null) {
-            String language = getConfigLanguage();
             String url = webRegisterUrl;
-            String msg;
-            if ("en".equals(language)) {
-                msg = "§c[ VerifyMC ]\n§7Please visit §a" + url + " §7to register";
-            } else {
-                msg = "§c[ VerifyMC ]\n§7请访问 §a" + url + " §7进行注册";
-            }
+            String msg = "§c[ VerifyMC ]\n§7Please visit §a" + url + " §7to register";
             player.kickPlayer(msg);
         }
     }

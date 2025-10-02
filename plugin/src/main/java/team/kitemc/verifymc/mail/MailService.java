@@ -76,7 +76,7 @@ public class MailService {
     public boolean sendCode(String to, String subject, String code) {
         debugLog("sendCode called: to=" + to + ", subject=" + subject + ", code=" + code);
         try {
-            String lang = plugin.getConfig().getString("language", "zh");
+            String lang = plugin.getConfig().getString("language", "en");
             debugLog("Using language: " + lang);
             
             // Prioritize loading template from plugins/VerifyMC/email directory
@@ -104,7 +104,7 @@ public class MailService {
             debugLog("Email sent successfully");
             return true;
         } catch (Exception e) {
-            String lang = plugin.getConfig().getString("language", "zh");
+            String lang = plugin.getConfig().getString("language", "en");
             debugLog("Failed to send email: " + e.getMessage());
             plugin.getLogger().warning(getMessage.apply("email.failed", lang) + ": " + e.getMessage());
             return false;

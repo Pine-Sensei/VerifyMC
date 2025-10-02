@@ -29,12 +29,19 @@ public class ResourceManager {
     }
 
     private String getMessage(String key, String lang) {
-        ResourceBundle messages = ResourceBundle.getBundle("i18n.messages", new Locale(lang));
-        return messages.containsKey(key) ? messages.getString(key) : key;
+        try {
+            ResourceBundle messages = ResourceBundle.getBundle("i18n.messages", new Locale(lang));
+            return messages.containsKey(key) ? messages.getString(key) : key;
+        } catch (Exception e) {
+            // During reload, the classloader is closed, so we return English hardcoded messages
+            if ("error.resource_init_failed".equals(key)) return "Failed to initialize resources";
+            if ("error.resource_update_check_failed".equals(key)) return "Failed to check resource updates";
+            return key;
+        }
     }
 
     private String getConfigLanguage() {
-        return plugin.getConfig().getString("language", "zh");
+        return plugin.getConfig().getString("language", "en");
     }
 
     private void backupPluginDataFolder() {
@@ -49,7 +56,7 @@ public class ResourceManager {
         File backupDir = new File(sourceDir, "backup/" + timestamp);
 
         if (!backupDir.mkdirs()) {
-            plugin.getLogger().warning("Failed to create backup directory: " + backupDir.getAbsolutePath());
+            plugin.getLogger().warning("[VerifyMC] Failed to create backup directory: " + backupDir.getAbsolutePath());
             return;
         }
 
@@ -58,9 +65,9 @@ public class ResourceManager {
 
         try {
             FileUtils.copyDirectory(sourceDir, backupDir, filter);
-            plugin.getLogger().info(getMessage("update.backup", getConfigLanguage()).replace("{path}", backupDir.getAbsolutePath()));
+            plugin.getLogger().info("[VerifyMC] Files auto-backed up to: " + backupDir.getAbsolutePath());
         } catch (IOException e) {
-            plugin.getLogger().warning("Full backup failed: " + e.getMessage());
+            plugin.getLogger().warning("[VerifyMC] Full backup failed: " + e.getMessage());
             debugLog("Full backup failed: " + e.toString());
         }
     }
@@ -96,7 +103,7 @@ public class ResourceManager {
             
             debugLog("Resource initialization completed");
         } catch (Exception e) {
-            plugin.getLogger().warning("Failed to initialize resources: " + e.getMessage());
+            plugin.getLogger().warning(getMessage("error.resource_init_failed", getConfigLanguage()) + ": " + e.getMessage());
             debugLog("Resource initialization failed: " + e.getMessage());
         }
     }
@@ -147,10 +154,10 @@ public class ResourceManager {
             }
             if (changed) {
                 currentConfig.save(configFile);
-                plugin.getLogger().info(getMessage("update.config", getConfigLanguage()));
+                plugin.getLogger().info("[VerifyMC] Config file auto-upgraded");
             }
         } catch (Exception e) {
-            plugin.getLogger().warning("Config upgrade failed: " + e.getMessage());
+            plugin.getLogger().warning("[VerifyMC] Config upgrade failed: " + e.getMessage());
         }
     }
 
@@ -197,7 +204,7 @@ public class ResourceManager {
         // Backup and update built-in files
         plugin.saveResource("i18n/messages_zh.properties", true);
         plugin.saveResource("i18n/messages_en.properties", true);
-        plugin.getLogger().info(getMessage("update.i18n", getConfigLanguage()));
+        plugin.getLogger().info("[VerifyMC] Language files auto-updated");
     }
 
     /**
@@ -212,9 +219,6 @@ public class ResourceManager {
             
             // Check if it contains new version key messages
             String[] requiredKeys = {
-                "command.restart_starting",
-                "command.restart_success", 
-                "command.restart_failed",
                 "admin.unban",
                 "admin.unbanSuccess",
                 "admin.unbanFailed",
@@ -292,11 +296,11 @@ public class ResourceManager {
         File en = new File(emailDir, "verify_code_en.html");
         if (!zh.exists()) {
             plugin.saveResource("email/verify_code_zh.html", false);
-            plugin.getLogger().info(getMessage("update.email", getConfigLanguage()));
+            plugin.getLogger().info("[VerifyMC] Email templates auto-patched");
         }
         if (!en.exists()) {
             plugin.saveResource("email/verify_code_en.html", false);
-            plugin.getLogger().info(getMessage("update.email", getConfigLanguage()));
+            plugin.getLogger().info("[VerifyMC] Email templates auto-patched");
         }
     }
 
@@ -334,7 +338,7 @@ public class ResourceManager {
         File glassxTheme = new File(staticDir, "glassx");
         extractStaticFiles(defaultTheme, "default", true); // true=overwrite
         extractStaticFiles(glassxTheme, "glassx", true);
-        plugin.getLogger().info(getMessage("update.static", getConfigLanguage()));
+        plugin.getLogger().info("[VerifyMC] Frontend static resources auto-updated");
     }
 
     /**
@@ -384,60 +388,89 @@ public class ResourceManager {
     }
 
     /**
-     * Load i18n resource bundles
-     * @return Array containing Chinese and English resource bundles
+     * Load i18n resource bundle for specified language
+     * @param lang Language code (e.g. "zh", "en", "ja", etc.)
+     * @return ResourceBundle for the specified language
      */
-    public ResourceBundle[] loadI18nBundles() {
-        debugLog("Loading i18n bundles...");
-        
-        ResourceBundle messagesZh = null;
-        ResourceBundle messagesEn = null;
+    public ResourceBundle loadI18nBundle(String lang) {
+        debugLog("Loading i18n bundle for language: " + lang);
         
         try {
             File i18nDir = new File(plugin.getDataFolder(), "i18n");
             debugLog("i18n directory: " + i18nDir.getAbsolutePath());
             
-            File zhProp = new File(i18nDir, "messages_zh.properties");
-            File enProp = new File(i18nDir, "messages_en.properties");
+            File propFile = new File(i18nDir, "messages_" + lang + ".properties");
             
-            // Load Chinese resource bundle
-            if (zhProp.exists()) {
-                debugLog("Loading external Chinese i18n bundle: " + zhProp.getAbsolutePath());
-                try (InputStreamReader reader = new InputStreamReader(new FileInputStream(zhProp), StandardCharsets.UTF_8)) {
-                    messagesZh = new PropertyResourceBundle(reader);
-                    debugLog("Successfully loaded external Chinese i18n bundle");
-                }
-            } else {
-                debugLog("External Chinese i18n bundle not found, loading internal bundle");
-                messagesZh = ResourceBundle.getBundle("i18n.messages", Locale.CHINESE);
-                debugLog("Loaded internal Chinese i18n bundle");
+            // If language file doesn't exist, create it from English template
+            if (!propFile.exists()) {
+                debugLog("Language file not found: messages_" + lang + ".properties");
+                createLanguageFile(lang);
             }
             
-            // Load English resource bundle
-            if (enProp.exists()) {
-                debugLog("Loading external English i18n bundle: " + enProp.getAbsolutePath());
-                try (InputStreamReader reader = new InputStreamReader(new FileInputStream(enProp), StandardCharsets.UTF_8)) {
-                    messagesEn = new PropertyResourceBundle(reader);
-                    debugLog("Successfully loaded external English i18n bundle");
+            // Load language resource bundle
+            if (propFile.exists()) {
+                debugLog("Loading external i18n bundle: " + propFile.getAbsolutePath());
+                try (InputStreamReader reader = new InputStreamReader(new FileInputStream(propFile), StandardCharsets.UTF_8)) {
+                    ResourceBundle messages = new PropertyResourceBundle(reader);
+                    debugLog("Successfully loaded external i18n bundle for language: " + lang);
+                    return messages;
                 }
             } else {
-                debugLog("External English i18n bundle not found, loading internal bundle");
-                messagesEn = ResourceBundle.getBundle("i18n.messages", Locale.ENGLISH);
-                debugLog("Loaded internal English i18n bundle");
+                debugLog("External i18n bundle not found, loading internal bundle");
+                try {
+                    ResourceBundle messages = ResourceBundle.getBundle("i18n.messages", new Locale(lang));
+                    debugLog("Loaded internal i18n bundle for language: " + lang);
+                    return messages;
+                } catch (Exception e) {
+                    debugLog("Internal bundle not found for language: " + lang + ", falling back to English");
+                    return ResourceBundle.getBundle("i18n.messages", Locale.ENGLISH);
+                }
             }
             
         } catch (Exception e) {
-            plugin.getLogger().warning("Failed to load i18n bundles: " + e.getMessage());
-            debugLog("Failed to load i18n bundles: " + e.getMessage());
+            plugin.getLogger().warning("[VerifyMC] Failed to load i18n bundles: " + e.getMessage());
+            debugLog("Failed to load i18n bundle: " + e.getMessage());
             
-            // Use internal resource bundles as fallback
-            debugLog("Falling back to internal i18n bundles");
-            messagesZh = ResourceBundle.getBundle("i18n.messages", Locale.CHINESE);
-            messagesEn = ResourceBundle.getBundle("i18n.messages", Locale.ENGLISH);
+            // Use internal English resource bundle as fallback
+            debugLog("Falling back to internal English i18n bundle");
+            return ResourceBundle.getBundle("i18n.messages", Locale.ENGLISH);
         }
-        
-        debugLog("i18n bundles loading completed");
-        return new ResourceBundle[]{messagesZh, messagesEn};
+    }
+    
+    /**
+     * Create language file from English template
+     * @param lang Language code
+     */
+    private void createLanguageFile(String lang) {
+        debugLog("Creating language file for: " + lang);
+        try {
+            File i18nDir = new File(plugin.getDataFolder(), "i18n");
+            File targetFile = new File(i18nDir, "messages_" + lang + ".properties");
+            File enTemplate = new File(i18nDir, "messages_en.properties");
+            
+            // If English template exists, copy it
+            if (enTemplate.exists()) {
+                Files.copy(enTemplate.toPath(), targetFile.toPath());
+                plugin.getLogger().info("[VerifyMC] Auto-created language file: messages_" + lang + ".properties (based on English template)");
+                debugLog("Created language file from English template: messages_" + lang + ".properties");
+            } else {
+                // Try to get English template from JAR
+                try (InputStream in = plugin.getResource("i18n/messages_en.properties");
+                     OutputStream out = new FileOutputStream(targetFile)) {
+                    if (in != null) {
+                        byte[] buffer = new byte[4096];
+                        int len;
+                        while ((len = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, len);
+                        }
+                        plugin.getLogger().info("[VerifyMC] Auto-created language file: messages_" + lang + ".properties (based on English template)");
+                        debugLog("Created language file from JAR template: messages_" + lang + ".properties");
+                    }
+                }
+            }
+        } catch (Exception e) {
+            debugLog("Failed to create language file for " + lang + ": " + e.getMessage());
+        }
     }
 
     /**

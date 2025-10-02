@@ -23,6 +23,15 @@ public class ResourceUpdater {
         if (debug) plugin.getLogger().info("[DEBUG] ResourceUpdater: " + msg);
     }
 
+    private String getMessage(String key, String lang) {
+        java.util.ResourceBundle messages = java.util.ResourceBundle.getBundle("i18n.messages", new java.util.Locale(lang));
+        return messages.containsKey(key) ? messages.getString(key) : key;
+    }
+
+    private String getConfigLanguage() {
+        return plugin.getConfig().getString("language", "en");
+    }
+
     /**
      * Check and update all resource files
      */
@@ -44,7 +53,7 @@ public class ResourceUpdater {
             
             debugLog("Resource update check completed");
         } catch (Exception e) {
-            plugin.getLogger().warning("Failed to check resource updates: " + e.getMessage());
+            plugin.getLogger().warning(getMessage("error.resource_update_check_failed", getConfigLanguage()) + ": " + e.getMessage());
             debugLog("Resource update check failed: " + e.getMessage());
         }
     }
@@ -165,9 +174,6 @@ public class ResourceUpdater {
             
             // Check if it contains new version key messages
             String[] requiredKeys = {
-                "command.restart_starting",
-                "command.restart_success", 
-                "command.restart_failed",
                 "admin.unban",
                 "admin.unbanSuccess",
                 "admin.unbanFailed",

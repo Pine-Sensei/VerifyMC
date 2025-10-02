@@ -25,6 +25,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.Arrays;
+import java.util.HashMap;
 
 public class WebServer {
     private HttpServer server;
@@ -37,9 +38,9 @@ public class WebServer {
     private final AuditDao auditDao;
     private final AuthmeService authmeService;
     private final ReviewWebSocketServer wsServer;
-    private final ResourceBundle messagesZh;
-    private final ResourceBundle messagesEn;
+    private final ResourceBundle messages;
     private final boolean debug;
+    private final HashMap<String, ResourceBundle> languageCache = new HashMap<>();
     
     // Authentication related
     private final ConcurrentHashMap<String, Long> validTokens = new ConcurrentHashMap<>();
@@ -54,7 +55,7 @@ public class WebServer {
         "protonmail.com", "zoho.com"
     );
 
-    public WebServer(int port, String staticDir, Plugin plugin, VerifyCodeService codeService, MailService mailService, UserDao userDao, AuditDao auditDao, AuthmeService authmeService, ReviewWebSocketServer wsServer, ResourceBundle messagesZh, ResourceBundle messagesEn) {
+    public WebServer(int port, String staticDir, Plugin plugin, VerifyCodeService codeService, MailService mailService, UserDao userDao, AuditDao auditDao, AuthmeService authmeService, ReviewWebSocketServer wsServer, ResourceBundle messages) {
         this.port = port;
         this.staticDir = staticDir;
         this.plugin = plugin;
@@ -64,8 +65,7 @@ public class WebServer {
         this.auditDao = auditDao;
         this.authmeService = authmeService;
         this.wsServer = wsServer;
-        this.messagesZh = messagesZh;
-        this.messagesEn = messagesEn;
+        this.messages = messages;
         this.debug = plugin.getConfig().getBoolean("debug", false);
     }
 
@@ -332,7 +332,7 @@ public class WebServer {
             
             JSONObject req = new JSONObject(new String(exchange.getRequestBody().readAllBytes()));
             String email = req.optString("email", "").trim().toLowerCase();
-            String language = req.optString("language", "zh");
+            String language = req.optString("language", "en");
 
             // Basic input validation - Email format check
             if (!isValidEmail(email)) {
@@ -405,7 +405,7 @@ public class WebServer {
             String uuid = req.optString("uuid");
             String username = req.optString("username");
             String password = req.optString("password", ""); // New password parameter
-            String language = req.optString("language", "zh");
+            String language = req.optString("language", "en");
             debugLog("register params: email=" + email + ", code=" + code + ", uuid=" + uuid + ", username=" + username + ", hasPassword=" + !password.isEmpty());
 
             // Check if password is required
@@ -559,7 +559,7 @@ public class WebServer {
             }
             JSONObject req = new JSONObject(new String(exchange.getRequestBody().readAllBytes()));
             String password = req.optString("password");
-            String language = req.optString("language", "zh");
+            String language = req.optString("language", "en");
             
             String adminPassword = plugin.getConfig().getString("admin.password", "");
             JSONObject resp = new JSONObject();
@@ -610,7 +610,7 @@ public class WebServer {
             }
             
             String query = exchange.getRequestURI().getQuery();
-            String language = "zh";
+            String language = "en";
             if (query != null && query.contains("language=")) {
                 language = query.split("language=")[1].split("&")[0];
             }
@@ -652,7 +652,7 @@ public class WebServer {
             JSONObject req = new JSONObject(new String(exchange.getRequestBody().readAllBytes()));
             String uuid = req.optString("uuid");
             String action = req.optString("action");
-            String language = req.optString("language", "zh");
+            String language = req.optString("language", "en");
             
             // Input validation
             if (!isValidUUID(uuid)) {
@@ -734,7 +734,7 @@ public class WebServer {
                 return;
             }
 
-            String language = "zh";
+            String language = "en";
             JSONObject resp = new JSONObject();
             try {
                 // Only return non-pending users
@@ -768,7 +768,7 @@ public class WebServer {
             }
 
             String query = exchange.getRequestURI().getQuery();
-            String language = "zh";
+            String language = "en";
             int page = 1;
             int pageSize = 10;
             String searchQuery = "";
@@ -870,7 +870,7 @@ public class WebServer {
             
             JSONObject req = new JSONObject(new String(exchange.getRequestBody().readAllBytes()));
             String uuid = req.optString("uuid");
-            String language = req.optString("language", "zh");
+            String language = req.optString("language", "en");
             
             // Input validation
             if (!isValidUUID(uuid)) {
@@ -938,7 +938,7 @@ public class WebServer {
             
             JSONObject req = new JSONObject(new String(exchange.getRequestBody().readAllBytes()));
             String uuid = req.optString("uuid");
-            String language = req.optString("language", "zh");
+            String language = req.optString("language", "en");
             
             // Input validation
             if (!isValidUUID(uuid)) {
@@ -1001,7 +1001,7 @@ public class WebServer {
             
             JSONObject req = new JSONObject(new String(exchange.getRequestBody().readAllBytes()));
             String uuid = req.optString("uuid");
-            String language = req.optString("language", "zh");
+            String language = req.optString("language", "en");
             
             // Input validation
             if (!isValidUUID(uuid)) {
@@ -1066,7 +1066,7 @@ public class WebServer {
             String uuid = req.optString("uuid");
             String username = req.optString("username");
             String newPassword = req.optString("newPassword");
-            String language = req.optString("language", "zh");
+            String language = req.optString("language", "en");
             
             JSONObject resp = new JSONObject();
             
@@ -1319,10 +1319,53 @@ public class WebServer {
         exchange.close();
     }
     private String getMsg(String key, String language) {
-        if ("en".equals(language)) {
-            return messagesEn.containsKey(key) ? messagesEn.getString(key) : key;
-        } else {
-            return messagesZh.containsKey(key) ? messagesZh.getString(key) : key;
+        // Get or load language resource bundle
+        ResourceBundle bundle = getLanguageBundle(language);
+        if (bundle != null && bundle.containsKey(key)) {
+            return bundle.getString(key);
+        }
+        return key;
+    }
+    
+    /**
+     * Get language resource bundle, load and cache if not exists
+     * @param language Language code
+     * @return ResourceBundle for the language
+     */
+    private ResourceBundle getLanguageBundle(String language) {
+        // Check cache first
+        if (languageCache.containsKey(language)) {
+            return languageCache.get(language);
+        }
+        
+        // Load language file
+        try {
+            File i18nDir = new File(plugin.getDataFolder(), "i18n");
+            File propFile = new File(i18nDir, "messages_" + language + ".properties");
+            
+            if (propFile.exists()) {
+                try (InputStreamReader reader = new InputStreamReader(new FileInputStream(propFile), java.nio.charset.StandardCharsets.UTF_8)) {
+                    ResourceBundle bundle = new java.util.PropertyResourceBundle(reader);
+                    languageCache.put(language, bundle);
+                    return bundle;
+                }
+            } else {
+                // Try to load from JAR
+                try {
+                    ResourceBundle bundle = ResourceBundle.getBundle("i18n.messages", new java.util.Locale(language));
+                    languageCache.put(language, bundle);
+                    return bundle;
+                } catch (Exception e) {
+                    // Fallback to default messages
+                    if (!languageCache.containsKey("default")) {
+                        languageCache.put("default", messages);
+                    }
+                    return messages;
+                }
+            }
+        } catch (Exception e) {
+            debugLog("Failed to load language bundle for: " + language + ", error: " + e.getMessage());
+            return messages; // Fallback to default
         }
     }
 } 
