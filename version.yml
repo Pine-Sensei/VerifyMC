@@ -1,20 +1,61 @@
 release: true
-version: 1.2.4
+version: 1.2.5
 release_notes: |
-  [简体中文](https://github.com/KiteMC/VerifyMC/blob/v1.2.4/release_notes_zh.md) | English | [Official Documentation](https://kitemc.com/docs/verifymc/)
+  [简体中文](https://github.com/KiteMC/VerifyMC/blob/v1.2.5/release_notes_zh.md) | English | [Official Documentation](https://kitemc.com/docs/verifymc/)
   
-  # VerifyMC v1.2.4 Release Notes
+  # VerifyMC v1.2.5 Release Notes
   
-  ## 🐛 Bug Fixes & Improvements
+  ## ✨ New Features
   
-  ### Fixed Issues
+  ### Self-hosted CAPTCHA System
+  - Added graphical CAPTCHA verification (math/text types)
+  - No external service required, fully self-hosted
+  - Configurable as alternative or supplement to email verification
   
-  - **Whitelist Invalidation After Server Restart**: Fixed issue where whitelisted players (except OPs) were rejected after server restart, even though they were in the whitelist
-  - **Character Encoding Issues**: Fixed character encoding problems in web interface that caused garbled text for some users
-  - **Email Subject Configuration**: Moved email subject from i18n to config.yml for better customization
+  ### Discord OAuth2 Integration
+  - Link Discord accounts during registration
+  - Optional or required Discord linking
+  - Persistent Discord ID storage in database
   
-  ### Improvements
+  ### User Email Notifications
+  - Automatic email notifications for whitelist approval/rejection
+  - Multi-language email templates based on user's interface language
   
-  - All HTTP responses now explicitly use UTF-8 encoding with proper charset declaration
-  - Improved static file Content-Type handling with charset specification for text-based files
-  - Enhanced whitelist synchronization logic to ensure consistency after server restarts
+  ### Registration Questionnaire
+  - Customizable registration questionnaire system
+  - Multi-language support for questions and options
+  
+  ### Bedrock Edition Support
+  - Support for Geyser/Floodgate player prefixes
+  - Configurable Bedrock username prefixes
+  
+  ### BungeeCord/Velocity Proxy Plugin
+  - New `VerifyMC-Proxy` module for proxy-level login interception
+  - Supports both BungeeCord and Velocity proxies
+  - Auto-update configuration from remote
+  
+  ## 🎨 UI Improvements
+  
+  ### Glass Theme Enhancements
+  - Redesigned registration form with animated gradient borders
+  - Enhanced input fields with glow effects on focus
+  - Floating orb background effects on home page
+  - Improved button animations with shine effects
+  - New gradient accent line in navigation
+  - Enhanced footer with gradient border and heartbeat animation
+  
+  ### Email Templates
+  - Unified modern design for all email templates
+  - Gradient header with icons
+  - Improved code display styling
+  - Expiration warning boxes
+  
+  ## 🔧 Improvements
+  
+  - Fixed Discord icon display issue
+  - Dynamic footer year (2025-current year)
+  - Removed default theme (glassx is now the only theme)
+  - Config comments moved to separate help files (config_help_en.yml, config_help_zh.yml)
+  - Global CSS custom properties for consistent theming
+  - Custom scrollbar styling
+  - Text selection styling

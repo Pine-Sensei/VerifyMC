@@ -68,8 +68,12 @@
       "username_placeholder": "请输入您的游戏用户名",
       "email": "邮箱地址",
       "email_placeholder": "请输入您的邮箱地址",
-      "code": "验证码",
-      "code_placeholder": "请输入验证码",
+      "code": "邮箱验证码",
+      "code_placeholder": "请输入邮箱验证码",
+      "captcha": "图形验证码",
+      "captcha_placeholder": "请输入验证码答案",
+      "captcha_refresh": "点击刷新验证码",
+      "captcha_hint": "点击图片可刷新验证码",
       "password": "密码",
       "password_placeholder": "请输入密码",
       "password_hint": "密码应符合正则表达式：{regex}",
@@ -81,7 +85,8 @@
       "username_format": "用户名格式不正确，应符合正则表达式：{regex}",
       "email_required": "请输入邮箱地址",
       "email_format": "请输入有效的邮箱地址",
-      "code_required": "请输入验证码",
+      "code_required": "请输入邮箱验证码",
+      "captcha_required": "请输入图形验证码",
       "password_required": "请输入密码",
       "password_format": "密码格式不正确，应符合正则表达式：{regex}"
     },
@@ -279,5 +284,28 @@
     "remind_later": "稍后提醒",
     "download_now": "立即下载",
     "check_failed": "版本检查失败"
+  },
+  "questionnaire": {
+    "title": "注册问卷",
+    "subtitle": "请回答以下问题，帮助我们更好地了解您",
+    "not_enabled": "问卷功能未启用",
+    "continue": "继续",
+    "submit": "提交问卷",
+    "retry": "重新答题",
+    "passed": "问卷通过！",
+    "failed": "问卷未通过",
+    "your_score": "您的得分",
+    "multiple_choice": "可多选",
+    "answer_all": "请回答所有问题",
+    "load_error": "加载问卷失败",
+    "submit_error": "提交问卷失败"
+  },
+  "discord": {
+    "link_button": "绑定 Discord",
+    "link_success": "Discord 账户绑定成功",
+    "link_failed": "Discord 账户绑定失败",
+    "linked": "已绑定 Discord",
+    "required_hint": "绑定 Discord 账户是必需的",
+    "required": "需要绑定 Discord 账户才能注册"
   }
 }

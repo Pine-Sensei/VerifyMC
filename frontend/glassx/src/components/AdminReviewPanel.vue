@@ -150,7 +150,7 @@ import { useI18n } from 'vue-i18n'
 import { RefreshCw, Users, User, Check, X } from 'lucide-vue-next'
 import { apiService } from '@/services/api'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const emit = defineEmits<{
   success: [message: string]
@@ -196,7 +196,7 @@ const approveUser = async (user: any) => { // Changed from UserType to any
     const response = await apiService.reviewUser({
       uuid: user.uuid,
       action: 'approve',
-      language: t('lang')
+      language: locale.value
     })
     
     if (response.success) {
@@ -241,7 +241,7 @@ const confirmReject = async () => {
       uuid: rejectModal.value.user.uuid,
       action: 'reject',
       reason: rejectModal.value.reason || undefined,
-      language: t('lang')
+      language: locale.value
     })
     
     if (response.success) {

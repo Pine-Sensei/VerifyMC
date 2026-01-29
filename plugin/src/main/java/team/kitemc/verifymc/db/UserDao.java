@@ -145,4 +145,26 @@ public interface UserDao {
      * @return List of pending users
      */
     List<Map<String, Object>> getPendingUsers();
+    
+    /**
+     * Update user's Discord ID
+     * @param uuidOrName User UUID or username
+     * @param discordId Discord user ID
+     * @return true if update successful
+     */
+    boolean updateUserDiscordId(String uuidOrName, String discordId);
+    
+    /**
+     * Get user by Discord ID
+     * @param discordId Discord user ID
+     * @return User data map or null if not found
+     */
+    Map<String, Object> getUserByDiscordId(String discordId);
+    
+    /**
+     * Check if Discord ID is already linked to another user
+     * @param discordId Discord user ID
+     * @return true if Discord ID is already linked
+     */
+    boolean isDiscordIdLinked(String discordId);
 } 

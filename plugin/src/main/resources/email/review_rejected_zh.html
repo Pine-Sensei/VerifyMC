@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>白名单申请被拒绝</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Microsoft YaHei', 'PingFang SC', Arial, sans-serif; background-color: #f4f4f7;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td align="center" style="padding: 40px 0;">
+                <table role="presentation" style="width: 600px; max-width: 90%; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);">
+                    <!-- Header -->
+                    <tr>
+                        <td style="padding: 40px 40px 20px; text-align: center; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 16px 16px 0 0;">
+                            <div style="font-size: 48px; margin-bottom: 16px;">😔</div>
+                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">白名单申请被拒绝</h1>
+                        </td>
+                    </tr>
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 40px;">
+                            <p style="margin: 0 0 24px; color: #374151; font-size: 16px; line-height: 1.6;">
+                                很抱歉，您在 <strong style="color: #ef4444;">{server_name}</strong> 的白名单申请未能通过审核。
+                            </p>
+                            
+                            <div style="background: #fef2f2; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+                                <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">用户名</td>
+                                        <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600; text-align: right;">{username}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">状态</td>
+                                        <td style="padding: 8px 0; text-align: right;">
+                                            <span style="display: inline-block; padding: 4px 12px; background: #ef4444; color: #ffffff; border-radius: 20px; font-size: 12px; font-weight: 500;">已拒绝</span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">原因</td>
+                                        <td style="padding: 8px 0; color: #111827; font-size: 14px; text-align: right;">{reason}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            
+                            <p style="margin: 0 0 24px; color: #374151; font-size: 16px; line-height: 1.6;">
+                                如有疑问，请联系服务器管理员了解更多信息。
+                            </p>
+                        </td>
+                    </tr>
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 24px 40px; background: #f9fafb; border-radius: 0 0 16px 16px; text-align: center;">
+                            <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                                此邮件由 VerifyMC 自动发送，请勿回复
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+

@@ -1,0 +1,96 @@
+# Questionnaire Configuration
+# Enable/disable questionnaire feature
+enabled: false
+
+# Minimum score required to pass
+pass_score: 60
+
+# Automatically approve users who pass the questionnaire
+auto_approve_on_pass: false
+
+# Questions list
+# Each question has:
+#   - id: Unique question ID
+#   - question_en: Question text in English
+#   - question_zh: Question text in Chinese
+#   - type: single_choice or multiple_choice
+#   - options: List of answer options
+#     - text_en: Option text in English
+#     - text_zh: Option text in Chinese
+#     - score: Points awarded for this option
+
+questions:
+  - id: 1
+    question_en: "How did you hear about our server?"
+    question_zh: "您是如何得知本服务器的？"
+    type: single_choice
+    options:
+      - text_en: "Friend recommendation"
+        text_zh: "朋友推荐"
+        score: 20
+      - text_en: "Social media (YouTube, Twitter, etc.)"
+        text_zh: "社交媒体（B站、抖音等）"
+        score: 15
+      - text_en: "Server list website"
+        text_zh: "服务器列表网站"
+        score: 10
+      - text_en: "Search engine"
+        text_zh: "搜索引擎"
+        score: 10
+      - text_en: "Other"
+        text_zh: "其他"
+        score: 5
+
+  - id: 2
+    question_en: "How long have you been playing Minecraft?"
+    question_zh: "您玩 Minecraft 多久了？"
+    type: single_choice
+    options:
+      - text_en: "Less than 1 year"
+        text_zh: "不到1年"
+        score: 10
+      - text_en: "1-3 years"
+        text_zh: "1-3年"
+        score: 15
+      - text_en: "3-5 years"
+        text_zh: "3-5年"
+        score: 20
+      - text_en: "More than 5 years"
+        text_zh: "5年以上"
+        score: 25
+
+  - id: 3
+    question_en: "Do you agree to follow the server rules?"
+    question_zh: "您是否同意遵守服务器规则？"
+    type: single_choice
+    options:
+      - text_en: "Yes, I will follow all rules"
+        text_zh: "是的，我会遵守所有规则"
+        score: 30
+      - text_en: "I will try to follow the rules"
+        text_zh: "我会尝试遵守规则"
+        score: 15
+      - text_en: "It depends"
+        text_zh: "视情况而定"
+        score: 0
+
+  - id: 4
+    question_en: "What do you expect to do on the server? (Multiple choice)"
+    question_zh: "您期望在服务器中做什么？（可多选）"
+    type: multiple_choice
+    options:
+      - text_en: "Building"
+        text_zh: "建筑创作"
+        score: 5
+      - text_en: "Redstone projects"
+        text_zh: "红石研究"
+        score: 5
+      - text_en: "Socializing with other players"
+        text_zh: "与其他玩家社交"
+        score: 5
+      - text_en: "Exploration and adventure"
+        text_zh: "探险冒险"
+        score: 5
+      - text_en: "Participating in server events"
+        text_zh: "参与服务器活动"
+        score: 5

@@ -68,8 +68,12 @@
       "username_placeholder": "Enter your game username",
       "email": "Email Address",
       "email_placeholder": "Enter your email address",
-      "code": "Verification Code",
-      "code_placeholder": "Enter verification code",
+      "code": "Email Verification Code",
+      "code_placeholder": "Enter email verification code",
+      "captcha": "Captcha",
+      "captcha_placeholder": "Enter captcha answer",
+      "captcha_refresh": "Click to refresh captcha",
+      "captcha_hint": "Click the image to refresh",
       "password": "Password",
       "password_placeholder": "Enter your password",
       "password_hint": "Password must match regex: {regex}",
@@ -81,7 +85,8 @@
       "username_format": "Invalid username format. Must match regex: {regex}",
       "email_required": "Please enter email address",
       "email_format": "Please enter a valid email address",
-      "code_required": "Please enter verification code",
+      "code_required": "Please enter email verification code",
+      "captcha_required": "Please enter captcha answer",
       "password_required": "Please enter password",
       "password_format": "Invalid password format. Must match regex: {regex}"
     },
@@ -285,5 +290,28 @@
     "remind_later": "Remind Later",
     "download_now": "Download Now",
     "check_failed": "Version check failed"
+  },
+  "questionnaire": {
+    "title": "Registration Questionnaire",
+    "subtitle": "Please answer the following questions to help us know you better",
+    "not_enabled": "Questionnaire is not enabled",
+    "continue": "Continue",
+    "submit": "Submit Questionnaire",
+    "retry": "Try Again",
+    "passed": "Questionnaire Passed!",
+    "failed": "Questionnaire Not Passed",
+    "your_score": "Your Score",
+    "multiple_choice": "Multiple choice",
+    "answer_all": "Please answer all questions",
+    "load_error": "Failed to load questionnaire",
+    "submit_error": "Failed to submit questionnaire"
+  },
+  "discord": {
+    "link_button": "Link Discord",
+    "link_success": "Discord account linked successfully",
+    "link_failed": "Failed to link Discord account",
+    "linked": "Discord Linked",
+    "required_hint": "Discord account linking is required",
+    "required": "You must link your Discord account to register"
   }
 }

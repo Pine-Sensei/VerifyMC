@@ -90,6 +90,13 @@ public class FileUserDao implements UserDao {
                             hasUpgraded = true;
                             debugLog("Added missing regTime field for user: " + user.get("username"));
                         }
+                        
+                        // Add discord_id field if missing
+                        if (!user.containsKey("discord_id")) {
+                            user.put("discord_id", null);
+                            hasUpgraded = true;
+                            debugLog("Added missing discord_id field for user: " + user.get("username"));
+                        }
                     }
                 }
                 
@@ -506,5 +513,54 @@ public class FileUserDao implements UserDao {
         List<Map<String, Object>> result = filteredUsers.subList(startIndex, endIndex);
         debugLog("Returning " + result.size() + " approved users for page " + page + " with search query: " + searchQuery);
         return result;
+    }
+    
+    @Override
+    public boolean updateUserDiscordId(String uuidOrName, String discordId) {
+        debugLog("updateUserDiscordId called: uuidOrName=" + uuidOrName + ", discordId=" + discordId);
+        Map<String, Object> user = null;
+        
+        // First try to find as UUID
+        user = users.get(uuidOrName);
+        
+        // If not found, try to find as username
+        if (user == null) {
+            for (Map<String, Object> u : users.values()) {
+                if (u.get("username") != null && u.get("username").toString().equalsIgnoreCase(uuidOrName)) {
+                    user = u;
+                    break;
+                }
+            }
+        }
+        
+        if (user == null) {
+            debugLog("User not found: " + uuidOrName);
+            return false;
+        }
+        
+        user.put("discord_id", discordId);
+        save();
+        debugLog("User Discord ID updated: " + user.get("username") + " -> " + discordId);
+        return true;
+    }
+    
+    @Override
+    public Map<String, Object> getUserByDiscordId(String discordId) {
+        debugLog("Getting user by Discord ID: " + discordId);
+        for (Map<String, Object> user : users.values()) {
+            Object userDiscordId = user.get("discord_id");
+            if (userDiscordId != null && userDiscordId.toString().equals(discordId)) {
+                debugLog("User found: " + user.get("username"));
+                return user;
+            }
+        }
+        debugLog("User not found with Discord ID: " + discordId);
+        return null;
+    }
+    
+    @Override
+    public boolean isDiscordIdLinked(String discordId) {
+        debugLog("Checking if Discord ID is linked: " + discordId);
+        return getUserByDiscordId(discordId) != null;
     }
 } 

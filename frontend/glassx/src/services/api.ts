@@ -28,6 +28,22 @@ export interface ConfigResponse {
     auto_unregister: boolean
     password_regex: string
   }
+  captcha?: {
+    enabled: boolean
+    email_enabled: boolean
+    type: string
+  }
+  discord?: {
+    enabled: boolean
+    required: boolean
+  }
+}
+
+export interface CaptchaResponse {
+  success: boolean
+  token?: string
+  image?: string
+  msg?: string
 }
 
 export interface SendCodeRequest {
@@ -42,10 +58,12 @@ export interface SendCodeResponse {
 
 export interface RegisterRequest {
   email: string
-  code: string
+  code?: string
   uuid: string
   username: string
   password?: string
+  captchaToken?: string
+  captchaAnswer?: string
   language: string
 }
 
@@ -137,6 +155,11 @@ class ApiService {
   // 获取配置
   async getConfig(): Promise<ConfigResponse> {
     return this.request<ConfigResponse>('/config')
+  }
+
+  // 获取验证码
+  async getCaptcha(): Promise<CaptchaResponse> {
+    return this.request<CaptchaResponse>('/captcha')
   }
 
   // 发送验证码
@@ -290,6 +313,34 @@ class ApiService {
     error?: string;
   }> {
     return this.request('/version-check')
+  }
+
+  // Discord OAuth - 获取授权 URL
+  async getDiscordAuthUrl(username: string): Promise<{
+    success: boolean;
+    auth_url?: string;
+    msg?: string;
+  }> {
+    return this.request('/discord/auth', {
+      method: 'POST',
+      body: JSON.stringify({ username }),
+    })
+  }
+
+  // Discord OAuth - 检查绑定状态
+  async getDiscordStatus(username: string): Promise<{
+    success: boolean;
+    linked: boolean;
+    user?: {
+      id: string;
+      username: string;
+      discriminator: string;
+      avatar?: string;
+      global_name?: string;
+    };
+    msg?: string;
+  }> {
+    return this.request(`/discord/status?username=${encodeURIComponent(username)}`)
   }
 }
 

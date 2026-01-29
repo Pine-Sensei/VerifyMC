@@ -1,0 +1,11 @@
+team\kitemc\verifymc\proxy\ProxyVersionCheckService.class
+team\kitemc\verifymc\proxy\ApiClient$WhitelistStatus.class
+velocity-plugin.json
+team\kitemc\verifymc\proxy\ApiClient.class
+team\kitemc\verifymc\proxy\ProxyResourceUpdater.class
+team\kitemc\verifymc\proxy\ApiClient$CachedStatus.class
+team\kitemc\verifymc\proxy\ProxyVersionCheckService$UpdateCheckResult.class
+team\kitemc\verifymc\proxy\VerifyMCProxy.class
+team\kitemc\verifymc\proxy\velocity\VerifyMCVelocity$1.class
+team\kitemc\verifymc\proxy\velocity\VerifyMCVelocity.class
+team\kitemc\verifymc\proxy\ProxyConfig.class

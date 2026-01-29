@@ -17,7 +17,13 @@ web_server_prefix: '[ Name ]'
 # ----------------------------------------
 # 验证与白名单
 # ----------------------------------------
-# 支持的验证方式。目前仅支持 'email'。
+# 支持的验证方式。可选: 'email'（邮箱验证码）, 'captcha'（图形验证码）。
+# 可以同时使用多种方式，例如: [email, captcha]
+# 
+# 【重要】仅配置下方的 captcha: 部分不会启用图形验证码！
+# 要启用图形验证码，必须在此列表中添加 'captcha'：
+#   仅使用图形验证码: auth_methods: [captcha]
+#   同时使用邮箱和图形验证码: auth_methods: [email, captcha]
 auth_methods:
   - email
 # 单个邮箱最多可以绑定的游戏账号数量。
@@ -49,10 +55,22 @@ admin:
   password: your_custom_password
 
 # ----------------------------------------
+# 用户通知
+# ----------------------------------------
+# 当管理员审核用户申请后，向用户发送邮件通知。
+user_notification:
+  # 是否启用用户通知功能
+  enabled: true
+  # 审核通过时是否发送通知邮件
+  on_approve: true
+  # 审核拒绝时是否发送通知邮件
+  on_reject: true
+
+# ----------------------------------------
 # 前端 (UI)
 # ----------------------------------------
 frontend:
-  # 网页界面的视觉主题。可选: 'default', 'glassx'。
+  # 网页界面的视觉主题。可选: 'glassx'。
   theme: glassx
   # Logo 的 URL。可以是网页链接或本地文件路径 (例如 '/logo.png')。
   logo_url: /logo.png
@@ -143,4 +161,60 @@ authme:
   # 是否在删除用户时自动从Authme注销
   auto_unregister: false
   # 密码正则表达式
-  password_regex: "^[a-zA-Z0-9_]{3,16}$" 
+  password_regex: "^[a-zA-Z0-9_]{3,16}$"
+
+# ----------------------------------------
+# 图形验证码配置
+# ----------------------------------------
+# 图形验证码可作为邮箱验证的替代或补充方案
+# 在 auth_methods 中添加 'captcha' 来启用: auth_methods: [captcha]
+# 或同时使用两种验证: auth_methods: [email, captcha]
+captcha:
+  # 验证码类型: math（数学表达式）或 text（随机字符）
+  type: math
+  # 文本验证码长度（math 类型时忽略此项）
+  length: 4
+  # 验证码过期时间（秒）
+  expire_seconds: 300
+
+# ----------------------------------------
+# 基岩版玩家支持
+# ----------------------------------------
+# 适用于 Geyser/Floodgate 的基岩版玩家
+bedrock:
+  # 是否启用基岩版玩家支持
+  enabled: false
+  # 基岩版玩家用户名前缀（Floodgate 常用 "."）
+  prefix: "."
+  # 基岩版用户名正则表达式
+  username_regex: "^\\.[a-zA-Z0-9_\\s]{3,16}$"
+
+# ----------------------------------------
+# 问卷调查配置
+# ----------------------------------------
+# 详细问题配置请参见 questionnaire.yml
+questionnaire:
+  # 是否启用问卷功能
+  enabled: false
+  # 通过所需的最低分数
+  pass_score: 60
+  # 问卷通过后是否自动批准用户
+  auto_approve_on_pass: false
+
+# ----------------------------------------
+# Discord集成（OAuth2）
+# ----------------------------------------
+# 需要在 https://discord.com/developers/applications 创建 Discord 应用
+discord:
+  # 是否启用 Discord 集成
+  enabled: false
+  # Discord 应用的客户端ID
+  client_id: ""
+  # Discord 应用的客户端密钥
+  client_secret: ""
+  # OAuth2 回调地址
+  redirect_uri: "https://yourdomain.com/api/discord/callback"
+  # 可选：要求用户加入特定服务器的ID
+  guild_id: ""
+  # 是否强制要求绑定 Discord 才能注册
+  required: false

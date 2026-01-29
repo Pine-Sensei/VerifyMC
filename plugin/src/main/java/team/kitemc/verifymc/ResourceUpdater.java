@@ -263,7 +263,7 @@ public class ResourceUpdater {
         debugLog("Checking static files for updates...");
         
         File staticDir = new File(plugin.getDataFolder(), "static");
-        String[] themes = {"default", "glassx"};
+        String[] themes = {"glassx"};
         
         for (String theme : themes) {
             File themeDir = new File(staticDir, theme);

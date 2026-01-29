@@ -1,0 +1,40 @@
+# VerifyMC Proxy Configuration
+# This plugin works with both BungeeCord and Velocity
+
+# Backend server URL (where the main VerifyMC plugin is running)
+# This should point to the web server port of your backend Bukkit/Paper server
+backend_url: "http://localhost:8080"
+
+# API key for authentication (optional, for future use)
+api_key: ""
+
+# Kick message for unregistered players
+# Available placeholders: {url} - registration URL
+# Color codes: use & for color codes (e.g., &c for red, &7 for gray)
+kick_message: "&c[ VerifyMC ]\n&7Please visit &a{url} &7to register\n&7before joining the server."
+
+# Registration URL to show in kick message
+register_url: "https://yourdomain.com/"
+
+# Language setting (zh or en)
+language: en
+
+# Debug mode - enable for troubleshooting
+debug: false
+
+# Request timeout in milliseconds
+timeout: 5000
+
+# Cache settings - caches whitelist status to reduce API calls
+cache:
+  enabled: true
+  # How long to cache whitelist status (in seconds)
+  expire_seconds: 60
+
+# Auto-update settings
+# Automatically update configuration file with new options on plugin update
+auto_update_config: true
+# Automatically update language (i18n) files on plugin update
+auto_update_i18n: true
+# Create backup before auto-updating files
+backup_on_update: true

@@ -20,6 +20,9 @@ import team.kitemc.verifymc.db.MysqlAuditDao;
 import team.kitemc.verifymc.db.MysqlUserDao;
 import team.kitemc.verifymc.service.AuthmeService;
 import team.kitemc.verifymc.service.VersionCheckService;
+import team.kitemc.verifymc.service.CaptchaService;
+import team.kitemc.verifymc.service.QuestionnaireService;
+import team.kitemc.verifymc.service.DiscordService;
 
 import java.util.List;
 import java.util.Map;
@@ -49,6 +52,9 @@ public class VerifyMC extends JavaPlugin implements Listener {
     private MailService mailService;
     private AuthmeService authmeService;
     private VersionCheckService versionCheckService;
+    private CaptchaService captchaService;
+    private QuestionnaireService questionnaireService;
+    private DiscordService discordService;
     private ResourceManager resourceManager;
     private String whitelistMode;
     private boolean whitelistJsonSync;
@@ -118,6 +124,9 @@ public class VerifyMC extends JavaPlugin implements Listener {
         mailService = new MailService(this, this::getMessage);
         authmeService = new AuthmeService(this);
         versionCheckService = new VersionCheckService(this);
+        captchaService = new CaptchaService(this);
+        questionnaireService = new QuestionnaireService(this);
+        discordService = new DiscordService(this);
         String storageType = getConfig().getString("storage.type", "data");
         String lang = getConfig().getString("language", "en");
         ResourceBundle messages;
@@ -154,8 +163,10 @@ public class VerifyMC extends JavaPlugin implements Listener {
             getLogger().info(messages.getString("storage.file.enabled"));
         }
         autoMigrateIfNeeded(messages);
-        // Initialize file storage
-        // Remove duplicate userDao/auditDao assignments
+        
+        // Set UserDao for Discord service (for persistent storage)
+        discordService.setUserDao(userDao);
+        
         // Start WebSocket server (must be before webServer)
         int port = config.getInt("web_port", 8080);
         int wsPort = config.getInt("ws_port", port + 1);
@@ -169,7 +180,7 @@ public class VerifyMC extends JavaPlugin implements Listener {
         // Start web server
         String theme = config.getString("frontend.theme", "default");
         String staticDir = resourceManager.getThemeStaticDir(theme);
-        webServer = new WebServer(port, staticDir, this, codeService, mailService, userDao, auditDao, authmeService, wsServer, messages);
+        webServer = new WebServer(port, staticDir, this, codeService, mailService, userDao, auditDao, authmeService, captchaService, questionnaireService, discordService, wsServer, messages);
         try {
             webServer.start();
             getLogger().info(getMessage("web.start_success") + ": " + port);
@@ -643,8 +654,35 @@ public class VerifyMC extends JavaPlugin implements Listener {
      * @return true if username is valid
      */
     public boolean isValidUsername(String username) {
+        if (username == null) return false;
+        
+        // Check if bedrock support is enabled and username has bedrock prefix
+        boolean bedrockEnabled = getConfig().getBoolean("bedrock.enabled", false);
+        String bedrockPrefix = getConfig().getString("bedrock.prefix", ".");
+        
+        if (bedrockEnabled && username.startsWith(bedrockPrefix)) {
+            // Use bedrock-specific regex
+            String bedrockRegex = getConfig().getString("bedrock.username_regex", "^\\.[a-zA-Z0-9_\\s]{3,16}$");
+            return username.matches(bedrockRegex);
+        }
+        
+        // Use standard regex for Java players
         String regex = getConfig().getString(USERNAME_REGEX_KEY, "^[a-zA-Z0-9_-]{3,16}$");
-        return username != null && username.matches(regex);
+        return username.matches(regex);
+    }
+    
+    /**
+     * Check if a username is a bedrock player
+     * @param username Username to check
+     * @return true if username is a bedrock player
+     */
+    public boolean isBedrockPlayer(String username) {
+        if (username == null) return false;
+        boolean bedrockEnabled = getConfig().getBoolean("bedrock.enabled", false);
+        if (!bedrockEnabled) return false;
+        
+        String bedrockPrefix = getConfig().getString("bedrock.prefix", ".");
+        return username.startsWith(bedrockPrefix);
     }
     
     /**

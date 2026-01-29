@@ -53,6 +53,16 @@ public class MysqlUserDao implements UserDao {
                 debugLog("Updated existing records with default regTime value");
             }
             
+            // Check if discord_id field exists
+            try {
+                stmt.executeQuery("SELECT discord_id FROM users LIMIT 1");
+                debugLog("discord_id column already exists in users table");
+            } catch (SQLException e) {
+                // discord_id field doesn't exist, add it
+                stmt.executeUpdate("ALTER TABLE users ADD COLUMN discord_id VARCHAR(64)");
+                debugLog("Added discord_id column to users table");
+            }
+            
             // Check and ensure indexes exist
             try {
                 stmt.executeQuery("SHOW INDEX FROM users WHERE Key_name = 'idx_username'");
@@ -188,6 +198,7 @@ public class MysqlUserDao implements UserDao {
                 user.put("status", rs.getString("status"));
                 user.put("password", rs.getString("password"));
                 user.put("regTime", rs.getLong("regTime"));
+                user.put("discord_id", rs.getString("discord_id"));
                 result.add(user);
             }
         } catch (SQLException e) {
@@ -209,6 +220,7 @@ public class MysqlUserDao implements UserDao {
                 user.put("status", rs.getString("status"));
                 user.put("password", rs.getString("password"));
                 user.put("regTime", rs.getLong("regTime"));
+                user.put("discord_id", rs.getString("discord_id"));
                 result.add(user);
             }
         } catch (SQLException e) {
@@ -231,6 +243,7 @@ public class MysqlUserDao implements UserDao {
                     user.put("status", rs.getString("status"));
                     user.put("password", rs.getString("password"));
                     user.put("regTime", rs.getLong("regTime"));
+                    user.put("discord_id", rs.getString("discord_id"));
                     return user;
                 }
             }
@@ -254,6 +267,7 @@ public class MysqlUserDao implements UserDao {
                     user.put("status", rs.getString("status"));
                     user.put("password", rs.getString("password"));
                     user.put("regTime", rs.getLong("regTime"));
+                    user.put("discord_id", rs.getString("discord_id"));
                     return user;
                 }
             }
@@ -320,6 +334,7 @@ public class MysqlUserDao implements UserDao {
                     user.put("status", rs.getString("status"));
                     user.put("password", rs.getString("password"));
                     user.put("regTime", rs.getLong("regTime"));
+                    user.put("discord_id", rs.getString("discord_id"));
                     result.add(user);
                 }
             }
@@ -382,6 +397,7 @@ public class MysqlUserDao implements UserDao {
                     user.put("status", rs.getString("status"));
                     user.put("password", rs.getString("password"));
                     user.put("regTime", rs.getLong("regTime"));
+                    user.put("discord_id", rs.getString("discord_id"));
                     result.add(user);
                 }
             }
@@ -493,6 +509,7 @@ public class MysqlUserDao implements UserDao {
                     user.put("status", rs.getString("status"));
                     user.put("password", rs.getString("password"));
                     user.put("regTime", rs.getLong("regTime"));
+                    user.put("discord_id", rs.getString("discord_id"));
                     result.add(user);
                 }
             }
@@ -538,6 +555,7 @@ public class MysqlUserDao implements UserDao {
                     user.put("status", rs.getString("status"));
                     user.put("password", rs.getString("password"));
                     user.put("regTime", rs.getLong("regTime"));
+                    user.put("discord_id", rs.getString("discord_id"));
                     result.add(user);
                 }
             }
@@ -547,5 +565,55 @@ public class MysqlUserDao implements UserDao {
         
         debugLog("Returning " + result.size() + " approved users for page " + page + " with search query: " + searchQuery);
         return result;
+    }
+    
+    @Override
+    public boolean updateUserDiscordId(String uuidOrName, String discordId) {
+        debugLog("updateUserDiscordId called: uuidOrName=" + uuidOrName + ", discordId=" + discordId);
+        String sql = "UPDATE users SET discord_id=? WHERE uuid=? OR LOWER(username)=LOWER(?)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, discordId);
+            ps.setString(2, uuidOrName);
+            ps.setString(3, uuidOrName);
+            int rows = ps.executeUpdate();
+            debugLog("User Discord ID updated: " + uuidOrName + " -> " + discordId + ", rows affected: " + rows);
+            return rows > 0;
+        } catch (SQLException e) {
+            debugLog("Error updating Discord ID: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    @Override
+    public Map<String, Object> getUserByDiscordId(String discordId) {
+        debugLog("Getting user by Discord ID: " + discordId);
+        String sql = "SELECT * FROM users WHERE discord_id=?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, discordId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Map<String, Object> user = new HashMap<>();
+                    user.put("uuid", rs.getString("uuid"));
+                    user.put("username", rs.getString("username"));
+                    user.put("email", rs.getString("email"));
+                    user.put("status", rs.getString("status"));
+                    user.put("password", rs.getString("password"));
+                    user.put("regTime", rs.getLong("regTime"));
+                    user.put("discord_id", rs.getString("discord_id"));
+                    debugLog("User found with Discord ID: " + user.get("username"));
+                    return user;
+                }
+            }
+        } catch (SQLException e) {
+            debugLog("Error getting user by Discord ID: " + e.getMessage());
+        }
+        debugLog("User not found with Discord ID: " + discordId);
+        return null;
+    }
+    
+    @Override
+    public boolean isDiscordIdLinked(String discordId) {
+        debugLog("Checking if Discord ID is linked: " + discordId);
+        return getUserByDiscordId(discordId) != null;
     }
 } 

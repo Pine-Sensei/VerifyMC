@@ -15,6 +15,10 @@ whitelist_bypass_ips:
   - 127.0.0.1
 admin:
   password: your_custom_password
+user_notification:
+  enabled: true
+  on_approve: true
+  on_reject: true
 frontend:
   theme: glassx
   logo_url: /logo.png
@@ -26,7 +30,7 @@ smtp:
   password: your_email_password
   from: your_email@qq.com
   enable_ssl: true
-email.subject: VerifyMC Verification Code
+email_subject: VerifyMC Verification Code
 whitelist_json_sync: true
 auto_sync_whitelist: true
 auto_cleanup_whitelist: true
@@ -62,3 +66,22 @@ authme:
   auto_register: false
   auto_unregister: false
   password_regex: "^[a-zA-Z0-9_]{3,16}$"
+captcha:
+  type: math
+  length: 4
+  expire_seconds: 300
+bedrock:
+  enabled: false
+  prefix: "."
+  username_regex: "^\\.[a-zA-Z0-9_\\s]{3,16}$"
+questionnaire:
+  enabled: false
+  pass_score: 60
+  auto_approve_on_pass: false
+discord:
+  enabled: false
+  client_id: ""
+  client_secret: ""
+  redirect_uri: "https://yourdomain.com/api/discord/callback"
+  guild_id: ""
+  required: false

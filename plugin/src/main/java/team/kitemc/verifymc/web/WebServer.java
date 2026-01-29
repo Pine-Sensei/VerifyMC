@@ -14,6 +14,9 @@ import team.kitemc.verifymc.mail.MailService;
 import team.kitemc.verifymc.db.UserDao;
 import team.kitemc.verifymc.db.AuditDao;
 import team.kitemc.verifymc.service.AuthmeService;
+import team.kitemc.verifymc.service.CaptchaService;
+import team.kitemc.verifymc.service.QuestionnaireService;
+import team.kitemc.verifymc.service.DiscordService;
 import org.bukkit.plugin.Plugin;
 import org.json.JSONObject;
 import java.util.ResourceBundle;
@@ -38,6 +41,9 @@ public class WebServer {
     private final UserDao userDao;
     private final AuditDao auditDao;
     private final AuthmeService authmeService;
+    private final CaptchaService captchaService;
+    private final QuestionnaireService questionnaireService;
+    private final DiscordService discordService;
     private final ReviewWebSocketServer wsServer;
     private final ResourceBundle messages;
     private final boolean debug;
@@ -56,7 +62,7 @@ public class WebServer {
         "protonmail.com", "zoho.com"
     );
 
-    public WebServer(int port, String staticDir, Plugin plugin, VerifyCodeService codeService, MailService mailService, UserDao userDao, AuditDao auditDao, AuthmeService authmeService, ReviewWebSocketServer wsServer, ResourceBundle messages) {
+    public WebServer(int port, String staticDir, Plugin plugin, VerifyCodeService codeService, MailService mailService, UserDao userDao, AuditDao auditDao, AuthmeService authmeService, CaptchaService captchaService, QuestionnaireService questionnaireService, DiscordService discordService, ReviewWebSocketServer wsServer, ResourceBundle messages) {
         this.port = port;
         this.staticDir = staticDir;
         this.plugin = plugin;
@@ -65,6 +71,9 @@ public class WebServer {
         this.userDao = userDao;
         this.auditDao = auditDao;
         this.authmeService = authmeService;
+        this.captchaService = captchaService;
+        this.questionnaireService = questionnaireService;
+        this.discordService = discordService;
         this.wsServer = wsServer;
         this.messages = messages;
         this.debug = plugin.getConfig().getBoolean("debug", false);
@@ -264,10 +273,218 @@ public class WebServer {
             // Username regex pattern
             frontend.put("username_regex", config.getString("username_regex", "^[a-zA-Z0-9_-]{3,16}$"));
             
+            // Captcha configuration
+            JSONObject captcha = new JSONObject();
+            java.util.List<String> authMethods = config.getStringList("auth_methods");
+            debugLog("auth_methods from config: " + authMethods);
+            debugLog("captcha enabled: " + authMethods.contains("captcha"));
+            captcha.put("enabled", authMethods.contains("captcha"));
+            captcha.put("email_enabled", authMethods.contains("email"));
+            captcha.put("type", config.getString("captcha.type", "math"));
+            
+            // Bedrock player configuration
+            JSONObject bedrock = new JSONObject();
+            bedrock.put("enabled", config.getBoolean("bedrock.enabled", false));
+            bedrock.put("prefix", config.getString("bedrock.prefix", "."));
+            bedrock.put("username_regex", config.getString("bedrock.username_regex", "^\\.[a-zA-Z0-9_\\s]{3,16}$"));
+            
+            // Questionnaire configuration
+            JSONObject questionnaire = new JSONObject();
+            questionnaire.put("enabled", questionnaireService.isEnabled());
+            questionnaire.put("pass_score", questionnaireService.getPassScore());
+            
+            // Discord configuration
+            JSONObject discord = new JSONObject();
+            discord.put("enabled", discordService.isEnabled());
+            discord.put("required", discordService.isRequired());
+            
             resp.put("login", login);
             resp.put("admin", admin);
             resp.put("frontend", frontend);
             resp.put("authme", authme);
+            resp.put("captcha", captcha);
+            resp.put("bedrock", bedrock);
+            resp.put("questionnaire", questionnaire);
+            resp.put("discord", discord);
+            sendJson(exchange, resp);
+        });
+        
+        // /api/check-whitelist - Check if a player is on the whitelist (for proxy plugins)
+        server.createContext("/api/check-whitelist", exchange -> {
+            debugLog("/api/check-whitelist called");
+            if (!"GET".equals(exchange.getRequestMethod())) { 
+                exchange.sendResponseHeaders(405, 0); 
+                exchange.close(); 
+                return; 
+            }
+            
+            String query = exchange.getRequestURI().getQuery();
+            String username = null;
+            if (query != null && query.contains("username=")) {
+                username = query.split("username=")[1].split("&")[0];
+                try {
+                    username = java.net.URLDecoder.decode(username, StandardCharsets.UTF_8);
+                } catch (Exception e) {
+                    // Keep original value
+                }
+            }
+            
+            JSONObject resp = new JSONObject();
+            
+            if (username == null || username.trim().isEmpty()) {
+                resp.put("success", false);
+                resp.put("msg", "Username parameter is required");
+                sendJson(exchange, resp);
+                return;
+            }
+            
+            // Look up user in database
+            java.util.Map<String, Object> user = userDao.getUserByUsername(username);
+            
+            if (user != null) {
+                resp.put("success", true);
+                resp.put("found", true);
+                resp.put("username", user.get("username"));
+                resp.put("status", user.get("status"));
+                resp.put("email", user.get("email"));
+                debugLog("Whitelist check for " + username + ": found, status=" + user.get("status"));
+            } else {
+                resp.put("success", true);
+                resp.put("found", false);
+                resp.put("status", "not_registered");
+                debugLog("Whitelist check for " + username + ": not found");
+            }
+            
+            sendJson(exchange, resp);
+        });
+        
+        // /api/discord/auth - Generate Discord OAuth2 authorization URL
+        server.createContext("/api/discord/auth", exchange -> {
+            debugLog("/api/discord/auth called");
+            if (!"POST".equals(exchange.getRequestMethod())) { 
+                exchange.sendResponseHeaders(405, 0); 
+                exchange.close(); 
+                return; 
+            }
+            
+            JSONObject req = new JSONObject(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            String username = req.optString("username", "");
+            
+            JSONObject resp = new JSONObject();
+            
+            if (!discordService.isEnabled()) {
+                resp.put("success", false);
+                resp.put("msg", "Discord integration is not enabled");
+                sendJson(exchange, resp);
+                return;
+            }
+            
+            if (username.isEmpty()) {
+                resp.put("success", false);
+                resp.put("msg", "Username is required");
+                sendJson(exchange, resp);
+                return;
+            }
+            
+            String authUrl = discordService.generateAuthUrl(username);
+            if (authUrl != null) {
+                resp.put("success", true);
+                resp.put("auth_url", authUrl);
+            } else {
+                resp.put("success", false);
+                resp.put("msg", "Failed to generate auth URL");
+            }
+            
+            sendJson(exchange, resp);
+        });
+        
+        // /api/discord/callback - Handle Discord OAuth2 callback
+        server.createContext("/api/discord/callback", exchange -> {
+            debugLog("/api/discord/callback called");
+            
+            String query = exchange.getRequestURI().getQuery();
+            String code = null;
+            String state = null;
+            
+            if (query != null) {
+                for (String param : query.split("&")) {
+                    String[] keyValue = param.split("=");
+                    if (keyValue.length == 2) {
+                        if ("code".equals(keyValue[0])) {
+                            code = java.net.URLDecoder.decode(keyValue[1], StandardCharsets.UTF_8);
+                        } else if ("state".equals(keyValue[0])) {
+                            state = java.net.URLDecoder.decode(keyValue[1], StandardCharsets.UTF_8);
+                        }
+                    }
+                }
+            }
+            
+            // Check Accept header to determine response format
+            String accept = exchange.getRequestHeaders().getFirst("Accept");
+            boolean wantsHtml = accept == null || accept.contains("text/html");
+            
+            if (code == null || state == null) {
+                if (wantsHtml) {
+                    sendDiscordCallbackHtml(exchange, false, "Missing code or state parameter", null);
+                } else {
+                    JSONObject resp = new JSONObject();
+                    resp.put("success", false);
+                    resp.put("msg", "Missing code or state parameter");
+                    sendJson(exchange, resp);
+                }
+                return;
+            }
+            
+            DiscordService.DiscordCallbackResult result = discordService.handleCallback(code, state);
+            
+            if (wantsHtml) {
+                String discordUsername = result.user != null ? 
+                    (result.user.globalName != null ? result.user.globalName : result.user.username) : null;
+                sendDiscordCallbackHtml(exchange, result.success, result.message, discordUsername);
+            } else {
+                sendJson(exchange, result.toJson());
+            }
+        });
+        
+        // /api/discord/status - Check if user has linked Discord
+        server.createContext("/api/discord/status", exchange -> {
+            debugLog("/api/discord/status called");
+            if (!"GET".equals(exchange.getRequestMethod())) { 
+                exchange.sendResponseHeaders(405, 0); 
+                exchange.close(); 
+                return; 
+            }
+            
+            String query = exchange.getRequestURI().getQuery();
+            String username = null;
+            if (query != null && query.contains("username=")) {
+                username = query.split("username=")[1].split("&")[0];
+                try {
+                    username = java.net.URLDecoder.decode(username, StandardCharsets.UTF_8);
+                } catch (Exception e) {
+                    // Keep original value
+                }
+            }
+            
+            JSONObject resp = new JSONObject();
+            
+            if (username == null || username.isEmpty()) {
+                resp.put("success", false);
+                resp.put("msg", "Username is required");
+                sendJson(exchange, resp);
+                return;
+            }
+            
+            resp.put("success", true);
+            resp.put("linked", discordService.isLinked(username));
+            
+            if (discordService.isLinked(username)) {
+                DiscordService.DiscordUser user = discordService.getLinkedUser(username);
+                if (user != null) {
+                    resp.put("user", user.toJson());
+                }
+            }
+            
             sendJson(exchange, resp);
         });
         
@@ -319,6 +536,118 @@ public class WebServer {
             } catch (Exception e) {
                 resp.put("success", false);
                 resp.put("message", "Failed to reload configuration: " + e.getMessage());
+            }
+            sendJson(exchange, resp);
+        });
+        
+        // /api/captcha - Generate captcha image for verification
+        server.createContext("/api/captcha", exchange -> {
+            debugLog("/api/captcha called");
+            if (!"GET".equals(exchange.getRequestMethod())) { 
+                exchange.sendResponseHeaders(405, 0); 
+                exchange.close(); 
+                return; 
+            }
+            
+            JSONObject resp = new JSONObject();
+            try {
+                CaptchaService.CaptchaResult result = captchaService.generateCaptcha();
+                resp.put("success", true);
+                resp.put("token", result.getToken());
+                resp.put("image", result.getImageBase64());
+            } catch (Exception e) {
+                debugLog("Captcha generation failed: " + e.getMessage());
+                resp.put("success", false);
+                resp.put("msg", "Failed to generate captcha");
+            }
+            sendJson(exchange, resp);
+        });
+        
+        // /api/questionnaire - Get questionnaire questions
+        server.createContext("/api/questionnaire", exchange -> {
+            debugLog("/api/questionnaire called");
+            if (!"GET".equals(exchange.getRequestMethod())) { 
+                exchange.sendResponseHeaders(405, 0); 
+                exchange.close(); 
+                return; 
+            }
+            
+            String query = exchange.getRequestURI().getQuery();
+            String language = "en";
+            if (query != null && query.contains("language=")) {
+                language = query.split("language=")[1].split("&")[0];
+            }
+            
+            JSONObject resp = new JSONObject();
+            try {
+                JSONObject questionnaire = questionnaireService.getQuestionnaire(language);
+                resp.put("success", true);
+                resp.put("data", questionnaire);
+            } catch (Exception e) {
+                debugLog("Failed to get questionnaire: " + e.getMessage());
+                resp.put("success", false);
+                resp.put("msg", "Failed to get questionnaire");
+            }
+            sendJson(exchange, resp);
+        });
+        
+        // /api/submit-questionnaire - Submit questionnaire answers
+        server.createContext("/api/submit-questionnaire", exchange -> {
+            debugLog("/api/submit-questionnaire called");
+            if (!"POST".equals(exchange.getRequestMethod())) { 
+                exchange.sendResponseHeaders(405, 0); 
+                exchange.close(); 
+                return; 
+            }
+            
+            JSONObject req = new JSONObject(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            String language = req.optString("language", "en");
+            
+            JSONObject resp = new JSONObject();
+            try {
+                // Parse answers from request
+                JSONObject answersJson = req.optJSONObject("answers");
+                if (answersJson == null) {
+                    resp.put("success", false);
+                    resp.put("msg", getMsg("questionnaire.answers_required", language));
+                    sendJson(exchange, resp);
+                    return;
+                }
+                
+                // Convert answers to Map<Integer, List<Integer>>
+                java.util.Map<Integer, java.util.List<Integer>> answers = new java.util.HashMap<>();
+                for (String key : answersJson.keySet()) {
+                    int questionId = Integer.parseInt(key);
+                    java.util.List<Integer> selectedOptions = new java.util.ArrayList<>();
+                    
+                    Object value = answersJson.get(key);
+                    if (value instanceof org.json.JSONArray) {
+                        org.json.JSONArray arr = (org.json.JSONArray) value;
+                        for (int i = 0; i < arr.length(); i++) {
+                            selectedOptions.add(arr.getInt(i));
+                        }
+                    } else if (value instanceof Number) {
+                        selectedOptions.add(((Number) value).intValue());
+                    }
+                    
+                    answers.put(questionId, selectedOptions);
+                }
+                
+                // Evaluate answers
+                QuestionnaireService.QuestionnaireResult result = questionnaireService.evaluateAnswers(answers);
+                
+                resp.put("success", true);
+                resp.put("passed", result.isPassed());
+                resp.put("score", result.getScore());
+                resp.put("pass_score", result.getPassScore());
+                resp.put("msg", result.isPassed() ? 
+                    getMsg("questionnaire.passed", language) : 
+                    getMsg("questionnaire.failed", language));
+                
+            } catch (Exception e) {
+                debugLog("Failed to submit questionnaire: " + e.getMessage());
+                resp.put("success", false);
+                resp.put("msg", "Failed to submit questionnaire: " + e.getMessage());
             }
             sendJson(exchange, resp);
         });
@@ -385,7 +714,7 @@ public class WebServer {
             
             // Get email subject from config.yml, fallback to default if not set
             String emailSubject = plugin.getConfig().getString("email_subject", "VerifyMC Verification Code");
-            boolean sent = mailService.sendCode(email, emailSubject, code);
+            boolean sent = mailService.sendCode(email, emailSubject, code, language);
             JSONObject resp = new JSONObject();
             resp.put("success", sent);
             resp.put("msg", sent ? getMsg("email.sent", language) : getMsg("email.failed", language));
@@ -409,8 +738,10 @@ public class WebServer {
             String uuid = req.optString("uuid");
             String username = req.optString("username");
             String password = req.optString("password", ""); // New password parameter
+            String captchaToken = req.optString("captchaToken", "");
+            String captchaAnswer = req.optString("captchaAnswer", "");
             String language = req.optString("language", "en");
-            debugLog("register params: email=" + email + ", code=" + code + ", uuid=" + uuid + ", username=" + username + ", hasPassword=" + !password.isEmpty());
+            debugLog("register params: email=" + email + ", code=" + code + ", uuid=" + uuid + ", username=" + username + ", hasPassword=" + !password.isEmpty() + ", hasCaptcha=" + !captchaToken.isEmpty());
 
             // Check if password is required
             if (authmeService.isAuthmeEnabled() && authmeService.isPasswordRequired()) {
@@ -513,13 +844,63 @@ public class WebServer {
                 return;
             }
             JSONObject resp = new JSONObject();
+            
+            // Determine verification method based on auth_methods config
+            java.util.List<String> authMethods = plugin.getConfig().getStringList("auth_methods");
+            boolean useCaptcha = authMethods.contains("captcha");
+            boolean useEmail = authMethods.contains("email");
+            boolean verificationPassed = false;
+            
+            // Captcha verification
+            if (useCaptcha) {
+                if (captchaToken.isEmpty() || captchaAnswer.isEmpty()) {
+                    resp.put("success", false);
+                    resp.put("msg", getMsg("captcha.required", language));
+                    sendJson(exchange, resp);
+                    return;
+                }
+                if (!captchaService.validateCaptcha(captchaToken, captchaAnswer)) {
+                    debugLog("Captcha validation failed: token=" + captchaToken);
+                    resp.put("success", false);
+                    resp.put("msg", getMsg("captcha.invalid", language));
+                    sendJson(exchange, resp);
+                    return;
+                }
+                debugLog("Captcha validation passed");
+                verificationPassed = true;
+            }
+            
+            // Email verification (if email method is enabled or no captcha)
+            if (useEmail || !useCaptcha) {
             if (!codeService.checkCode(email, code)) {
                 debugLog("Verification code check failed: email=" + email + ", code=" + code);
                 plugin.getLogger().warning("[VerifyMC] Registration failed: wrong code, email=" + email + ", code=" + code);
                 resp.put("success", false); 
                 resp.put("msg", getMsg("verify.wrong_code", language));
-            } else {
-                debugLog("Verification code passed, registering user");
+                    sendJson(exchange, resp);
+                    return;
+                }
+                debugLog("Email verification code passed");
+                verificationPassed = true;
+            }
+            
+            if (verificationPassed) {
+                debugLog("Verification passed, checking Discord requirement");
+                
+                // Check Discord binding if required
+                if (discordService.isRequired()) {
+                    if (!discordService.isLinked(username)) {
+                        debugLog("Discord binding required but user not linked: " + username);
+                        resp.put("success", false);
+                        resp.put("msg", getMsg("discord.required", language));
+                        resp.put("discord_required", true);
+                        sendJson(exchange, resp);
+                        return;
+                    }
+                    debugLog("Discord binding verified for: " + username);
+                }
+                
+                debugLog("All checks passed, registering user");
                 boolean autoApprove = plugin.getConfig().getBoolean("register.auto_approve", false);
                 String status = autoApprove ? "approved" : "pending";
                 boolean ok;
@@ -675,6 +1056,8 @@ public class WebServer {
                 return;
             }
             
+            String reason = req.optString("reason", "");
+            
             JSONObject resp = new JSONObject();
             try {
                 // Get user information
@@ -688,6 +1071,7 @@ public class WebServer {
                 
                 String username = (String) user.get("username");
                 String password = (String) user.get("password");
+                String userEmail = (String) user.get("email");
                 
                 String status = "approve".equals(action) ? "approved" : "rejected";
                 boolean success = userDao.updateUserStatus(uuid, status);
@@ -704,6 +1088,22 @@ public class WebServer {
                         password != null && !password.trim().isEmpty()) {
                         authmeService.registerToAuthme(username, password);
                     }
+                }
+                
+                // Send review result notification to user (async)
+                if (success && userEmail != null && !userEmail.trim().isEmpty()) {
+                    final String finalUsername = username;
+                    final String finalEmail = userEmail;
+                    final boolean approved = "approve".equals(action);
+                    final String finalReason = reason;
+                    final String finalLanguage = language;
+                    new Thread(() -> {
+                        try {
+                            mailService.sendReviewResultNotification(finalEmail, finalUsername, approved, finalReason, finalLanguage);
+                        } catch (Exception e) {
+                            debugLog("Failed to send review result notification: " + e.getMessage());
+                        }
+                    }).start();
                 }
                 
                 resp.put("success", success);
@@ -1352,6 +1752,76 @@ public class WebServer {
         exchange.getResponseBody().write(data);
         exchange.close();
     }
+    
+    /**
+     * Send Discord OAuth callback result as an HTML page
+     */
+    private void sendDiscordCallbackHtml(HttpExchange exchange, boolean success, String message, String discordUsername) throws IOException {
+        String serverName = plugin.getConfig().getString("web_server_prefix", "Server");
+        String statusIcon = success ? "✓" : "✗";
+        String statusColor = success ? "#4ade80" : "#f87171";
+        String statusText = success ? "Success" : "Failed";
+        
+        StringBuilder html = new StringBuilder();
+        html.append("<!DOCTYPE html><html lang=\"en\"><head>");
+        html.append("<meta charset=\"UTF-8\">");
+        html.append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
+        html.append("<title>Discord Link - ").append(escapeHtml(serverName)).append("</title>");
+        html.append("<style>");
+        html.append("*{margin:0;padding:0;box-sizing:border-box}");
+        html.append("body{min-height:100vh;display:flex;align-items:center;justify-content:center;");
+        html.append("background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);");
+        html.append("font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#fff}");
+        html.append(".card{background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);");
+        html.append("border:1px solid rgba(255,255,255,0.2);border-radius:16px;padding:40px;");
+        html.append("text-align:center;max-width:400px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.3)}");
+        html.append(".icon{font-size:64px;margin-bottom:20px;color:").append(statusColor).append("}");
+        html.append(".title{font-size:24px;font-weight:600;margin-bottom:8px;color:").append(statusColor).append("}");
+        html.append(".message{color:rgba(255,255,255,0.8);margin-bottom:20px;line-height:1.5}");
+        html.append(".discord-user{background:rgba(88,101,242,0.3);border:1px solid rgba(88,101,242,0.5);");
+        html.append("border-radius:8px;padding:12px 20px;margin-bottom:20px;display:inline-flex;align-items:center;gap:8px}");
+        html.append(".discord-icon{width:24px;height:24px}");
+        html.append(".btn{display:inline-block;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);");
+        html.append("color:#fff;text-decoration:none;padding:12px 32px;border-radius:8px;font-weight:500;");
+        html.append("transition:transform 0.2s,box-shadow 0.2s}");
+        html.append(".btn:hover{transform:translateY(-2px);box-shadow:0 4px 20px rgba(102,126,234,0.4)}");
+        html.append("</style></head><body>");
+        html.append("<div class=\"card\">");
+        html.append("<div class=\"icon\">").append(statusIcon).append("</div>");
+        html.append("<div class=\"title\">").append(statusText).append("</div>");
+        html.append("<div class=\"message\">").append(escapeHtml(message)).append("</div>");
+        
+        if (success && discordUsername != null) {
+            html.append("<div class=\"discord-user\">");
+            html.append("<svg class=\"discord-icon\" viewBox=\"0 0 24 24\" fill=\"#5865F2\">");
+            html.append("<path d=\"M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z\"/>");
+            html.append("</svg>");
+            html.append("<span>").append(escapeHtml(discordUsername)).append("</span>");
+            html.append("</div>");
+        }
+        
+        html.append("<a href=\"/\" class=\"btn\">Return to Registration</a>");
+        html.append("</div></body></html>");
+        
+        byte[] data = html.toString().getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().add("Content-Type", "text/html; charset=utf-8");
+        exchange.sendResponseHeaders(200, data.length);
+        exchange.getResponseBody().write(data);
+        exchange.close();
+    }
+    
+    /**
+     * Escape HTML special characters
+     */
+    private String escapeHtml(String text) {
+        if (text == null) return "";
+        return text.replace("&", "&amp;")
+                   .replace("<", "&lt;")
+                   .replace(">", "&gt;")
+                   .replace("\"", "&quot;")
+                   .replace("'", "&#39;");
+    }
+    
     private String getMsg(String key, String language) {
         // Get or load language resource bundle
         ResourceBundle bundle = getLanguageBundle(language);

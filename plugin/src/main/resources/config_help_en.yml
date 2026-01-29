@@ -17,7 +17,13 @@ web_server_prefix: '[ Name ]'
 # ----------------------------------------
 # Verification & Whitelist
 # ----------------------------------------
-# Supported authentication methods. Currently, only 'email' is available.
+# Supported authentication methods. Options: 'email' (email verification), 'captcha' (graphical captcha).
+# You can use multiple methods, e.g.: [email, captcha]
+# 
+# [IMPORTANT] Configuring the captcha: section below does NOT enable captcha!
+# To enable captcha, you MUST add 'captcha' to this list:
+#   Captcha only: auth_methods: [captcha]
+#   Both email and captcha: auth_methods: [email, captcha]
 auth_methods:
   - email
 # Maximum number of game accounts that can be linked to a single email address.
@@ -49,10 +55,22 @@ admin:
   password: your_custom_password
 
 # ----------------------------------------
+# User Notification
+# ----------------------------------------
+# Send email notification to users when admin reviews their application.
+user_notification:
+  # Whether to enable user notification feature
+  enabled: true
+  # Whether to send notification when application is approved
+  on_approve: true
+  # Whether to send notification when application is rejected
+  on_reject: true
+
+# ----------------------------------------
 # Frontend (UI)
 # ----------------------------------------
 frontend:
-  # The visual theme for the web interface. Options: 'default', 'glassx'.
+  # The visual theme for the web interface. Options: 'glassx'.
   theme: glassx
   # URL for the logo. Can be a web link or a local file path (e.g., '/logo.png').
   logo_url: /logo.png
@@ -143,4 +161,60 @@ authme:
   # Whether to automatically unregister from Authme when user is deleted
   auto_unregister: false
   # Password regex pattern
-  password_regex: "^[a-zA-Z0-9_]{3,16}$" 
+  password_regex: "^[a-zA-Z0-9_]{3,16}$"
+
+# ----------------------------------------
+# Captcha Configuration
+# ----------------------------------------
+# Captcha can be used as an alternative or supplement to email verification
+# Add 'captcha' to auth_methods to enable: auth_methods: [captcha]
+# Or use both: auth_methods: [email, captcha]
+captcha:
+  # Captcha type: math (math expression) or text (random characters)
+  type: math
+  # Length of text captcha (ignored for math type)
+  length: 4
+  # Captcha expiration time in seconds
+  expire_seconds: 300
+
+# ----------------------------------------
+# Bedrock Player Support
+# ----------------------------------------
+# For Geyser/Floodgate bedrock players
+bedrock:
+  # Whether to enable bedrock player support
+  enabled: false
+  # Prefix for bedrock players (commonly "." for Floodgate)
+  prefix: "."
+  # Regex for bedrock usernames
+  username_regex: "^\\.[a-zA-Z0-9_\\s]{3,16}$"
+
+# ----------------------------------------
+# Questionnaire Configuration
+# ----------------------------------------
+# Detailed questions are configured in questionnaire.yml
+questionnaire:
+  # Whether to enable questionnaire feature
+  enabled: false
+  # Minimum score to pass
+  pass_score: 60
+  # Auto-approve users who pass the questionnaire
+  auto_approve_on_pass: false
+
+# ----------------------------------------
+# Discord Integration (OAuth2)
+# ----------------------------------------
+# Requires creating a Discord application at https://discord.com/developers/applications
+discord:
+  # Whether to enable Discord integration
+  enabled: false
+  # Discord application client ID
+  client_id: ""
+  # Discord application client secret
+  client_secret: ""
+  # OAuth2 redirect URI
+  redirect_uri: "https://yourdomain.com/api/discord/callback"
+  # Optional: require users to be in specific guild/server
+  guild_id: ""
+  # Whether Discord linking is required for registration
+  required: false

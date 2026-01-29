@@ -26,7 +26,9 @@
                 v-model="form.email"
               />
             </div>
-            <div class="grid gap-2">
+            
+            <!-- Email verification code (if email auth is enabled) -->
+            <div class="grid gap-2" v-if="config.emailEnabled">
               <Label for="code">{{ $t('register.form.code') }}</Label>
               <div class="flex flex-col sm:flex-row gap-2">
                 <Input 
@@ -46,6 +48,48 @@
                   <span v-else>{{ $t('register.send_code') }}</span>
                 </button>
               </div>
+            </div>
+
+            <!-- Captcha verification (if captcha auth is enabled) -->
+            <div class="grid gap-2" v-if="config.captchaEnabled">
+              <Label for="captcha">{{ $t('register.form.captcha') }}</Label>
+              <div class="flex flex-col sm:flex-row gap-2 items-center">
+                <Input 
+                  id="captcha" 
+                  type="text" 
+                  :placeholder="$t('register.form.captcha_placeholder')"
+                  v-model="form.captchaAnswer"
+                  class="flex-1"
+                />
+                <div 
+                  class="captcha-image-container cursor-pointer border border-white/20 rounded-md overflow-hidden bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors"
+                  @click="refreshCaptcha"
+                  :title="$t('register.form.captcha_refresh')"
+                >
+                  <img 
+                    v-if="captchaImage" 
+                    :src="captchaImage" 
+                    alt="captcha" 
+                    class="h-10 w-auto"
+                  />
+                  <div v-else class="h-10 w-24 flex items-center justify-center text-white/60 text-sm">
+                    {{ $t('common.loading') }}
+                  </div>
+                </div>
+              </div>
+              <p class="text-xs text-white/60">{{ $t('register.form.captcha_hint') }}</p>
+            </div>
+
+            <!-- Password field (if authme is enabled and requires password) -->
+            <div class="grid gap-2" v-if="config.requirePassword">
+              <Label for="password">{{ $t('register.form.password') }}</Label>
+              <Input 
+                id="password" 
+                type="password" 
+                :placeholder="$t('register.form.password_placeholder')" 
+                v-model="form.password"
+              />
+              <p class="text-xs text-white/60">{{ $t('register.form.password_hint', { regex: config.passwordRegex }) }}</p>
             </div>
 
             <Button type="submit" class="w-full" :disabled="loading">
@@ -82,22 +126,66 @@ const notification = useNotification()
 
 const loading = ref(false)
 const codeSending = ref(false)
+const captchaImage = ref('')
+const captchaToken = ref('')
+
+// Configuration state
+const config = reactive({
+  emailEnabled: true,
+  captchaEnabled: false,
+  requirePassword: false,
+  passwordRegex: '^[a-zA-Z0-9_]{3,16}$'
+})
 
 const form = reactive({
   username: '',
   email: '',
-  code: ''
+  code: '',
+  captchaAnswer: '',
+  password: ''
 })
 
 const errors = reactive({
   username: '',
   email: '',
-  code: ''
+  code: '',
+  captcha: '',
+  password: ''
 })
 
-onMounted(() => {
-  // 组件已加载
+onMounted(async () => {
+  // Load configuration
+  try {
+    const configResponse = await apiService.getConfig()
+    if (configResponse.captcha) {
+      config.captchaEnabled = configResponse.captcha.enabled
+      config.emailEnabled = configResponse.captcha.email_enabled
+    }
+    if (configResponse.authme) {
+      config.requirePassword = configResponse.authme.enabled && configResponse.authme.require_password
+      config.passwordRegex = configResponse.authme.password_regex || '^[a-zA-Z0-9_]{3,16}$'
+    }
+    
+    // Load captcha if enabled
+    if (config.captchaEnabled) {
+      await refreshCaptcha()
+    }
+  } catch (error) {
+    console.error('Failed to load config:', error)
+  }
 })
+
+const refreshCaptcha = async () => {
+  try {
+    const response = await apiService.getCaptcha()
+    if (response.success && response.token && response.image) {
+      captchaToken.value = response.token
+      captchaImage.value = response.image
+    }
+  } catch (error) {
+    console.error('Failed to load captcha:', error)
+  }
+}
 
 const validateUsername = () => {
   errors.username = ''
@@ -132,13 +220,45 @@ const validateEmail = () => {
   return true
 }
 
-
-
 const validateCode = () => {
+  if (!config.emailEnabled) return true
+  
   errors.code = ''
   const code = form.code.trim()
   if (!code) {
     errors.code = t('register.validation.code_required')
+    return false
+  }
+  
+  return true
+}
+
+const validateCaptcha = () => {
+  if (!config.captchaEnabled) return true
+  
+  errors.captcha = ''
+  const captcha = form.captchaAnswer.trim()
+  if (!captcha) {
+    errors.captcha = t('register.validation.captcha_required')
+    return false
+  }
+  
+  return true
+}
+
+const validatePassword = () => {
+  if (!config.requirePassword) return true
+  
+  errors.password = ''
+  const password = form.password.trim()
+  if (!password) {
+    errors.password = t('register.validation.password_required')
+    return false
+  }
+  
+  const regex = new RegExp(config.passwordRegex)
+  if (!regex.test(password)) {
+    errors.password = t('register.validation.password_format', { regex: config.passwordRegex })
     return false
   }
   
@@ -178,24 +298,26 @@ const sendCode = async () => {
   }
 }
 
-
-
-
-
 const handleSubmit = async () => {
-  // 验证表单
+  // Validate form
   const usernameValid = validateUsername()
   const emailValid = validateEmail()
   const codeValid = validateCode()
+  const captchaValid = validateCaptcha()
+  const passwordValid = validatePassword()
   
-  if (!usernameValid || !emailValid || !codeValid) {
-    // 显示第一个错误通知
+  if (!usernameValid || !emailValid || !codeValid || !captchaValid || !passwordValid) {
+    // Show first error notification
     if (!usernameValid) {
       notification.error(t('common.error'), errors.username)
     } else if (!emailValid) {
       notification.error(t('common.error'), errors.email)
     } else if (!codeValid) {
       notification.error(t('common.error'), errors.code)
+    } else if (!captchaValid) {
+      notification.error(t('common.error'), errors.captcha)
+    } else if (!passwordValid) {
+      notification.error(t('common.error'), errors.password)
     }
     return
   }
@@ -203,12 +325,12 @@ const handleSubmit = async () => {
   loading.value = true
 
   try {
-    // 生成标准UUID格式
+    // Generate standard UUID format
     const uuid = (() => {
       if (typeof crypto !== 'undefined' && crypto.randomUUID) {
         return crypto.randomUUID()
       }
-      // 降级方案：生成标准UUID格式
+      // Fallback: generate standard UUID format
       const generateUUID = () => {
         const hex = '0123456789abcdef'
         const uuid = []
@@ -224,12 +346,27 @@ const handleSubmit = async () => {
       return generateUUID()
     })()
     
-    const registerData = {
+    const registerData: any = {
       email: form.email.trim().toLowerCase(),
-      code: form.code,
       uuid: uuid,
       username: form.username,
       language: locale.value
+    }
+    
+    // Add email code if enabled
+    if (config.emailEnabled) {
+      registerData.code = form.code
+    }
+    
+    // Add captcha data if enabled
+    if (config.captchaEnabled) {
+      registerData.captchaToken = captchaToken.value
+      registerData.captchaAnswer = form.captchaAnswer
+    }
+    
+    // Add password if required
+    if (config.requirePassword) {
+      registerData.password = form.password
     }
     
     const response = await apiService.register(registerData)
@@ -237,26 +374,47 @@ const handleSubmit = async () => {
     if (response.success) {
       notification.success(t('register.success'), response.msg && response.msg !== t('register.success') ? response.msg : '')
       
-      // 清空表单
+      // Clear form
       Object.assign(form, {
         username: '',
         email: '',
-        code: ''
+        code: '',
+        captchaAnswer: '',
+        password: ''
       })
       
-      // 注册成功后不跳转，让用户等待审核
-      // setTimeout(() => {
-      //   router.push('/login')
-      // }, 2000)
+      // Refresh captcha if enabled
+      if (config.captchaEnabled) {
+        await refreshCaptcha()
+      }
     } else {
       notification.error(t('register.failed'), response.msg && response.msg !== t('register.failed') ? response.msg : '')
+      
+      // Refresh captcha on failure
+      if (config.captchaEnabled) {
+        await refreshCaptcha()
+      }
     }
     
   } catch (error) {
     console.error('Registration error:', error)
     notification.error(t('register.failed'), t('register.failed'))
+    
+    // Refresh captcha on error
+    if (config.captchaEnabled) {
+      await refreshCaptcha()
+    }
   } finally {
     loading.value = false
   }
 }
-</script> 
+</script>
+
+<style scoped>
+.captcha-image-container {
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+</style>
