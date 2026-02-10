@@ -1,23 +1,13 @@
 release: true
-version: 1.2.6
+version: 1.2.7
 release_notes: |
-  [简体中文](https://github.com/KiteMC/VerifyMC/blob/v1.2.6/release_notes_zh.md) | English | [Official Documentation](https://kitemc.com/docs/verifymc/)
-  
-  # VerifyMC v1.2.6 Release Notes
-  
+  [简体中文](https://github.com/KiteMC/VerifyMC/blob/v1.2.7/release_notes_zh.md) | English | [Official Documentation](https://kitemc.com/docs/verifymc/)
+
+  # VerifyMC v1.2.7 Release Notes
+
   ## 🐛 Bug Fixes
-  
-  ### Velocity-CTD Compatibility (Issue #14)
-  - Fixed Guice dependency injection error with Velocity forks (e.g., Velocity-CTD 3.5.0)
-  - Changed `javax.inject.Inject` to `com.google.inject.Inject` for better compatibility
-  
-  ### Version Display Fix (Issue #15)
-  - Fixed incorrect version number display in plugin
-  - Unified version management across all configuration files
-  
-  ## ✨ New Features
-  
-  ### Minecraft 1.21.11 Support (Issue #16)
-  - Added official support for Minecraft 1.21.11
-  - Updated Velocity API to 3.4.0-SNAPSHOT
-  - Updated Waterfall API to 1.21-R0.1-SNAPSHOT
+
+  ### Questionnaire Not Displaying
+  - Fixed questionnaire form not showing on registration page even when enabled in both `config.yml` and `questionnaire.yml`
+  - Integrated `QuestionnaireForm` component into the registration flow (questionnaire first, then registration)
+  - Added missing `questionnaire` field to `ConfigResponse` type definition to align with backend API response

@@ -1,6 +1,6 @@
 name: VerifyMC
 main: team.kitemc.verifymc.VerifyMC
-version: 1.2.6
+version: 1.2.7
 author: KiteMC
 folia-supported: true
 commands:
@@ -14,4 +14,4 @@ permissions:
     default: true
   verifymc.admin:
     description: Admin permission
-    default: op 
+    default: op

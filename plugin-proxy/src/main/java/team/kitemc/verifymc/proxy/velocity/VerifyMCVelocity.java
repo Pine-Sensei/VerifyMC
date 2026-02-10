@@ -28,7 +28,7 @@ import java.nio.file.Path;
 @Plugin(
     id = "verifymc-proxy",
     name = "VerifyMC-Proxy",
-    version = "1.2.6",
+    version = "1.2.7",
     description = "VerifyMC proxy plugin for Velocity",
     authors = {"KiteMC"}
 )
@@ -37,35 +37,35 @@ public class VerifyMCVelocity {
     private final ProxyServer server; // Reserved for future use (e.g., getting online players)
     private final Logger logger;
     private final Path dataDirectory;
-    
+
     private ProxyConfig config;
     private ApiClient apiClient;
     private ProxyVersionCheckService versionCheckService;
     private ProxyResourceUpdater resourceUpdater;
-    
+
     // Wrapper to adapt SLF4J Logger to java.util.logging.Logger
     private java.util.logging.Logger julLogger;
-    
+
     @Inject
     public VerifyMCVelocity(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory) {
         this.server = server;
         this.logger = logger;
         this.dataDirectory = dataDirectory;
-        
+
         // Create a JUL logger wrapper
         this.julLogger = new java.util.logging.Logger("VerifyMC-Proxy", null) {
             @Override
             public void info(String msg) {
                 logger.info(msg);
             }
-            
+
             @Override
             public void warning(String msg) {
                 logger.warn(msg);
             }
         };
     }
-    
+
     @Subscribe
     public void onProxyInitialize(ProxyInitializeEvent event) {
         // Create data directory
@@ -76,33 +76,33 @@ public class VerifyMCVelocity {
                 logger.error("Failed to create data directory", e);
             }
         }
-        
+
         // Save default config
         saveDefaultConfig();
-        
+
         // Load configuration
         config = new ProxyConfig(dataDirectory.toFile());
-        
+
         // Initialize API client
         apiClient = new ApiClient(config, julLogger);
-        
+
         // Initialize version check service
-        String version = "1.2.6"; // From @Plugin annotation
+        String version = "1.2.7"; // From @Plugin annotation
         versionCheckService = new ProxyVersionCheckService(version, julLogger, config.isDebug());
-        
+
         // Initialize resource updater
         resourceUpdater = new ProxyResourceUpdater(dataDirectory.toFile(), julLogger, config.isDebug(), config, getClass());
-        
+
         // Check and update resources
         resourceUpdater.checkAndUpdateResources();
-        
+
         // Check for updates asynchronously
         checkForUpdates();
-        
+
         logger.info("[VerifyMC-Proxy] Plugin enabled!");
         logger.info("[VerifyMC-Proxy] Backend API: " + config.getBackendUrl());
     }
-    
+
     /**
      * Check for plugin updates
      */
@@ -121,32 +121,32 @@ public class VerifyMCVelocity {
             return null;
         });
     }
-    
+
     @Subscribe
     public void onProxyShutdown(ProxyShutdownEvent event) {
         logger.info("[VerifyMC-Proxy] Plugin disabled!");
     }
-    
+
     @Subscribe
     public void onPreLogin(PreLoginEvent event) {
         String playerName = event.getUsername();
-        
+
         if (config.isDebug()) {
             logger.info("[DEBUG] PreLogin check for: " + playerName);
         }
-        
+
         try {
             // Check if player is approved
             ApiClient.WhitelistStatus status = apiClient.checkWhitelist(playerName);
-            
+
             if (status == null || !status.isApproved()) {
                 // Player not approved, cancel login
                 String kickMessage = config.getKickMessage()
                     .replace("{url}", config.getRegisterUrl());
-                
+
                 Component kickComponent = LegacyComponentSerializer.legacyAmpersand().deserialize(kickMessage);
                 event.setResult(PreLoginEvent.PreLoginComponentResult.denied(kickComponent));
-                
+
                 if (config.isDebug()) {
                     logger.info("[DEBUG] Blocked player: " + playerName + " (not approved)");
                 }
@@ -160,13 +160,13 @@ public class VerifyMCVelocity {
             // On error, allow login by default (fail-open)
         }
     }
-    
+
     /**
      * Save default configuration file
      */
     private void saveDefaultConfig() {
         Path configPath = dataDirectory.resolve("config.yml");
-        
+
         if (!Files.exists(configPath)) {
             try (InputStream in = getClass().getResourceAsStream("/config.yml")) {
                 if (in != null) {
@@ -176,33 +176,33 @@ public class VerifyMCVelocity {
                     String defaultConfig = """
                         # VerifyMC Proxy Configuration
                         # This plugin works with both BungeeCord and Velocity
-                        
+
                         # Backend server URL (where the main VerifyMC plugin is running)
                         backend_url: "http://localhost:8080"
-                        
+
                         # API key for authentication (optional)
                         api_key: ""
-                        
+
                         # Kick message for unregistered players
                         kick_message: "&c[ VerifyMC ]\\n&7Please visit &a{url} &7to register"
-                        
+
                         # Registration URL to show in kick message
                         register_url: "https://yourdomain.com/"
-                        
+
                         # Language setting (zh or en)
                         language: en
-                        
+
                         # Debug mode
                         debug: false
-                        
+
                         # Request timeout in milliseconds
                         timeout: 5000
-                        
+
                         # Cache settings
                         cache:
                           enabled: true
                           expire_seconds: 60
-                        
+
                         # Auto-update settings
                         auto_update_config: true
                         auto_update_i18n: true

@@ -37,6 +37,10 @@ export interface ConfigResponse {
     enabled: boolean
     required: boolean
   }
+  questionnaire?: {
+    enabled: boolean
+    pass_score: number
+  }
 }
 
 export interface CaptchaResponse {
@@ -261,11 +265,11 @@ class ApiService {
       page: page.toString(),
       pageSize: pageSize.toString(),
     });
-    
+
     if (search.trim()) {
       params.append('search', search.trim());
     }
-    
+
     return this.request(`/users-paginated?${params.toString()}`);
   }
 
