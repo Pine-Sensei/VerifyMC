@@ -1,47 +1,37 @@
 release: true
-version: 1.2.8
+version: 1.2.9
 release_notes: |
-  [简体中文](https://github.com/KiteMC/VerifyMC/blob/v1.2.8/release_notes_zh.md) | English | [Official Documentation](https://kitemc.com/docs/verifymc/)
+  [简体中文](https://github.com/KiteMC/VerifyMC/blob/v1.2.9/release_notes_zh.md) | English | [Official Documentation](https://kitemc.com/docs/verifymc/)
 
-  # VerifyMC v1.2.8 Release Notes
+  # VerifyMC v1.2.9 Release Notes
 
-  ## New Features
+  ## Registration & Questionnaire Flow Stabilization
 
-  ### Multi-Step Registration with Questionnaire Enforcement (PR #18)
-  - Implemented mandatory multi-step questionnaire workflow before registration
-  - Added text question type with LLM-based essay scoring (DeepSeek / Google Gemini)
-  - Circuit breaker, retry, concurrency control and low-confidence manual review escalation
-  - Questionnaire token lifecycle management to prevent replay attacks
-  - Configurable `require_pass_before_register`
+  - Restored Bedrock/Java selector visibility and fixed platform selector display issues
+  - Fixed Bedrock username regex handling
+  - Resolved registration next-step freeze
+  - Restored integrated questionnaire step flow
+  - Ensured whitelist confirmation is shown when auto-approved
+  - Questionnaire is now mandatory when enabled (removed `auto_approve_on_pass` and `require_pass_before_register`, unified under `register.auto_approve`)
 
-  ### Bedrock Edition Support
-  - Added Java/Bedrock dual-mode platform selector (glass-style toggle)
-  - Bedrock username normalization with configurable prefix
-  - Separate username regex validation for Bedrock players
+  ## LLM & Scoring Improvements
 
-  ### Proxy API Key Authentication
-  - Unified `security.api_key` / `proxy.api_key` for proxy-to-backend endpoint auth
-  - Constant-time key comparison to prevent timing attacks
-  - Proxy plugin warns on empty API key at startup
+  - Made `OpenAICompatibleScoringProvider` concrete; removed empty `DeepSeekScoringProvider` and `GoogleScoringProvider` subclasses
+  - Added `llm.enabled` switch to force manual-review flow when LLM scoring is disabled
+  - Enforced HTTPS for `llm.api_base` to prevent API key leakage
+  - Removed global `llm.max_score`; text questions should define per-question `max_score`
+  - Synced configuration help documentation with LLM config defaults
 
-  ## Bug Fixes
+  ## Admin Panel Refactor
 
-  ### i18n Locale Persistence Fix
-  - Fixed operator precedence bug in `i18n.ts` that caused language preference to always resolve to `zh`
+  - Consolidated admin review and user management into `AdminPanelNew`
+  - Centralized admin session management via `sessionService` with auth redirects
+  - Added reject reason dialog for review actions
+  - Questionnaire score and review summary columns are now conditionally displayed
+  - Reject action now removes user from whitelist and unregisters from Authme
 
-  ### Login Hot-Path Performance
-  - Replaced O(n) full-user scan in `onPlayerLogin` with indexed DAO lookup
+  ## Cleanup
 
-  ### Proxy Whitelist Response Parsing
-  - Fixed `ApiClient.java` to correctly distinguish `success` (request ok) from `found` (player exists)
-  - Backward compatible with old protocol
-
-  ### MySQL Index Detection
-  - Fixed `SHOW INDEX` detection logic that silently skipped index creation
-
-  ## Improvements
-
-  - Admin review panel now shows questionnaire score and review summary
-  - Navigation dynamically hides register entry after admin login
-  - Sensitive data (email, verification code) masked in logs
-  - Cleanup thread is now daemon and properly interruptible
+  - Removed unused legacy components: `AdminReviewPanel`, `AllUsersPanel`, `NotificationBar`, `NotificationContainer`, `NotificationDemo`
+  - Removed `ResourceUpdater` initialization from plugin startup
+  - Consolidated JSON POST request logic and notification helper (`notifyResult`)
