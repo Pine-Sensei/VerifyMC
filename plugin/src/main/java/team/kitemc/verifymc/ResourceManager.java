@@ -4,8 +4,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.Enumeration;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -311,34 +309,45 @@ public class ResourceManager {
         boolean autoUpdateStatic = plugin.getConfig().getBoolean("auto_update_static", true);
         if (!autoUpdateStatic) return;
         debugLog("Updating static files...");
-        
+
         File staticDir = new File(plugin.getDataFolder(), "static");
         String[] themes = {"default", "glassx"};
-        
+
         for (String theme : themes) {
             File themeDir = new File(staticDir, theme);
             if (!themeDir.exists()) {
                 themeDir.mkdirs();
                 debugLog("Created theme directory: " + theme);
-            } else {
-                debugLog("Theme directory exists: " + theme);
             }
-            
-            // Check if theme directory is empty
-            File[] files = themeDir.listFiles();
-            if (files == null || files.length == 0) {
-                debugLog("Theme directory is empty, extracting files: " + theme);
-                extractStaticFiles(themeDir, theme, true); // true=overwrite
+
+            if (shouldUpdateThemeFiles(themeDir)) {
+                debugLog("Theme resources require update: " + theme);
+                extractStaticFiles(themeDir, theme, true);
             } else {
-                debugLog("Theme directory has " + files.length + " files: " + theme);
+                debugLog("Theme resources are up to date: " + theme);
             }
         }
-        // Backup and update built-in files
-        File defaultTheme = new File(staticDir, "default");
-        File glassxTheme = new File(staticDir, "glassx");
-        extractStaticFiles(defaultTheme, "default", true); // true=overwrite
-        extractStaticFiles(glassxTheme, "glassx", true);
+
         plugin.getLogger().info("[VerifyMC] Frontend static resources auto-updated");
+    }
+
+    /**
+     * Check whether a theme directory is missing key frontend files.
+     */
+    private boolean shouldUpdateThemeFiles(File themeDir) {
+        File[] files = themeDir.listFiles();
+        if (files == null || files.length == 0) {
+            return true;
+        }
+
+        String[] keyFiles = {"index.html", "assets", "css", "js"};
+        for (String keyFile : keyFiles) {
+            if (!new File(themeDir, keyFile).exists()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

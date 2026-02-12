@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router"
 import type { RouteRecordRaw } from "vue-router"
+import { sessionService } from "@/services/session"
 
 const routes: RouteRecordRaw[] = [
   {
@@ -64,15 +65,22 @@ const router = createRouter({
 
 // Navigation guards
 router.beforeEach((to, from, next) => {
-    const token = localStorage.getItem("admin_token")
-  if (to.path === '/login' && token) {
-    next('/admin')
-      return
-    }
-  if (to.meta.requiresAuth && !token) {
-    next('/login')
+  const authenticated = sessionService.isAuthenticated()
+
+  if (to.path === '/login' && authenticated) {
+    const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : '/admin'
+    next(redirect)
     return
   }
+
+  if (to.meta.requiresAuth && !authenticated) {
+    next({
+      path: '/login',
+      query: { redirect: to.fullPath },
+    })
+    return
+  }
+
   next()
 })
 

@@ -10,7 +10,7 @@
 - 新增文本题类型，支持基于 LLM 的问答评分 (DeepSeek / Google Gemini)
 - 熔断器、重试、并发控制及低置信度自动转人工审核
 - 问卷 token 生命周期管理，防止重放攻击
-- 可配置 `require_pass_before_register` 和 `auto_approve_on_pass`
+- 可配置 `require_pass_before_register`
 
 ### 基岩版支持
 

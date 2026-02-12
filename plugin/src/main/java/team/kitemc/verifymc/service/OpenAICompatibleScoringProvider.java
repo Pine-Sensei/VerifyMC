@@ -15,7 +15,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public abstract class OpenAICompatibleScoringProvider implements EssayScoringService {
+public class OpenAICompatibleScoringProvider implements EssayScoringService {
     protected final Plugin plugin;
     private final LlmScoringConfig config;
     private final HttpClient client;
@@ -23,7 +23,7 @@ public abstract class OpenAICompatibleScoringProvider implements EssayScoringSer
     private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
     private volatile long circuitOpenUntil = 0L;
 
-    protected OpenAICompatibleScoringProvider(Plugin plugin, LlmScoringConfig config) {
+    public OpenAICompatibleScoringProvider(Plugin plugin, LlmScoringConfig config) {
         this.plugin = plugin;
         this.config = config;
         this.client = HttpClient.newBuilder()
@@ -204,6 +204,7 @@ public abstract class OpenAICompatibleScoringProvider implements EssayScoringSer
 
     protected String normalizeChatCompletionsUrl(String base) {
         String url = base != null ? base.trim() : "";
+        ensureHttpsApiBase(url);
         if (url.endsWith("/")) {
             url = url.substring(0, url.length() - 1);
         }
@@ -211,6 +212,28 @@ public abstract class OpenAICompatibleScoringProvider implements EssayScoringSer
             url = url + "/chat/completions";
         }
         return url;
+    }
+
+    private static void ensureHttpsApiBase(String apiBase) {
+        String value = apiBase != null ? apiBase.trim() : "";
+        if (value.isEmpty()) {
+            throw new IllegalArgumentException("LLM api_base is empty");
+        }
+
+        URI parsed;
+        try {
+            parsed = URI.create(value);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("LLM api_base is invalid URI", e);
+        }
+
+        String scheme = parsed.getScheme();
+        if (scheme == null || !"https".equalsIgnoreCase(scheme)) {
+            throw new IllegalArgumentException("LLM api_base must use https");
+        }
+        if (parsed.getHost() == null || parsed.getHost().isBlank()) {
+            throw new IllegalArgumentException("LLM api_base host is missing");
+        }
     }
 
     public static class LlmScoringConfig {
@@ -268,7 +291,15 @@ public abstract class OpenAICompatibleScoringProvider implements EssayScoringSer
         public int getInputMaxLength() { return inputMaxLength; }
 
         public boolean isReady() {
-            return !apiBase.isEmpty() && !apiKey.isEmpty() && !model.isEmpty();
+            if (apiBase.isEmpty() || apiKey.isEmpty() || model.isEmpty()) {
+                return false;
+            }
+            try {
+                ensureHttpsApiBase(apiBase);
+                return true;
+            } catch (IllegalArgumentException e) {
+                return false;
+            }
         }
     }
 }

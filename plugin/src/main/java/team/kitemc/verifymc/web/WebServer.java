@@ -312,8 +312,19 @@ public class WebServer {
         if (username == null || username.trim().isEmpty()) {
             return false;
         }
-        String regex = plugin.getConfig().getString("username_regex", "^[a-zA-Z0-9_-]{3,16}$");
+        String regex = getUsernameRegexForUser(username);
         return username.matches(regex);
+    }
+
+    private String getUsernameRegexForUser(String username) {
+        boolean bedrockEnabled = plugin.getConfig().getBoolean("bedrock.enabled", false);
+        String bedrockPrefix = plugin.getConfig().getString("bedrock.prefix", ".");
+
+        if (bedrockEnabled && username != null && username.startsWith(bedrockPrefix)) {
+            return plugin.getConfig().getString("bedrock.username_regex", "^\\.[a-zA-Z0-9_\\s]{3,16}$");
+        }
+
+        return plugin.getConfig().getString("username_regex", "^[a-zA-Z0-9_-]{3,16}$");
     }
     private boolean isUsernameCaseConflict(String username) {
         return ((team.kitemc.verifymc.VerifyMC)plugin).isUsernameCaseConflict(username);
@@ -488,8 +499,7 @@ public class WebServer {
             JSONObject questionnaire = new JSONObject();
             questionnaire.put("enabled", questionnaireService.isEnabled());
             questionnaire.put("pass_score", questionnaireService.getPassScore());
-            questionnaire.put("auto_approve_on_pass", questionnaireService.isAutoApproveOnPass());
-            questionnaire.put("require_pass_before_register", config.getBoolean("questionnaire.require_pass_before_register", false));
+            questionnaire.put("has_text_questions", questionnaireService.hasTextQuestions());
             
             // Discord configuration
             JSONObject discord = new JSONObject();
@@ -1094,7 +1104,7 @@ public class WebServer {
             if (!isValidUsername(username)) {
                 JSONObject resp = new JSONObject();
                 resp.put("success", false);
-                String usernameRegex = plugin.getConfig().getString("username_regex", "^[a-zA-Z0-9_-]{3,16}$");
+                String usernameRegex = getUsernameRegexForUser(username);
                 resp.put("msg", getMsg("username.invalid", language).replace("{regex}", usernameRegex));
                 sendJson(exchange, resp);
                 return;
@@ -1142,9 +1152,7 @@ public class WebServer {
 
             QuestionnaireSubmissionRecord questionnaireSubmissionRecord = null;
             boolean questionnaireEnabled = questionnaireService.isEnabled();
-            boolean requireQuestionnairePass = plugin.getConfig().getBoolean("questionnaire.require_pass_before_register", false) && questionnaireEnabled;
-            boolean hasQuestionnairePayload = questionnaireEnabled && questionnaire != null && questionnaire.length() > 0;
-            if (requireQuestionnairePass || hasQuestionnairePayload) {
+            if (questionnaireEnabled) {
                 JSONObject questionnaireResp = new JSONObject();
                 if (questionnaire == null) {
                     questionnaireResp.put("success", false);
@@ -1153,7 +1161,6 @@ public class WebServer {
                     return;
                 }
 
-                boolean passed = questionnaire.optBoolean("passed", false);
                 String questionnaireToken = questionnaire.optString("token", "");
                 long submittedAt = questionnaire.optLong("submitted_at", 0L);
                 long expiresAt = questionnaire.optLong("expires_at", 0L);
@@ -1174,13 +1181,6 @@ public class WebServer {
                     return;
                 }
 
-                if (requireQuestionnairePass && !passed && !record.manualReviewRequired) {
-                    questionnaireResp.put("success", false);
-                    questionnaireResp.put("msg", getMsg("register.questionnaire_required", language));
-                    sendJson(exchange, questionnaireResp);
-                    return;
-                }
-
                 if (record.isExpired() || System.currentTimeMillis() > expiresAt || submittedAt <= 0 || expiresAt <= submittedAt) {
                     questionnaireResp.put("success", false);
                     questionnaireResp.put("msg", getMsg("register.questionnaire_expired", language));
@@ -1191,6 +1191,15 @@ public class WebServer {
                 if (!record.answers.similar(answers) || record.submittedAt != submittedAt || record.expiresAt != expiresAt) {
                     questionnaireResp.put("success", false);
                     questionnaireResp.put("msg", getMsg("register.questionnaire_invalid", language));
+                    sendJson(exchange, questionnaireResp);
+                    return;
+                }
+
+                boolean questionnairePassed = record.passed;
+                boolean manualReviewRequired = record.manualReviewRequired;
+                if (!questionnairePassed && !manualReviewRequired) {
+                    questionnaireResp.put("success", false);
+                    questionnaireResp.put("msg", getMsg("register.questionnaire_required", language));
                     sendJson(exchange, questionnaireResp);
                     return;
                 }
@@ -1259,9 +1268,8 @@ public class WebServer {
                 QuestionnaireSubmissionRecord submissionRecord = questionnaireSubmissionRecord;
                 boolean questionnairePassed = submissionRecord != null && submissionRecord.passed;
                 boolean manualReviewRequired = submissionRecord != null && submissionRecord.manualReviewRequired;
-                boolean questionnaireAutoApprove = questionnairePassed && questionnaireService.isEnabled() && questionnaireService.isAutoApproveOnPass();
                 boolean registerAutoApprove = plugin.getConfig().getBoolean("register.auto_approve", false);
-                boolean autoApprove = !manualReviewRequired && (questionnaireAutoApprove || registerAutoApprove);
+                boolean autoApprove = !manualReviewRequired && registerAutoApprove;
                 String status = autoApprove ? "approved" : "pending";
 
                 Integer questionnaireScore = submissionRecord != null ? submissionRecord.score : null;
@@ -1278,8 +1286,8 @@ public class WebServer {
                 }
                 
                 debugLog("registerUser result: " + ok);
-                if (ok) {
-                    // Registration successful, automatically add to whitelist
+                if (ok && "approved".equals(status)) {
+                    // Registration successful and approved, automatically add to whitelist
                     debugLog("Execute: whitelist add " + username);
                     org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
                         org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + username);
@@ -1296,10 +1304,12 @@ public class WebServer {
                 }
                 resp.put("success", ok);
                 if (ok) {
-                    if (questionnaireAutoApprove) {
-                        resp.put("msg", getMsg("register.questionnaire_auto_approved", language));
-                    } else if (questionnairePassed) {
+                    if (!autoApprove && manualReviewRequired && !questionnairePassed) {
+                        resp.put("msg", getMsg("register.questionnaire_scoring_error_pending_review", language));
+                    } else if (!autoApprove && questionnairePassed) {
                         resp.put("msg", getMsg("register.questionnaire_pending_review", language));
+                    } else if (autoApprove && questionnairePassed) {
+                        resp.put("msg", getMsg("register.success_whitelisted", language));
                     } else {
                         resp.put("msg", getMsg("register.success", language));
                     }
@@ -1453,17 +1463,30 @@ public class WebServer {
                 String status = "approve".equals(action) ? "approved" : "rejected";
                 boolean success = userDao.updateUserStatus(uuid, status);
                 
-                if (success && "approve".equals(action) && username != null) {
-                    // Review approved, add to whitelist
-                    debugLog("Execute: whitelist add " + username);
-                    org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
-                        org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + username);
-                    });
-                    
-                    // If Authme integration is enabled and auto registration is enabled, and password exists, register to Authme
-                    if (authmeService.isAuthmeEnabled() && authmeService.isAutoRegisterEnabled() && 
-                        password != null && !password.trim().isEmpty()) {
-                        authmeService.registerToAuthme(username, password);
+                if (success && username != null) {
+                    if ("approve".equals(action)) {
+                        // Review approved, add to whitelist
+                        debugLog("Execute: whitelist add " + username);
+                        org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
+                            org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + username);
+                        });
+
+                        // If Authme integration is enabled and auto registration is enabled, and password exists, register to Authme
+                        if (authmeService.isAuthmeEnabled() && authmeService.isAutoRegisterEnabled() &&
+                            password != null && !password.trim().isEmpty()) {
+                            authmeService.registerToAuthme(username, password);
+                        }
+                    } else {
+                        // Review rejected, ensure user is not in whitelist
+                        debugLog("Execute: whitelist remove " + username);
+                        org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
+                            org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist remove " + username);
+                        });
+
+                        // If Authme integration is enabled and auto unregister is configured, unregister user from Authme
+                        if (authmeService.isAuthmeEnabled() && authmeService.isAutoUnregisterEnabled()) {
+                            authmeService.unregisterFromAuthme(username);
+                        }
                     }
                 }
                 

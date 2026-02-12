@@ -95,6 +95,7 @@
 import { inject, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
+import { sessionService } from '@/services/session'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -128,7 +129,7 @@ const announcement = computed(() => {
 
 const isAdminLoggedIn = computed(() => {
   route.fullPath
-  return !!localStorage.getItem('admin_token')
+  return sessionService.isAuthenticated()
 })
 
 const secondaryAction = computed(() => {

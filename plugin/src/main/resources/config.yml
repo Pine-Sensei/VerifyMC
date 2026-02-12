@@ -77,8 +77,6 @@ bedrock:
 questionnaire:
   enabled: false
   pass_score: 60
-  auto_approve_on_pass: false
-  require_pass_before_register: false
   rate_limit:
     window_ms: 300000
     ip:
@@ -88,6 +86,7 @@ questionnaire:
     email:
       max: 6
 llm:
+  enabled: true
   provider: deepseek
   api_base: https://api.deepseek.com/v1
   api_key: ""
@@ -106,7 +105,6 @@ llm:
     你是一个公平的 Minecraft 白名单问卷评分助手。
     你必须严格根据题目、用户回答和评分规则进行打分。
     返回 JSON，且仅返回 JSON。
-  max_score: 20
   scoring_rule: |
     主要考察：
     1) 与题意相关性

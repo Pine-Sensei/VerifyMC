@@ -12,7 +12,7 @@ release_notes: |
   - Added text question type with LLM-based essay scoring (DeepSeek / Google Gemini)
   - Circuit breaker, retry, concurrency control and low-confidence manual review escalation
   - Questionnaire token lifecycle management to prevent replay attacks
-  - Configurable `require_pass_before_register` and `auto_approve_on_pass`
+  - Configurable `require_pass_before_register`
 
   ### Bedrock Edition Support
   - Added Java/Bedrock dual-mode platform selector (glass-style toggle)

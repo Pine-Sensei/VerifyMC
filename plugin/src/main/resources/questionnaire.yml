@@ -8,7 +8,7 @@
 #       * text: multiline, min_length, max_length, placeholder_en, placeholder_zh
 #   - options: required by single_choice / multiple_choice
 #       * text_en / text_zh / score
-#   - text questions may optionally define:
+#   - text questions should define:
 #       * max_score: per-question max score
 #       * scoring_rule: override global llm.scoring_rule
 

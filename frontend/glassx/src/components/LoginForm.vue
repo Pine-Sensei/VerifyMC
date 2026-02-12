@@ -35,10 +35,11 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useNotification } from '@/composables/useNotification'
 import { apiService } from '@/services/api'
+import { sessionService } from '@/services/session'
 import Card from './ui/Card.vue'
 import CardHeader from './ui/CardHeader.vue'
 import CardTitle from './ui/CardTitle.vue'
@@ -50,6 +51,7 @@ import Label from './ui/Label.vue'
 
 const { t, locale } = useI18n()
 const router = useRouter()
+const route = useRoute()
 const notification = useNotification()
 
 const loading = ref(false)
@@ -93,10 +95,14 @@ const handleSubmit = async () => {
     })
     
     if (response.success) {
-      localStorage.setItem('admin_token', response.token)
+      sessionService.setToken(response.token)
       notification.success(t('admin.login_success'), response.message && response.message !== t('admin.login_success') ? response.message : '')
+      const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/')
+        ? route.query.redirect
+        : '/admin'
+
       setTimeout(() => {
-        router.push('/admin')
+        router.push(redirect)
       }, 1000)
     } else {
       notification.error(t('login.messages.error'), response.message && response.message !== t('login.messages.error') ? response.message : '')

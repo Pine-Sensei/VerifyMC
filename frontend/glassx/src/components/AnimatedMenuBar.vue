@@ -74,6 +74,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { Home, UserPlus, LogIn, Settings } from 'lucide-vue-next'
+import { sessionService } from '@/services/session'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -84,7 +85,7 @@ const isNavHovered = ref(false)
 const isAdminLoggedIn = computed(() => {
   // 绑定路由，确保登录/跳转后菜单可及时响应
   route.fullPath
-  return !!localStorage.getItem('admin_token')
+  return sessionService.isAuthenticated()
 })
 
 const menuItems = computed(() => {

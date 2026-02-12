@@ -29,6 +29,28 @@
 
       <form v-if="currentStep === 'basic'" @submit.prevent="goToQuestionnaire" class="space-y-5 relative z-10">
         <div class="space-y-3">
+          <div v-if="bedrockEnabled">
+            <label class="block text-sm font-medium text-white mb-2">{{ $t('register.form.platform') }}</label>
+            <div class="platform-toggle" role="radiogroup" :aria-label="$t('register.form.platform')">
+              <button
+                type="button"
+                class="platform-option"
+                :class="selectedPlatform === 'java' ? 'platform-option-active' : ''"
+                @click="selectPlatform('java')"
+              >
+                {{ $t('register.form.platform_java') }}
+              </button>
+              <button
+                type="button"
+                class="platform-option"
+                :class="selectedPlatform === 'bedrock' ? 'platform-option-active' : ''"
+                @click="selectPlatform('bedrock')"
+              >
+                {{ $t('register.form.platform_bedrock') }}
+              </button>
+            </div>
+          </div>
+
           <div>
             <label for="username" class="block text-sm font-medium text-white mb-1">{{ $t('register.form.username') }}</label>
             <input id="username" v-model="form.username" type="text" :placeholder="$t('register.form.username_placeholder')" class="glass-input" :class="{ 'glass-input-error': errors.username }" @blur="validateUsername" />
@@ -101,7 +123,7 @@
             <div class="spinner"></div>
             <p>{{ $t('common.loading') }}</p>
           </div>
-          <p v-else-if="registrationSubmitted" class="text-green-300 font-medium">{{ $t('register.success') }}</p>
+          <p v-else-if="registrationSubmitted" class="text-green-300 font-medium">{{ registrationSuccessMessage }}</p>
           <p v-else class="text-red-300 font-medium">{{ $t('register.failed') }}</p>
         </div>
       </div>
@@ -127,13 +149,14 @@ const currentStep = ref<RegisterStep>('basic')
 const loading = ref(false)
 const sending = ref(false)
 const registrationSubmitted = ref(false)
+const registrationSuccessMessage = ref('')
 const config = ref<ConfigResponse>({
   login: { enable_email: false, email_smtp: '' },
   admin: {},
   frontend: { theme: '', logo_url: '', announcement: '', web_server_prefix: '', username_regex: '' },
   authme: { enabled: false, require_password: false, auto_register: false, auto_unregister: false, password_regex: '' },
   captcha: { enabled: false, email_enabled: true, type: 'math' },
-  questionnaire: { enabled: false, pass_score: 60, auto_approve_on_pass: false, require_pass_before_register: false }
+  questionnaire: { enabled: false, pass_score: 60 }
 })
 
 const captchaImage = ref('')
@@ -147,7 +170,10 @@ const discordRequired = computed(() => config.value.discord?.required || false)
 
 const questionnaireResult = ref<QuestionnaireSubmission | null>(null)
 const questionnaireEnabled = computed(() => config.value.questionnaire?.enabled || false)
-const questionnaireRequired = computed(() => questionnaireEnabled.value && (config.value.questionnaire?.require_pass_before_register ?? false))
+const questionnaireRequired = computed(() => questionnaireEnabled.value)
+const bedrockEnabled = computed(() => config.value.bedrock?.enabled || false)
+const bedrockPrefix = computed(() => config.value.bedrock?.prefix || '.')
+const selectedPlatform = ref<'java' | 'bedrock'>('java')
 
 const authmeConfig = computed(() => config.value.authme)
 const shouldShowPassword = computed(() => authmeConfig.value?.enabled && authmeConfig.value?.require_password)
@@ -195,13 +221,40 @@ const validateDiscord = () => {
 }
 const validateUsername = () => {
   errors.username = ''
-  if (!form.username) {
+  const username = form.username.trim()
+  if (!username) {
     errors.username = t('register.validation.username_required')
-  } else if (config.value.frontend?.username_regex && !new RegExp(config.value.frontend.username_regex).test(form.username)) {
-    errors.username = t('register.validation.username_format', { regex: config.value.frontend.username_regex })
-  } else if (!config.value.frontend?.username_regex && !/^[a-zA-Z0-9_]+$/.test(form.username)) {
+    return
+  }
+
+  const regex = getEffectiveUsernameRegex()
+  if (regex && !new RegExp(regex).test(getNormalizedUsername())) {
+    errors.username = t('register.validation.username_format', { regex })
+  } else if (!regex && !/^[a-zA-Z0-9_]+$/.test(username)) {
     errors.username = t('register.validation.username_format', { regex: '^[a-zA-Z0-9_]+$' })
   }
+}
+
+const selectPlatform = (platform: 'java' | 'bedrock') => {
+  selectedPlatform.value = platform
+  validateUsername()
+}
+
+const getEffectiveUsernameRegex = () => {
+  if (selectedPlatform.value === 'bedrock' && bedrockEnabled.value) {
+    return config.value.bedrock?.username_regex || '^\\.[a-zA-Z0-9_\\s]{3,16}$'
+  }
+  return config.value.frontend?.username_regex
+}
+
+const getNormalizedUsername = () => {
+  const trimmedUsername = form.username.trim()
+  if (selectedPlatform.value === 'bedrock' && bedrockEnabled.value && trimmedUsername) {
+    return trimmedUsername.startsWith(bedrockPrefix.value)
+      ? trimmedUsername
+      : `${bedrockPrefix.value}${trimmedUsername}`
+  }
+  return trimmedUsername
 }
 const validateEmail = () => {
   errors.email = ''
@@ -255,14 +308,14 @@ const isBasicStepValid = computed(() => {
 const isFinalStepValid = computed(() => {
   if (!isBasicStepValid.value) return false
   if (!questionnaireEnabled.value) return true
-  if (!questionnaireResult.value) return !questionnaireRequired.value
-  return questionnaireRequired.value ? questionnaireResult.value.passed : true
+  if (!questionnaireResult.value) return false
+  return questionnaireResult.value.passed === true
 })
 
 const goToQuestionnaire = () => {
   validateForm()
   if (!isBasicStepValid.value) return
-  if (questionnaireEnabled.value) {
+  if (questionnaireRequired.value) {
     currentStep.value = 'questionnaire'
     return
   }
@@ -271,7 +324,7 @@ const goToQuestionnaire = () => {
 }
 
 const onQuestionnaireSkipped = () => {
-  if (questionnaireRequired.value) {
+  if (questionnaireEnabled.value) {
     error(t('register.questionnaire.required'))
     return
   }
@@ -330,9 +383,10 @@ const handleSubmit = async () => {
   if (!isFinalStepValid.value) return
   loading.value = true
   registrationSubmitted.value = false
+  registrationSuccessMessage.value = ""
   try {
     const registerData: any = {
-      username: form.username,
+      username: getNormalizedUsername(),
       email: form.email.trim().toLowerCase(),
       uuid: generateUUID(),
       language: locale.value
@@ -349,7 +403,8 @@ const handleSubmit = async () => {
     const response = await apiService.register(registerData)
     if (response.success) {
       registrationSubmitted.value = true
-      success(t('register.success'))
+      registrationSuccessMessage.value = response.msg || t('register.success')
+      success(registrationSuccessMessage.value)
     } else {
       registrationSubmitted.value = false
       error(response.msg || t('register.failed'))
@@ -396,4 +451,8 @@ function generateUUID() {
 .step-chip { color: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.06); border-radius: 9999px; padding: .25rem .65rem; }
 .step-chip-active { color: #fff; border-color: rgba(59,130,246,.8); background: rgba(59,130,246,.2); }
 .step-separator { width: 16px; height: 1px; background: rgba(255,255,255,.3); }
+.platform-toggle { display: inline-flex; width: 100%; border-radius: 12px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.2); padding: 4px; gap: 4px; }
+.platform-option { flex: 1; border: none; background: transparent; color: rgba(255,255,255,.75); border-radius: 10px; padding: .55rem .75rem; cursor: pointer; transition: all .2s ease; font-weight: 600; }
+.platform-option:hover { background: rgba(255,255,255,.08); color: rgba(255,255,255,.95); }
+.platform-option-active { background: rgba(59,130,246,.35); color: #fff; box-shadow: 0 0 0 1px rgba(59,130,246,.5) inset; }
 </style>

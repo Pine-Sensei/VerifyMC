@@ -198,18 +198,28 @@ questionnaire:
   enabled: false
   # Minimum score to pass
   pass_score: 60
-  # Auto-approve users who pass the questionnaire
-  auto_approve_on_pass: false
-  # Whether users must pass questionnaire before registration is allowed
-  require_pass_before_register: false
+  rate_limit:
+    # Time window for rate limiting in milliseconds
+    window_ms: 300000
+    ip:
+      # Maximum submissions allowed per IP within the time window
+      max: 20
+    uuid:
+      # Maximum submissions allowed per Minecraft UUID within the time window
+      max: 8
+    email:
+      # Maximum submissions allowed per email within the time window
+      max: 6
 
 # ----------------------------------------
 # LLM Essay Scoring (for text questions)
 # ----------------------------------------
 llm:
+  # Enable LLM auto scoring. When disabled, all text questions require manual review
+  enabled: true
   # Scoring provider. Options: deepseek / google
   provider: deepseek
-  # OpenAI-compatible API base URL (plugin appends /chat/completions automatically)
+  # OpenAI-compatible API base URL, must use https (plugin appends /chat/completions automatically)
   api_base: https://api.deepseek.com/v1
   # API key
   api_key: ""
@@ -219,13 +229,26 @@ llm:
   timeout: 10000
   # Retry count when parsing/network call fails
   retry: 1
+  # Maximum concurrent LLM requests (protects API and server load)
+  max_concurrency: 4
+  # Max wait time to acquire a concurrency slot in milliseconds
+  acquire_timeout: 1500
+  # Base backoff delay for retries in milliseconds
+  retry_backoff_base: 300
+  # Maximum backoff delay for retries in milliseconds
+  retry_backoff_max: 5000
+  # Maximum input length sent to the model in characters
+  input_max_length: 2000
+  circuit_breaker:
+    # Threshold to open circuit breaker (consecutive failures)
+    failure_threshold: 5
+    # How long the circuit remains open in milliseconds
+    open_ms: 30000
   # Fixed system prompt (combined with question, answer and scoring rule)
   system_prompt: |
     You are a fair Minecraft whitelist questionnaire grader.
     Score strictly based on the question, candidate answer, and scoring rule.
     Return JSON only.
-  # Default maximum score for text questions if question-level max_score is missing
-  max_score: 20
   # Scoring rule text appended into the user prompt (can be overridden by question-level scoring_rule in questionnaire.yml)
   scoring_rule: |
     Evaluate primarily:

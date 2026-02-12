@@ -29,6 +29,8 @@
                   <TableHead>{{ $t('admin.review.table.username') }}</TableHead>
                   <TableHead>{{ $t('admin.review.table.email') }}</TableHead>
                   <TableHead>{{ $t('admin.review.table.register_time') }}</TableHead>
+                  <TableHead v-if="showQuestionnaireScoreColumn">{{ $t('admin.review.table.questionnaire_score') }}</TableHead>
+                  <TableHead v-if="showQuestionnaireReasonColumn">{{ $t('admin.review.table.questionnaire_reason') }}</TableHead>
                   <TableHead class="w-[150px]">{{ $t('admin.review.table.actions') }}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -36,22 +38,24 @@
                 <TableRow v-for="user in pendingUsers" :key="user.uuid">
                   <TableCell class="font-medium text-white">{{ user.username }}</TableCell>
                   <TableCell>{{ user.email }}</TableCell>
-                  <TableCell>{{ formatDate(user.regTime) }}</TableCell>
+                  <TableCell>{{ formatDate(user.regTime || user.registerTime) }}</TableCell>
+                  <TableCell v-if="showQuestionnaireScoreColumn">{{ user.questionnaire_score ?? '—' }}</TableCell>
+                  <TableCell v-if="showQuestionnaireReasonColumn" class="max-w-[360px] break-words">{{ user.questionnaire_review_summary || '—' }}</TableCell>
                   <TableCell>
                     <div class="flex space-x-2">
                       <Button 
                         variant="outline" 
                         size="sm"
-                        @click="approveUser(user.uuid)"
-                        :disabled="loading"
+                        @click="approveUser(user)"
+                        :disabled="loading || processingUsers.has(user.uuid)"
                       >
                         {{ $t('admin.review.actions.approve') }}
                       </Button>
                       <Button 
                         variant="outline" 
                         size="sm"
-                        @click="rejectUser(user.uuid)"
-                        :disabled="loading"
+                        @click="openRejectDialog(user)"
+                        :disabled="loading || processingUsers.has(user.uuid)"
                       >
                         {{ $t('admin.review.actions.reject') }}
                       </Button>
@@ -59,7 +63,7 @@
                   </TableCell>
                 </TableRow>
                 <TableRow v-if="pendingUsers.length === 0">
-                  <TableCell colspan="4" class="text-center py-8 text-white/60">
+                  <TableCell :colspan="reviewTableColspan" class="text-center py-8 text-white/60">
                     {{ $t('admin.review.no_pending') }}
                   </TableCell>
                 </TableRow>
@@ -220,6 +224,32 @@
       @cancel="showUnbanDialog = false"
     />
 
+    <div v-if="rejectDialog.show" class="password-modal-overlay">
+      <div class="password-modal-backdrop" @click="closeRejectDialog"></div>
+      <div class="password-modal-dialog">
+        <h3 class="text-xl font-semibold text-white mb-6 text-center">{{ $t('admin.review.reject_modal.title') }}</h3>
+        <div class="space-y-6">
+          <div>
+            <Label for="rejectReason" class="text-white text-sm font-medium mb-2 block">{{ $t('admin.review.reject_modal.reason_label') }}</Label>
+            <textarea
+              id="rejectReason"
+              v-model="rejectDialog.reason"
+              class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent backdrop-blur-sm h-24 resize-none"
+              :placeholder="$t('admin.review.reject_modal.reason_placeholder')"
+            />
+          </div>
+          <div class="flex justify-end space-x-3">
+            <Button variant="outline" @click="closeRejectDialog" class="bg-white/10 border-white/20 text-white hover:bg-white/20">
+              {{ $t('admin.review.reject_modal.cancel') }}
+            </Button>
+            <Button @click="confirmReject" :disabled="rejectDialog.processing" class="bg-red-500 hover:bg-red-600 text-white">
+              {{ $t('admin.review.reject_modal.confirm') }}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Change password dialog - Fixed positioning for proper viewport centering -->
     <div v-if="showPasswordDialog" class="password-modal-overlay">
       <div class="password-modal-backdrop" @click="showPasswordDialog = false"></div>
@@ -308,6 +338,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useNotification } from '@/composables/useNotification'
 import { apiService } from '@/services/api'
+import { sessionService } from '@/services/session'
 import Tabs from './ui/Tabs.vue'
 import Table from './ui/Table.vue'
 import TableHeader from './ui/TableHeader.vue'
@@ -326,16 +357,20 @@ const { t, locale } = useI18n()
 const notification = useNotification()
 
 // 认证检查
-const token = localStorage.getItem('admin_token')
-if (!token) {
+if (!sessionService.isAuthenticated()) {
   // 如果没有token，重定向到登录页面
-  window.location.href = '/login'
+  sessionService.redirectToLogin()
 }
 
 const loading = ref(false)
 const pendingUsers = ref<any[]>([])
 const allUsers = ref<any[]>([])
-const announcementContent = ref('')
+const questionnaireEnabled = ref(false)
+const questionnaireHasTextQuestions = ref(false)
+
+const showQuestionnaireScoreColumn = computed(() => questionnaireEnabled.value)
+const showQuestionnaireReasonColumn = computed(() => questionnaireEnabled.value && questionnaireHasTextQuestions.value)
+const reviewTableColspan = computed(() => 4 + (showQuestionnaireScoreColumn.value ? 1 : 0) + (showQuestionnaireReasonColumn.value ? 1 : 0))
 
 // Pagination state
 const currentPage = ref(1)
@@ -361,6 +396,14 @@ const showUnbanDialog = ref(false)
 const showPasswordDialog = ref(false)
 const selectedUser = ref<any>(null)
 const newPassword = ref('')
+const processingUsers = ref(new Set<string>())
+
+const rejectDialog = ref({
+  show: false,
+  user: null as any | null,
+  reason: '',
+  processing: false
+})
 
 // 修复 tabs 多语言切换
 const tabs = computed(() => [
@@ -387,6 +430,18 @@ const getStatusClass = (status: string) => {
       return `${baseClasses} bg-red-500/20 text-red-300`;
     default:
       return `${baseClasses} bg-gray-500/20 text-gray-300`;
+  }
+}
+
+const loadQuestionnaireConfig = async () => {
+  try {
+    const config = await apiService.getConfig()
+    questionnaireEnabled.value = Boolean(config.questionnaire?.enabled)
+    questionnaireHasTextQuestions.value = Boolean(config.questionnaire?.has_text_questions)
+  } catch (error) {
+    console.error('Failed to load questionnaire config:', error)
+    questionnaireEnabled.value = false
+    questionnaireHasTextQuestions.value = false
   }
 }
 
@@ -551,46 +606,88 @@ const loadAllUsers = async () => {
   }
 }
 
-const approveUser = async (uuid: string) => {
+const notifyResult = (success: boolean, key: string, backendMessage?: string) => {
+  if (success) {
+    notification.success(t(key), backendMessage && backendMessage !== t(key) ? backendMessage : '')
+  } else {
+    notification.error(t(key), backendMessage && backendMessage !== t(key) ? backendMessage : '')
+  }
+}
+
+const openRejectDialog = (user: any) => {
+  rejectDialog.value = {
+    show: true,
+    user,
+    reason: '',
+    processing: false
+  }
+}
+
+const closeRejectDialog = () => {
+  rejectDialog.value = {
+    show: false,
+    user: null,
+    reason: '',
+    processing: false
+  }
+}
+
+const approveUser = async (user: any) => {
+  processingUsers.value.add(user.uuid)
   loading.value = true
+
   try {
     const response = await apiService.reviewUser({
-      uuid,
+      uuid: user.uuid,
       action: 'approve',
       language: locale.value
     })
-    
+
     if (response.success) {
-      notification.success(t('admin.review.messages.approve_success'), response.msg && response.msg !== t('admin.review.messages.approve_success') ? response.msg : '')
+      notifyResult(true, 'admin.review.messages.approve_success', response.msg)
       await loadPendingUsers()
+      await loadAllUsers()
     } else {
-      notification.error(t('admin.review.messages.error'), response.msg && response.msg !== t('admin.review.messages.error') ? response.msg : '')
+      notifyResult(false, 'admin.review.messages.error', response.msg)
     }
   } catch (error) {
     notification.error(t('admin.review.messages.error'), t('admin.review.messages.error'))
   } finally {
+    processingUsers.value.delete(user.uuid)
     loading.value = false
   }
 }
 
-const rejectUser = async (uuid: string) => {
+const confirmReject = async () => {
+  if (!rejectDialog.value.user) return
+
+  rejectDialog.value.processing = true
+  processingUsers.value.add(rejectDialog.value.user.uuid)
   loading.value = true
+
   try {
     const response = await apiService.reviewUser({
-      uuid,
+      uuid: rejectDialog.value.user.uuid,
       action: 'reject',
+      reason: rejectDialog.value.reason || undefined,
       language: locale.value
     })
-    
+
     if (response.success) {
-      notification.success(t('admin.review.messages.reject_success'), response.msg && response.msg !== t('admin.review.messages.reject_success') ? response.msg : '')
+      notifyResult(true, 'admin.review.messages.reject_success', response.msg)
       await loadPendingUsers()
+      await loadAllUsers()
+      closeRejectDialog()
     } else {
-      notification.error(t('admin.review.messages.error'), response.msg && response.msg !== t('admin.review.messages.error') ? response.msg : '')
+      notifyResult(false, 'admin.review.messages.error', response.msg)
     }
   } catch (error) {
     notification.error(t('admin.review.messages.error'), t('admin.review.messages.error'))
   } finally {
+    rejectDialog.value.processing = false
+    if (rejectDialog.value.user?.uuid) {
+      processingUsers.value.delete(rejectDialog.value.user.uuid)
+    }
     loading.value = false
   }
 }
@@ -620,10 +717,10 @@ const confirmDelete = async () => {
     const response = await apiService.deleteUser(selectedUser.value.uuid, locale.value)
     
     if (response.success) {
-      notification.success(t('admin.users.messages.delete_success'), response.msg && response.msg !== t('admin.users.messages.delete_success') ? response.msg : '')
+      notifyResult(true, 'admin.users.messages.delete_success', response.msg)
       await loadAllUsers()
     } else {
-      notification.error(t('admin.users.messages.error'), response.msg && response.msg !== t('admin.users.messages.error') ? response.msg : '')
+      notifyResult(false, 'admin.users.messages.error', response.msg)
     }
   } catch (error) {
     notification.error(t('admin.users.messages.error'), t('admin.users.messages.error'))
@@ -643,10 +740,10 @@ const confirmBan = async () => {
     const response = await apiService.banUser(selectedUser.value.uuid, locale.value)
     
     if (response.success) {
-      notification.success(t('admin.users.messages.ban_success'), response.msg && response.msg !== t('admin.users.messages.ban_success') ? response.msg : '')
+      notifyResult(true, 'admin.users.messages.ban_success', response.msg)
       await loadAllUsers()
     } else {
-      notification.error(t('admin.users.messages.error'), response.msg && response.msg !== t('admin.users.messages.error') ? response.msg : '')
+      notifyResult(false, 'admin.users.messages.error', response.msg)
     }
   } catch (error) {
     notification.error(t('admin.users.messages.error'), t('admin.users.messages.error'))
@@ -666,10 +763,10 @@ const confirmUnban = async () => {
     const response = await apiService.unbanUser(selectedUser.value.uuid, locale.value)
     
     if (response.success) {
-      notification.success(t('admin.users.messages.unban_success'), response.msg && response.msg !== t('admin.users.messages.unban_success') ? response.msg : '')
+      notifyResult(true, 'admin.users.messages.unban_success', response.msg)
       await loadAllUsers()
     } else {
-      notification.error(t('admin.users.messages.error'), response.msg && response.msg !== t('admin.users.messages.error') ? response.msg : '')
+      notifyResult(false, 'admin.users.messages.error', response.msg)
     }
   } catch (error) {
     notification.error(t('admin.users.messages.error'), t('admin.users.messages.error'))
@@ -692,32 +789,15 @@ const confirmChangePassword = async () => {
     })
     
     if (response.success) {
-      notification.success(t('admin.users.messages.password_change_success'), response.msg && response.msg !== t('admin.users.messages.password_change_success') ? response.msg : '')
+      notifyResult(true, 'admin.users.messages.password_change_success', response.msg)
       showPasswordDialog.value = false
       newPassword.value = ''
       selectedUser.value = null
     } else {
-      notification.error(t('admin.users.messages.error'), response.msg && response.msg !== t('admin.users.messages.error') ? response.msg : '')
+      notifyResult(false, 'admin.users.messages.error', response.msg)
     }
   } catch (error) {
     notification.error(t('admin.users.messages.error'), t('admin.users.messages.error'))
-  } finally {
-    loading.value = false
-  }
-}
-
-const updateAnnouncement = async () => {
-  loading.value = true
-  try {
-    const response = await apiService.updateAnnouncement(announcementContent.value, locale.value)
-    
-    if (response.success) {
-      notification.success(t('admin.announcement.messages.update_success'), response.msg && response.msg !== t('admin.announcement.messages.update_success') ? response.msg : '')
-    } else {
-      notification.error(t('admin.announcement.messages.error'), response.msg && response.msg !== t('admin.announcement.messages.error') ? response.msg : '')
-    }
-  } catch (error) {
-    notification.error(t('admin.announcement.messages.error'), t('admin.announcement.messages.error'))
   } finally {
     loading.value = false
   }
@@ -761,8 +841,9 @@ watch(searchQuery, () => {
   handleSearch()
 })
 
-const onTabChange = (tab: string) => {
+const onTabChange = async (tab: string) => {
   if (tab === 'review') {
+    await loadQuestionnaireConfig()
     loadPendingUsers();
   } else if (tab === 'users') {
     // Reset pagination when switching to users tab
@@ -773,7 +854,8 @@ const onTabChange = (tab: string) => {
 
 
 
-onMounted(() => {
+onMounted(async () => {
+  await loadQuestionnaireConfig()
   loadPendingUsers()
   loadAllUsers()
 

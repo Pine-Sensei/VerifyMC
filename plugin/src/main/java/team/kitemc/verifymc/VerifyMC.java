@@ -113,9 +113,6 @@ public class VerifyMC extends JavaPlugin implements Listener {
         // Initialize resource manager
         resourceManager = new ResourceManager(this);
         resourceManager.initializeResources();
-        // Check and update resources
-        ResourceUpdater resourceUpdater = new ResourceUpdater(this);
-        resourceUpdater.checkAndUpdateResources();
         // Load i18n resource bundle for configured language
         String configLang = getConfigLanguage();
         messages = resourceManager.loadI18nBundle(configLang);

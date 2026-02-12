@@ -198,18 +198,28 @@ questionnaire:
   enabled: false
   # 通过所需的最低分数
   pass_score: 60
-  # 问卷通过后是否自动批准用户
-  auto_approve_on_pass: false
-  # 是否必须通过问卷后才允许提交注册
-  require_pass_before_register: false
+  rate_limit:
+    # 限流时间窗口（毫秒）
+    window_ms: 300000
+    ip:
+      # 每个 IP 在时间窗口内允许的最大提交次数
+      max: 20
+    uuid:
+      # 每个 Minecraft UUID 在时间窗口内允许的最大提交次数
+      max: 8
+    email:
+      # 每个邮箱在时间窗口内允许的最大提交次数
+      max: 6
 
 # ----------------------------------------
 # LLM 问答评分（用于 text 问题）
 # ----------------------------------------
 llm:
+  # 是否启用 LLM 自动评分。关闭后 text 题将全部转人工审核
+  enabled: true
   # 评分提供方。可选：deepseek / google
   provider: deepseek
-  # OpenAI 兼容接口基础地址（程序会自动拼接 /chat/completions）
+  # OpenAI 兼容接口基础地址，必须使用 https（程序会自动拼接 /chat/completions）
   api_base: https://api.deepseek.com/v1
   # API 密钥
   api_key: ""
@@ -219,13 +229,26 @@ llm:
   timeout: 10000
   # 解析失败或网络失败时的重试次数
   retry: 1
+  # LLM 并发请求上限（用于保护接口和服务器负载）
+  max_concurrency: 4
+  # 获取并发配额的最长等待时间（毫秒）
+  acquire_timeout: 1500
+  # 重试退避基础时长（毫秒）
+  retry_backoff_base: 300
+  # 重试退避最大时长（毫秒）
+  retry_backoff_max: 5000
+  # 发送给模型的输入最大长度（字符）
+  input_max_length: 2000
+  circuit_breaker:
+    # 熔断触发阈值（连续失败次数）
+    failure_threshold: 5
+    # 熔断开启时长（毫秒）
+    open_ms: 30000
   # 固定系统提示词（和题目、回答、评分规则一起拼装）
   system_prompt: |
     你是一个公平的 Minecraft 白名单问卷评分助手。
     你必须严格根据题目、用户回答和评分规则进行打分。
     返回 JSON，且仅返回 JSON。
-  # text 题默认最大分（题目未单独配置 max_score 时使用）
-  max_score: 20
   # 评分规则文本，会拼接到用户提示词（可在 questionnaire.yml 的 text 题上用 scoring_rule 覆盖）
   scoring_rule: |
     主要考察：

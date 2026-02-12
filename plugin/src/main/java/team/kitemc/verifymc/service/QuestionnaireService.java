@@ -21,15 +21,15 @@ public class QuestionnaireService {
     private final boolean debug;
     private FileConfiguration questionnaireConfig;
     private final EssayScoringService essayScoringService;
-    private final int llmDefaultMaxScore;
     private final String llmScoringRule;
+    private final boolean llmScoringEnabled;
 
     public QuestionnaireService(Plugin plugin) {
         this.plugin = plugin;
         this.debug = plugin.getConfig().getBoolean("debug", false);
         this.essayScoringService = buildScoringService();
-        this.llmDefaultMaxScore = Math.max(1, plugin.getConfig().getInt("llm.max_score", 20));
         this.llmScoringRule = plugin.getConfig().getString("llm.scoring_rule", "Evaluate relevance, detail and rule-awareness.");
+        this.llmScoringEnabled = plugin.getConfig().getBoolean("llm.enabled", true);
         loadQuestionnaireConfig();
     }
 
@@ -53,15 +53,7 @@ public class QuestionnaireService {
             plugin.getConfig().getInt("llm.input_max_length", 2000)
         );
 
-        if ("google".equals(provider)) {
-            return new GoogleScoringProvider(plugin, config);
-        }
-        if ("deepseek".equals(provider)) {
-            return new DeepSeekScoringProvider(plugin, config);
-        }
-
-        plugin.getLogger().warning("[VerifyMC] Unknown llm.provider: " + provider + ", fallback to deepseek");
-        return new DeepSeekScoringProvider(plugin, config);
+        return new OpenAICompatibleScoringProvider(plugin, config);
     }
 
     /**
@@ -106,9 +98,32 @@ public class QuestionnaireService {
         return plugin.getConfig().getInt("questionnaire.pass_score", 60);
     }
 
-    public boolean isAutoApproveOnPass() {
-        return plugin.getConfig().getBoolean("questionnaire.auto_approve_on_pass", false);
+    public boolean hasTextQuestions() {
+        if (questionnaireConfig == null) {
+            return false;
+        }
+
+        List<?> questionsList = questionnaireConfig.getList("questions");
+        if (questionsList == null) {
+            return false;
+        }
+
+        for (Object qObj : questionsList) {
+            if (!(qObj instanceof Map)) {
+                continue;
+            }
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> questionMap = (Map<String, Object>) qObj;
+            String questionType = String.valueOf(questionMap.getOrDefault("type", "single_choice"));
+            if ("text".equalsIgnoreCase(questionType)) {
+                return true;
+            }
+        }
+
+        return false;
     }
+
 
     public JSONObject getQuestionnaire(String language) {
         JSONObject result = new JSONObject();
@@ -256,6 +271,23 @@ public class QuestionnaireService {
 
     private QuestionScoreDetail scoreTextQuestion(Map<String, Object> questionMap, QuestionAnswer answer, int questionId) {
         int maxScore = resolveMaxScore(questionMap);
+        if (!llmScoringEnabled) {
+            return new QuestionScoreDetail(
+                questionId,
+                answer.getType(),
+                0,
+                maxScore,
+                "LLM scoring disabled by config, requires manual review",
+                0.0D,
+                true,
+                "manual",
+                "",
+                "",
+                0L,
+                0
+            );
+        }
+
         String questionText = resolveQuestionText(questionMap);
         String scoringRule = resolveScoringRule(questionMap);
 
@@ -303,7 +335,16 @@ public class QuestionnaireService {
     }
 
     private int resolveMaxScore(Map<String, Object> questionMap) {
+        String type = String.valueOf(questionMap.getOrDefault("type", "single_choice"));
         Object configured = questionMap.get("max_score");
+
+        if ("text".equalsIgnoreCase(type)) {
+            if (configured instanceof Number) {
+                return Math.max(1, ((Number) configured).intValue());
+            }
+            return 20;
+        }
+
         if (configured instanceof Number) {
             return Math.max(1, ((Number) configured).intValue());
         }
@@ -321,7 +362,7 @@ public class QuestionnaireService {
             return Math.max(1, total);
         }
 
-        return llmDefaultMaxScore;
+        return 1;
     }
 
     public void reload() {
