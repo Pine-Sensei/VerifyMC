@@ -473,6 +473,7 @@ public class WebServer {
             // authme configuration
             JSONObject authme = new JSONObject();
             authme.put("enabled", config.getBoolean("authme.enabled", false));
+            authme.put("mode", config.getString("authme.mode", "command"));
             authme.put("require_password", config.getBoolean("authme.require_password", false));
             authme.put("auto_register", config.getBoolean("authme.auto_register", false));
             authme.put("auto_unregister", config.getBoolean("authme.auto_unregister", false));

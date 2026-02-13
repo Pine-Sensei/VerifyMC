@@ -160,6 +160,12 @@ public class VerifyMC extends JavaPlugin implements Listener {
             getLogger().info(messages.getString("storage.file.enabled"));
         }
         autoMigrateIfNeeded(messages);
+
+        // Set UserDao for AuthMe DB mode synchronization
+        authmeService.setUserDao(userDao);
+        if (authmeService.isAuthmeEnabled() && authmeService.isDatabaseMode()) {
+            authmeService.syncApprovedUsers();
+        }
         
         // Set UserDao for Discord service (for persistent storage)
         discordService.setUserDao(userDao);
@@ -196,6 +202,18 @@ public class VerifyMC extends JavaPlugin implements Listener {
         }
         // Always register event listener for player login interception
         getServer().getPluginManager().registerEvents(this, this);
+
+        // Periodic AuthMe DB mode synchronization
+        if (authmeService.isAuthmeEnabled() && authmeService.isDatabaseMode()) {
+            long syncTicks = Math.max(20L, getConfig().getLong("authme.database.sync_interval_seconds", 30L) * 20L);
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    authmeService.syncApprovedUsers();
+                    syncWhitelistToServer();
+                }
+            }.runTaskTimerAsynchronously(this, syncTicks, syncTicks);
+        }
         
         // Only start whitelist.json watcher in bukkit mode
         if ("bukkit".equalsIgnoreCase(whitelistMode) && whitelistJsonSync) {
