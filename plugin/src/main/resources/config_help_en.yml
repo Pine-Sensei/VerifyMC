@@ -2,7 +2,7 @@
 # General Settings
 # ----------------------------------------
 # Global language setting. Affects plugin messages and web UI. (e.g., 'zh', 'en')
-language: zh
+language: en
 # Enable detailed console logs for troubleshooting.
 debug: false
 
