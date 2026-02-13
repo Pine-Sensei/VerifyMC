@@ -254,6 +254,8 @@ storage:
 authme:
   # 是否启用Authme集成功能
   enabled: true
+  # 集成模式：command（控制台指令）/ database（直连数据库）
+  mode: command
   # 是否强制在Web注册时要求输入密码
   require_password: true
   # 是否在通过审核时自动注册至Authme
@@ -262,6 +264,65 @@ authme:
   auto_unregister: false
   # 密码正则表达式
   password_regex: "^[a-zA-Z0-9_]{3,16}$"
+  database:
+    # database 模式下数据库类型: mysql / sqlite
+    type: mysql
+    # AuthMe 表名
+    table: authme
+    # 直写密码格式: sha256 / md5vb / plaintext
+    password_format: sha256
+    # VerifyMC 与 AuthMe 双向同步间隔（秒）
+    sync_interval_seconds: 30
+    # AuthMe SHA256/MD5VB 默认盐长度（默认 16）
+    salt_length: 16
+    mysql:
+      host: 127.0.0.1
+      port: 3306
+      database: authme
+      user: root
+      password: yourpassword
+    sqlite:
+      path: plugins/AuthMe/authme.db
+    columns:
+      mySQLColumnId: id
+      # Column for storing or checking players nickname
+      mySQLColumnName: username
+      # Column for storing or checking players RealName
+      mySQLRealName: realname
+      # Column for storing players passwords
+      mySQLColumnPassword: password
+      # Column for storing players passwords salts
+      mySQLColumnSalt: ''
+      # Column for storing players emails
+      mySQLColumnEmail: email
+      # Column for storing if a player is logged in or not
+      mySQLColumnLogged: isLogged
+      # Column for storing if a player has a valid session or not
+      mySQLColumnHasSession: hasSession
+      # Column for storing a player's TOTP key (for two-factor authentication)
+      mySQLtotpKey: totp
+      # Column for storing the player's last IP
+      mySQLColumnIp: ip
+      # Column for storing players lastlogins
+      mySQLColumnLastLogin: lastlogin
+      # Column storing the registration date
+      mySQLColumnRegisterDate: regdate
+      # Column for storing the IP address at the time of registration
+      mySQLColumnRegisterIp: regip
+      # Column for storing player LastLocation - X
+      mySQLlastlocX: x
+      # Column for storing player LastLocation - Y
+      mySQLlastlocY: y
+      # Column for storing player LastLocation - Z
+      mySQLlastlocZ: z
+      # Column for storing player LastLocation - World Name
+      mySQLlastlocWorld: world
+      # Column for storing player LastLocation - Yaw
+      mySQLlastlocYaw: yaw
+      # Column for storing player LastLocation - Pitch
+      mySQLlastlocPitch: pitch
+      # Column for storing players uuids (optional)
+      mySQLPlayerUUID: ''
 
 # ----------------------------------------
 # 图形验证码配置

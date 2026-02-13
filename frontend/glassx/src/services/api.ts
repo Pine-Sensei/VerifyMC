@@ -23,6 +23,7 @@ export interface ConfigResponse {
   }
   authme: {
     enabled: boolean
+    mode?: string
     require_password: boolean
     auto_register: boolean
     auto_unregister: boolean

@@ -248,6 +248,8 @@ storage:
 authme:
   # Whether to enable Authme integration functionality
   enabled: true
+  # Integration mode: command (console command) / database (direct DB operations)
+  mode: command
   # Whether to require password input during web registration
   require_password: true
   # Whether to automatically register to Authme when approval is granted
@@ -256,6 +258,63 @@ authme:
   auto_unregister: false
   # Password regex pattern
   password_regex: "^[a-zA-Z0-9_]{3,16}$"
+  database:
+    # DB type in database mode: mysql / sqlite
+    type: mysql
+    table: authme
+    # Stored password format when writing to AuthMe DB directly: sha256 / md5vb / plaintext
+    password_format: sha256
+    sync_interval_seconds: 30
+    # AuthMe SHA256/MD5VB salt length (default 16)
+    salt_length: 16
+    mysql:
+      host: 127.0.0.1
+      port: 3306
+      database: authme
+      user: root
+      password: yourpassword
+    sqlite:
+      path: plugins/AuthMe/authme.db
+    columns:
+      mySQLColumnId: id
+      # Column for storing or checking players nickname
+      mySQLColumnName: username
+      # Column for storing or checking players RealName
+      mySQLRealName: realname
+      # Column for storing players passwords
+      mySQLColumnPassword: password
+      # Column for storing players passwords salts
+      mySQLColumnSalt: ''
+      # Column for storing players emails
+      mySQLColumnEmail: email
+      # Column for storing if a player is logged in or not
+      mySQLColumnLogged: isLogged
+      # Column for storing if a player has a valid session or not
+      mySQLColumnHasSession: hasSession
+      # Column for storing a player's TOTP key (for two-factor authentication)
+      mySQLtotpKey: totp
+      # Column for storing the player's last IP
+      mySQLColumnIp: ip
+      # Column for storing players lastlogins
+      mySQLColumnLastLogin: lastlogin
+      # Column storing the registration date
+      mySQLColumnRegisterDate: regdate
+      # Column for storing the IP address at the time of registration
+      mySQLColumnRegisterIp: regip
+      # Column for storing player LastLocation - X
+      mySQLlastlocX: x
+      # Column for storing player LastLocation - Y
+      mySQLlastlocY: y
+      # Column for storing player LastLocation - Z
+      mySQLlastlocZ: z
+      # Column for storing player LastLocation - World Name
+      mySQLlastlocWorld: world
+      # Column for storing player LastLocation - Yaw
+      mySQLlastlocYaw: yaw
+      # Column for storing player LastLocation - Pitch
+      mySQLlastlocPitch: pitch
+      # Column for storing players uuids (optional)
+      mySQLPlayerUUID: ''
 
 # ----------------------------------------
 # Captcha Configuration
