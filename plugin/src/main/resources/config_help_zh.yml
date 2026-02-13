@@ -185,43 +185,43 @@ authme:
       path: plugins/AuthMe/authme.db
     columns:
       mySQLColumnId: id
-      # Column for storing or checking players nickname
+      # 用于存储或查询玩家昵称的列
       mySQLColumnName: username
-      # Column for storing or checking players RealName
+      # 用于存储或查询玩家真实名称（RealName）的列
       mySQLRealName: realname
-      # Column for storing players passwords
+      # 用于存储玩家密码的列
       mySQLColumnPassword: password
-      # Column for storing players passwords salts
+      # 用于存储玩家密码盐值的列
       mySQLColumnSalt: ''
-      # Column for storing players emails
+      # 用于存储玩家邮箱的列
       mySQLColumnEmail: email
-      # Column for storing if a player is logged in or not
+      # 用于存储玩家是否已登录状态的列
       mySQLColumnLogged: isLogged
-      # Column for storing if a player has a valid session or not
+      # 用于存储玩家是否拥有有效会话状态的列
       mySQLColumnHasSession: hasSession
-      # Column for storing a player's TOTP key (for two-factor authentication)
+      # 用于存储玩家 TOTP 密钥（双重验证）的列
       mySQLtotpKey: totp
-      # Column for storing the player's last IP
+      # 用于存储玩家最后登录 IP 的列
       mySQLColumnIp: ip
-      # Column for storing players lastlogins
+      # 用于存储玩家最后登录时间的列
       mySQLColumnLastLogin: lastlogin
-      # Column storing the registration date
+      # 用于存储注册日期的列
       mySQLColumnRegisterDate: regdate
-      # Column for storing the IP address at the time of registration
+      # 用于存储注册时 IP 地址的列
       mySQLColumnRegisterIp: regip
-      # Column for storing player LastLocation - X
+      # 用于存储玩家最后位置 X 坐标的列
       mySQLlastlocX: x
-      # Column for storing player LastLocation - Y
+      # 用于存储玩家最后位置 Y 坐标的列
       mySQLlastlocY: y
-      # Column for storing player LastLocation - Z
+      # 用于存储玩家最后位置 Z 坐标的列
       mySQLlastlocZ: z
-      # Column for storing player LastLocation - World Name
+      # 用于存储玩家最后位置所在世界名称的列
       mySQLlastlocWorld: world
-      # Column for storing player LastLocation - Yaw
+      # 用于存储玩家最后位置朝向 Yaw 的列
       mySQLlastlocYaw: yaw
-      # Column for storing player LastLocation - Pitch
+      # 用于存储玩家最后位置俯仰 Pitch 的列
       mySQLlastlocPitch: pitch
-      # Column for storing players uuids (optional)
+      # 用于存储玩家 UUID（可选）的列
       mySQLPlayerUUID: ''
 
 # ----------------------------------------
