@@ -86,7 +86,7 @@
 
           <div v-if="discordEnabled" class="pt-2">
             <label class="block text-sm font-medium text-white mb-2">Discord {{ discordRequired ? '*' : '' }}</label>
-            <DiscordLink :username="form.username" :required="discordRequired" @linked="onDiscordLinked" @unlinked="onDiscordUnlinked" />
+            <DiscordLink :username="getNormalizedUsername()" :required="discordRequired" @linked="onDiscordLinked" @unlinked="onDiscordUnlinked" />
             <p v-if="errors.discord" class="mt-1 text-sm text-red-400">{{ errors.discord }}</p>
           </div>
         </div>
@@ -103,7 +103,7 @@
 
       <div v-else class="space-y-4 relative z-10">
         <div class="rounded-lg border border-white/15 bg-white/5 p-4 text-sm text-white/80">
-          <p class="mb-1"><strong>{{ $t('register.summary.username') }}:</strong> {{ form.username }}</p>
+          <p class="mb-1"><strong>{{ $t('register.summary.username') }}:</strong> {{ getNormalizedUsername() }}</p>
           <p class="mb-1"><strong>{{ $t('register.summary.email') }}:</strong> {{ form.email }}</p>
           <p v-if="questionnaireResult"><strong>{{ $t('register.summary.questionnaire') }}:</strong> {{ questionnaireResult.passed ? $t('questionnaire.passed') : $t('questionnaire.failed') }} ({{ questionnaireResult.score }}/{{ questionnaireResult.pass_score }})</p>
         </div>
@@ -122,7 +122,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiService } from '@/services/api'
 import { useNotification } from '@/composables/useNotification'
@@ -227,7 +227,30 @@ const validateUsername = () => {
 
 const selectPlatform = (platform: 'java' | 'bedrock') => {
   selectedPlatform.value = platform
+  normalizeUsernameForPlatform()
   validateUsername()
+}
+
+const normalizeUsernameForPlatform = () => {
+  const trimmedUsername = form.username.trim()
+  if (!trimmedUsername) {
+    form.username = ''
+    return
+  }
+
+  if (selectedPlatform.value === 'bedrock' && bedrockEnabled.value) {
+    form.username = trimmedUsername.startsWith(bedrockPrefix.value)
+      ? trimmedUsername
+      : `${bedrockPrefix.value}${trimmedUsername}`
+    return
+  }
+
+  if (bedrockEnabled.value && trimmedUsername.startsWith(bedrockPrefix.value)) {
+    form.username = trimmedUsername.slice(bedrockPrefix.value.length)
+    return
+  }
+
+  form.username = trimmedUsername
 }
 
 const getEffectiveUsernameRegex = () => {
@@ -246,6 +269,12 @@ const getNormalizedUsername = () => {
   }
   return trimmedUsername
 }
+
+watch(() => form.username, () => {
+  if (selectedPlatform.value === 'bedrock' && bedrockEnabled.value && form.username.trim()) {
+    normalizeUsernameForPlatform()
+  }
+})
 const validateEmail = () => {
   errors.email = ''
   if (!form.email) {
