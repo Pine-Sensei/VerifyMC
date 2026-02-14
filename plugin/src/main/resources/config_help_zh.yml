@@ -195,8 +195,6 @@ authme:
       mySQLColumnLogged: isLogged
       # 用于存储玩家是否拥有有效会话状态的列
       mySQLColumnHasSession: hasSession
-      # 用于存储玩家 TOTP 密钥（双重验证）的列
-      mySQLtotpKey: totp
       # 用于存储玩家最后登录 IP 的列
       mySQLColumnIp: ip
       # 用于存储玩家最后登录时间的列

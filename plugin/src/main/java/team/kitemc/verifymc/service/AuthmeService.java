@@ -271,7 +271,6 @@ public class AuthmeService {
         String yawCol = column("mySQLlastlocYaw", "yaw");
         String pitchCol = column("mySQLlastlocPitch", "pitch");
         String emailCol = column("mySQLColumnEmail", "email");
-        String totpCol = column("mySQLtotpKey", "totp");
         String saltCol = saltColumn();
 
         String selectSql = "SELECT " + nameCol + " FROM " + tableName() + " WHERE " + nameCol + " = ?";
@@ -287,8 +286,8 @@ public class AuthmeService {
         StringBuilder insertColumns = new StringBuilder(nameCol + ", " + realNameCol + ", " + passCol + ", "
             + regDateCol + ", " + lastLoginCol + ", " + ipCol + ", " + regIpCol + ", " + loggedCol
             + ", " + hasSessionCol + ", " + xCol + ", " + yCol + ", " + zCol + ", " + worldCol
-            + ", " + yawCol + ", " + pitchCol + ", " + emailCol + ", " + totpCol);
-        StringBuilder insertValues = new StringBuilder("?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 0, ?, 0, 0, ?, ?");
+            + ", " + yawCol + ", " + pitchCol + ", " + emailCol);
+        StringBuilder insertValues = new StringBuilder("?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 0, ?, 0, 0, ?");
         if (hasSaltColumn()) {
             insertColumns.append(", ").append(saltCol);
             insertValues.append(", ?");
