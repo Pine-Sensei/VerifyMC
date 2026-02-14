@@ -163,7 +163,7 @@ authme:
     type: sqlite
     table: authme
     # Password format only supports SHA-256. If it was not previously using this format, please switch it in AuthMe (AuthMe supports lazy fallback).
-    # After switching in AuthMe, please log into the game once to trigger lazy fallback to SHA-256.
+    # After switching in AuthMe, please log into the game once to trigger lazy fallback to SHA-256, or you can reset the password directly in the backend.
     # VerifyMC ↔ AuthMe bidirectional sync interval (seconds)
     sync_interval_seconds: 30
     # AuthMe SHA256 salt length (default 16)
