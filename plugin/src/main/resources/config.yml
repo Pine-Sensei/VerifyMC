@@ -67,7 +67,7 @@ authme:
   database:
     type: sqlite
     table: authme
-    password_format: sha256
+    # 直写密码格式仅支持 sha256
     sync_interval_seconds: 30
     salt_length: 16
     mysql:
