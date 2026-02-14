@@ -154,8 +154,6 @@ storage:
 authme:
   # Whether to enable Authme integration functionality
   enabled: true
-  # Integration mode: command (console command) / database (direct DB operations)
-  mode: command
   # Whether to require password input during web registration
   require_password: true
   # Password regex pattern

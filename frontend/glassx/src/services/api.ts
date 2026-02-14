@@ -23,7 +23,6 @@ export interface ConfigResponse {
   }
   authme: {
     enabled: boolean
-    mode?: string
     require_password: boolean
     password_regex: string
   }

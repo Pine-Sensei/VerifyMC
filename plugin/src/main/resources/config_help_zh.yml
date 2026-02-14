@@ -154,8 +154,6 @@ storage:
 authme:
   # 是否启用Authme集成功能
   enabled: true
-  # 集成模式: command（控制台指令）/ database（直连数据库）
-  mode: command
   # 是否强制在Web注册时要求输入密码
   require_password: true
   # 密码正则表达式
