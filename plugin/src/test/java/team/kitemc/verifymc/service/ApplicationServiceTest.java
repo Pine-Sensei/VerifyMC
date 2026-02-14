@@ -29,6 +29,25 @@ class ApplicationServiceTest {
     }
 
     @Test
+    void autoApproveWithManualReviewFlagAndFailedQuestionnaireShouldGoPendingReview() {
+        RegistrationApplicationService service = new RegistrationApplicationService();
+        RegistrationApplicationService.RegistrationDecision decision = service.resolveDecision(true, true, false, true);
+        JSONObject response = service.buildRegistrationResponse(decision, true, key -> key);
+
+        assertTrue(response.getBoolean("success"));
+        assertEquals("register.questionnaire_scoring_error_pending_review", response.getString("msg"));
+        assertEquals("register.questionnaire_scoring_error_pending_review", response.getString("message"));
+    }
+
+    @Test
+    void autoApproveWithPassedQuestionnaireShouldStillWhitelist() {
+        RegistrationApplicationService service = new RegistrationApplicationService();
+        RegistrationApplicationService.RegistrationDecision decision = service.resolveDecision(true, false, true, true);
+
+        assertTrue(decision.autoApprove());
+    }
+
+    @Test
     void reviewApprovePathShouldReturnApprovedMessage() {
         ReviewApplicationService service = new ReviewApplicationService();
         JSONObject response = service.buildReviewResponse(true, true, key -> key);
