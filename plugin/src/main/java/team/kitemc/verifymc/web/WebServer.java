@@ -475,8 +475,6 @@ public class WebServer {
             authme.put("enabled", config.getBoolean("authme.enabled", false));
             authme.put("mode", config.getString("authme.mode", "command"));
             authme.put("require_password", config.getBoolean("authme.require_password", false));
-            authme.put("auto_register", config.getBoolean("authme.auto_register", false));
-            authme.put("auto_unregister", config.getBoolean("authme.auto_unregister", false));
             authme.put("password_regex", config.getString("authme.password_regex", "^[a-zA-Z0-9_]{3,16}$"));
             // Username regex pattern
             frontend.put("username_regex", config.getString("username_regex", "^[a-zA-Z0-9_-]{3,16}$"));
@@ -1294,8 +1292,8 @@ public class WebServer {
                         org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + username);
                     });
                     
-                    // If Authme integration is enabled and auto registration is enabled, register to Authme
-                    if (authmeService.isAuthmeEnabled() && authmeService.isAutoRegisterEnabled() && 
+                    // If Authme integration is enabled, register to Authme
+                    if (authmeService.isAuthmeEnabled() && 
                         password != null && !password.trim().isEmpty()) {
                         authmeService.registerToAuthme(username, password);
                     }
@@ -1472,8 +1470,8 @@ public class WebServer {
                             org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + username);
                         });
 
-                        // If Authme integration is enabled and auto registration is enabled, and password exists, register to Authme
-                        if (authmeService.isAuthmeEnabled() && authmeService.isAutoRegisterEnabled() &&
+                        // If Authme integration is enabled and password exists, register to Authme
+                        if (authmeService.isAuthmeEnabled() &&
                             password != null && !password.trim().isEmpty()) {
                             authmeService.registerToAuthme(username, password);
                         }
@@ -1484,8 +1482,8 @@ public class WebServer {
                             org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist remove " + username);
                         });
 
-                        // If Authme integration is enabled and auto unregister is configured, unregister user from Authme
-                        if (authmeService.isAuthmeEnabled() && authmeService.isAutoUnregisterEnabled()) {
+                        // If Authme integration is enabled, unregister user from Authme
+                        if (authmeService.isAuthmeEnabled()) {
                             authmeService.unregisterFromAuthme(username);
                         }
                     }
@@ -1709,8 +1707,8 @@ public class WebServer {
                         org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist remove " + username);
                     });
                     
-                    // If Authme integration is enabled and auto unregister is configured, unregister user from Authme
-                    if (authmeService.isAuthmeEnabled() && authmeService.isAutoUnregisterEnabled()) {
+                    // If Authme integration is enabled, unregister user from Authme
+                    if (authmeService.isAuthmeEnabled()) {
                         authmeService.unregisterFromAuthme(username);
                     }
                 }
@@ -1776,6 +1774,11 @@ public class WebServer {
                     org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
                         org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist remove " + username);
                     });
+
+                    // If Authme integration is enabled, unregister user from Authme
+                    if (authmeService.isAuthmeEnabled()) {
+                        authmeService.unregisterFromAuthme(username);
+                    }
                 }
                 
                 resp.put("success", success);

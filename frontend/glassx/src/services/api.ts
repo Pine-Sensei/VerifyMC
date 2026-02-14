@@ -25,8 +25,6 @@ export interface ConfigResponse {
     enabled: boolean
     mode?: string
     require_password: boolean
-    auto_register: boolean
-    auto_unregister: boolean
     password_regex: string
   }
   captcha?: {

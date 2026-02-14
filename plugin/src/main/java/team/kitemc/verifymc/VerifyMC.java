@@ -520,8 +520,8 @@ public class VerifyMC extends JavaPlugin implements Listener {
                 uuid = Bukkit.getOfflinePlayer(targetName).getUniqueId().toString();
             }
             
-            // If Authme integration is enabled and auto unregister is configured, unregister user from Authme
-            if (authmeService.isAuthmeEnabled() && authmeService.isAutoUnregisterEnabled()) {
+            // If Authme integration is enabled, unregister user from Authme
+            if (authmeService.isAuthmeEnabled()) {
                 authmeService.unregisterFromAuthme(targetName);
             }
             

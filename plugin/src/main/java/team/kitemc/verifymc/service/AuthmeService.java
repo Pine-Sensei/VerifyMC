@@ -45,14 +45,6 @@ public class AuthmeService {
         return plugin.getConfig().getBoolean("authme.require_password", false);
     }
 
-    public boolean isAutoRegisterEnabled() {
-        return plugin.getConfig().getBoolean("authme.auto_register", false);
-    }
-
-    public boolean isAutoUnregisterEnabled() {
-        return plugin.getConfig().getBoolean("authme.auto_unregister", false);
-    }
-
     public String getMode() {
         return plugin.getConfig().getString("authme.mode", "command").toLowerCase();
     }
@@ -207,7 +199,7 @@ public class AuthmeService {
     }
 
     private Connection getAuthmeConnection() throws Exception {
-        String type = plugin.getConfig().getString("authme.database.type", "mysql").toLowerCase();
+        String type = plugin.getConfig().getString("authme.database.type", "sqlite").toLowerCase();
         if ("sqlite".equals(type)) {
             Class.forName("org.sqlite.JDBC");
             String path = plugin.getConfig().getString("authme.database.sqlite.path", "plugins/AuthMe/authme.db");
