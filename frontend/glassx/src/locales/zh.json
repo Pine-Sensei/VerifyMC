@@ -85,7 +85,8 @@
       "platform": "游戏版本",
       "platform_java": "Java 版",
       "platform_bedrock": "基岩版",
-      "submit": "提交白名单申请"
+      "submit": "提交白名单申请",
+      "platform_bedrock_prefix_hint": "选择基岩版后将自动添加 {prefix} 前缀以区分"
     },
     "validation": {
       "username_required": "请输入用户名",

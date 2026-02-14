@@ -85,7 +85,8 @@
       "platform": "Game Edition",
       "platform_java": "Java",
       "platform_bedrock": "Bedrock",
-      "submit": "Submit Whitelist Application"
+      "submit": "Submit Whitelist Application",
+      "platform_bedrock_prefix_hint": "When Bedrock is selected, the {prefix} prefix will be added automatically for distinction"
     },
     "validation": {
       "username_required": "Please enter username",
