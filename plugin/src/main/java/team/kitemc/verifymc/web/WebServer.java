@@ -1307,7 +1307,7 @@ public class WebServer {
                         resp.put("msg", getMsg("register.questionnaire_scoring_error_pending_review", language));
                     } else if (!autoApprove && questionnairePassed) {
                         resp.put("msg", getMsg("register.questionnaire_pending_review", language));
-                    } else if (autoApprove && questionnairePassed) {
+                    } else if (autoApprove) {
                         resp.put("msg", getMsg("register.success_whitelisted", language));
                     } else {
                         resp.put("msg", getMsg("register.success", language));
