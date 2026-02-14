@@ -22,6 +22,9 @@
           <p class="text-white/60 mb-2">
             {{ $t('questionnaire.your_score') }}: {{ result.score }} / {{ result.pass_score }}
           </p>
+          <p v-if="result.message" class="text-yellow-300 mb-2">
+            {{ result.message }}
+          </p>
           <Button class="mt-4" @click="resetForm">
             {{ $t('questionnaire.retry') }}
           </Button>
@@ -145,6 +148,8 @@ const result = ref<{
   token: string
   submitted_at: number
   expires_at: number
+  manual_review_required?: boolean
+  message?: string
 }>({
   passed: false,
   score: 0,
@@ -152,7 +157,9 @@ const result = ref<{
   answers: {},
   token: '',
   submitted_at: 0,
-  expires_at: 0
+  expires_at: 0,
+  manual_review_required: false,
+  message: ''
 })
 
 const isFormValid = computed(() => {
@@ -247,7 +254,9 @@ const handleSubmit = async () => {
         answers: formattedAnswers,
         token: data.token || '',
         submitted_at: data.submitted_at || Date.now(),
-        expires_at: data.expires_at || Date.now()
+        expires_at: data.expires_at || Date.now(),
+        manual_review_required: data.manual_review_required || false,
+        message: data.msg || ''
       }
       result.value = submissionResult
 
