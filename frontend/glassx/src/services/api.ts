@@ -53,6 +53,41 @@ export interface QuestionnaireAnswer {
   textAnswer: string
 }
 
+export interface QuestionOption {
+  id: number
+  text: string
+}
+
+export interface QuestionInputMeta {
+  min_selections?: number
+  max_selections?: number
+  min_length?: number
+  max_length?: number
+  multiline?: boolean
+  placeholder?: string
+}
+
+export interface Question {
+  id: number
+  question: string
+  type: 'single_choice' | 'multiple_choice' | 'text' | string
+  required: boolean
+  options: QuestionOption[]
+  input?: QuestionInputMeta
+}
+
+export interface SubmitQuestionnaireResponse {
+  success: boolean
+  passed: boolean
+  score: number
+  pass_score: number
+  token?: string
+  submitted_at?: number
+  expires_at?: number
+  msg?: string
+  message?: string
+}
+
 export interface QuestionnaireSubmission {
   passed: boolean
   score: number
@@ -201,6 +236,30 @@ class ApiService {
     return this.request<RegisterResponse>('/register', {
       method: 'POST',
       body: JSON.stringify(data),
+    })
+  }
+
+  // 获取问卷
+  async getQuestionnaire(language: string): Promise<{
+    success: boolean
+    data?: {
+      enabled: boolean
+      questions: Question[]
+    }
+    msg?: string
+    message?: string
+  }> {
+    return this.request(`/questionnaire?language=${encodeURIComponent(language)}`)
+  }
+
+  // 提交问卷
+  async submitQuestionnaire(payload: {
+    answers: Record<string, QuestionnaireAnswer>
+    language: string
+  }): Promise<SubmitQuestionnaireResponse> {
+    return this.request<SubmitQuestionnaireResponse>('/submit-questionnaire', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     })
   }
 
