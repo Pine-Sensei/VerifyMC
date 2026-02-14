@@ -26,6 +26,10 @@ public class RegistrationApplicationService {
         return resolver.shouldAutoApprove(manualReviewRequired, registerAutoApprove);
     }
 
+    public String resolveStatus(RegistrationDecision decision) {
+        return resolver.resolveStatus(decision.outcome());
+    }
+
     public JSONObject buildRegistrationResponse(RegistrationDecision decision, boolean registerOk, Function<String, String> messageResolver) {
         String message = messageResolver.apply(messageKeyMapper.toMessageKey(decision.outcome()));
         return ApiResponseFactory.create(registerOk, message);

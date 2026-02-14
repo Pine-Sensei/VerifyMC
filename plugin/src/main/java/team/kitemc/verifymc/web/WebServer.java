@@ -1053,289 +1053,7 @@ public class WebServer {
         }));
         
         // /api/register registration interface
-        server.createContext("/api/register", new RegistrationHandler(exchange -> {
-            debugLog("/api/register called");
-            if (!"POST".equals(exchange.getRequestMethod())) { exchange.sendResponseHeaders(405, 0); exchange.close(); return; }
-            JSONObject req = new JSONObject(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
-            String email = req.optString("email", "").trim().toLowerCase();
-            String code = req.optString("code");
-            String uuid = req.optString("uuid");
-            String username = req.optString("username");
-            String password = req.optString("password", ""); // New password parameter
-            String captchaToken = req.optString("captchaToken", "");
-            String captchaAnswer = req.optString("captchaAnswer", "");
-            String language = req.optString("language", "en");
-            String platform = req.optString("platform", "java");
-            JSONObject questionnaire = req.optJSONObject("questionnaire");
-            String normalizedUsername = normalizeUsernameByPlatform(username, platform);
-            debugLog("register params: email=" + maskEmail(email) + ", codeHash=" + hashToken(code) + ", uuid=" + uuid + ", username=" + normalizedUsername + ", platform=" + platform + ", hasPassword=" + !password.isEmpty() + ", hasCaptcha=" + !captchaToken.isEmpty());
-
-            // Check if password is required
-            if (authmeService.isAuthmeEnabled() && authmeService.isPasswordRequired()) {
-                if (password == null || password.trim().isEmpty()) {
-                    JSONObject resp = new JSONObject();
-                    resp.put("success", false);
-                    resp.put("msg", getMsg("register.password_required", language));
-                    sendJson(exchange, resp);
-                    return;
-                }
-                
-                // Validate password format
-                if (!authmeService.isValidPassword(password)) {
-                    JSONObject resp = new JSONObject();
-                    resp.put("success", false);
-                    String passwordRegex = plugin.getConfig().getString("authme.password_regex", "^[a-zA-Z0-9_]{8,26}$");
-                    resp.put("msg", getMsg("register.invalid_password", language).replace("{regex}", passwordRegex));
-                    sendJson(exchange, resp);
-                    return;
-                }
-            }
-
-            // Email alias restriction
-            if (isEmailAliasLimitEnabled() && email.contains("+")) {
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("msg", getMsg("register.alias_not_allowed", language));
-                sendJson(exchange, resp);
-                return;
-            }
-
-            // Email domain whitelist
-            if (isEmailDomainWhitelistEnabled()) {
-                String domain = email.contains("@") ? email.substring(email.indexOf('@') + 1) : "";
-                java.util.List<String> allowedDomains = getEmailDomainWhitelist();
-                if (!allowedDomains.contains(domain)) {
-                    JSONObject resp = new JSONObject();
-                    resp.put("success", false);
-                    resp.put("msg", getMsg("register.domain_not_allowed", language));
-                    sendJson(exchange, resp);
-                    return;
-                }
-            }
-            // Username uniqueness check
-            if (userDao.getUserByUsername(normalizedUsername) != null) {
-                debugLog("Username already exists: " + normalizedUsername);
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("msg", "Username already exists");
-                sendJson(exchange, resp);
-                return;
-            }
-            // Pre-registration username rule validation and case conflict check
-            if (!isValidUsername(normalizedUsername, platform)) {
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                String usernameRegex = getUsernameRegexForUser(normalizedUsername, platform);
-                resp.put("msg", getMsg("username.invalid", language).replace("{regex}", usernameRegex));
-                sendJson(exchange, resp);
-                return;
-            }
-            if (isUsernameCaseConflict(normalizedUsername)) {
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("msg", getMsg("username.case_conflict", language));
-                sendJson(exchange, resp);
-                return;
-            }
-            // Email registration count limit
-            int maxAccounts = plugin.getConfig().getInt("max_accounts_per_email", 2);
-            int emailCount = userDao.countUsersByEmail(email);
-            if (emailCount >= maxAccounts) {
-                debugLog("Email registration limit reached: " + email + ", count=" + emailCount);
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("msg", getMsg("register.email_limit", language));
-                sendJson(exchange, resp);
-                return;
-            }
-            // Input validation
-            if (!isValidEmail(email)) {
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("msg", getMsg("register.invalid_email", language));
-                sendJson(exchange, resp);
-                return;
-            }
-            if (!isValidUUID(uuid)) {
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("msg", getMsg("register.invalid_uuid", language));
-                sendJson(exchange, resp);
-                return;
-            }
-            if (normalizedUsername == null || normalizedUsername.trim().isEmpty()) {
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("msg", getMsg("register.invalid_username", language));
-                sendJson(exchange, resp);
-                return;
-            }
-
-            QuestionnaireSubmissionRecord questionnaireSubmissionRecord = null;
-            boolean questionnaireEnabled = questionnaireService.isEnabled();
-            if (questionnaireEnabled) {
-                JSONObject questionnaireResp = new JSONObject();
-                if (questionnaire == null) {
-                    questionnaireResp.put("success", false);
-                    questionnaireResp.put("msg", getMsg("register.questionnaire_required", language));
-                    sendJson(exchange, questionnaireResp);
-                    return;
-                }
-
-                String questionnaireToken = questionnaire.optString("token", "");
-                long submittedAt = questionnaire.optLong("submitted_at", 0L);
-                long expiresAt = questionnaire.optLong("expires_at", 0L);
-                JSONObject answers = questionnaire.optJSONObject("answers");
-
-                if (questionnaireToken.isEmpty() || answers == null) {
-                    questionnaireResp.put("success", false);
-                    questionnaireResp.put("msg", getMsg("register.questionnaire_required", language));
-                    sendJson(exchange, questionnaireResp);
-                    return;
-                }
-
-                QuestionnaireSubmissionRecord record = questionnaireSubmissionStore.remove(questionnaireToken);
-                if (record == null) {
-                    questionnaireResp.put("success", false);
-                    questionnaireResp.put("msg", getMsg("register.questionnaire_missing", language));
-                    sendJson(exchange, questionnaireResp);
-                    return;
-                }
-
-                if (record.isExpired() || System.currentTimeMillis() > expiresAt || submittedAt <= 0 || expiresAt <= submittedAt) {
-                    questionnaireResp.put("success", false);
-                    questionnaireResp.put("msg", getMsg("register.questionnaire_expired", language));
-                    sendJson(exchange, questionnaireResp);
-                    return;
-                }
-
-                if (!record.answers.similar(answers) || record.submittedAt != submittedAt || record.expiresAt != expiresAt) {
-                    questionnaireResp.put("success", false);
-                    questionnaireResp.put("msg", getMsg("register.questionnaire_invalid", language));
-                    sendJson(exchange, questionnaireResp);
-                    return;
-                }
-
-                boolean questionnairePassed = record.passed;
-                boolean manualReviewRequired = record.manualReviewRequired;
-                if (!questionnairePassed && !manualReviewRequired) {
-                    questionnaireResp.put("success", false);
-                    questionnaireResp.put("msg", getMsg("register.questionnaire_required", language));
-                    sendJson(exchange, questionnaireResp);
-                    return;
-                }
-
-                questionnaireSubmissionRecord = record;
-            }
-
-            JSONObject resp = new JSONObject();
-            
-            // Determine verification method based on auth_methods config
-            java.util.List<String> authMethods = plugin.getConfig().getStringList("auth_methods");
-            boolean useCaptcha = authMethods.contains("captcha");
-            boolean useEmail = authMethods.contains("email");
-            boolean verificationPassed = false;
-            
-            // Captcha verification
-            if (useCaptcha) {
-                if (captchaToken.isEmpty() || captchaAnswer.isEmpty()) {
-                    resp.put("success", false);
-                    resp.put("msg", getMsg("captcha.required", language));
-                    sendJson(exchange, resp);
-                    return;
-                }
-                if (!captchaService.validateCaptcha(captchaToken, captchaAnswer)) {
-                    debugLog("Captcha validation failed: token=" + captchaToken);
-                    resp.put("success", false);
-                    resp.put("msg", getMsg("captcha.invalid", language));
-                    sendJson(exchange, resp);
-                    return;
-                }
-                debugLog("Captcha validation passed");
-                verificationPassed = true;
-            }
-            
-            // Email verification (if email method is enabled or no captcha)
-            if (useEmail || !useCaptcha) {
-            if (!codeService.checkCode(email, code)) {
-                debugLog("Verification code check failed: email=" + maskEmail(email) + ", codeHash=" + hashToken(code));
-                plugin.getLogger().warning("[VerifyMC] Registration failed: wrong code, email=" + maskEmail(email) + ", codeHash=" + hashToken(code));
-                resp.put("success", false); 
-                resp.put("msg", getMsg("verify.wrong_code", language));
-                    sendJson(exchange, resp);
-                    return;
-                }
-                debugLog("Email verification code passed");
-                verificationPassed = true;
-            }
-            
-            if (verificationPassed) {
-                debugLog("Verification passed, checking Discord requirement");
-                
-                // Check Discord binding if required
-                if (discordService.isRequired()) {
-                    if (!discordService.isLinked(normalizedUsername)) {
-                        debugLog("Discord binding required but user not linked: " + normalizedUsername);
-                        resp.put("success", false);
-                        resp.put("msg", getMsg("discord.required", language));
-                        resp.put("discord_required", true);
-                        sendJson(exchange, resp);
-                        return;
-                    }
-                    debugLog("Discord binding verified for: " + normalizedUsername);
-                }
-                
-                debugLog("All checks passed, registering user");
-                QuestionnaireSubmissionRecord submissionRecord = questionnaireSubmissionRecord;
-                boolean questionnairePassed = submissionRecord != null && submissionRecord.passed;
-                boolean manualReviewRequired = submissionRecord != null && submissionRecord.manualReviewRequired;
-                boolean registerAutoApprove = plugin.getConfig().getBoolean("register.auto_approve", false);
-                boolean autoApprove = registrationApplicationService.shouldAutoApprove(manualReviewRequired, registerAutoApprove);
-                String status = autoApprove ? "approved" : "pending";
-
-                Integer questionnaireScore = submissionRecord != null ? submissionRecord.score : null;
-                Boolean questionnairePassedValue = submissionRecord != null ? submissionRecord.passed : null;
-                String questionnaireReviewSummary = submissionRecord != null ? buildQuestionnaireReviewSummary(submissionRecord.details) : null;
-                Long questionnaireScoredAt = submissionRecord != null ? submissionRecord.submittedAt : null;
-                boolean ok;
-
-                // Choose registration method based on whether password is provided
-                if (password != null && !password.trim().isEmpty()) {
-                    String storedPassword = authmeService.encodePasswordForStorage(password);
-                    ok = userDao.registerUser(uuid, normalizedUsername, email, status, storedPassword, questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
-                } else {
-                    ok = userDao.registerUser(uuid, normalizedUsername, email, status, questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
-                }
-                
-                debugLog("registerUser result: " + ok);
-                RegistrationApplicationService.RegistrationDecision decision =
-                    registrationApplicationService.resolveDecision(ok, manualReviewRequired, questionnairePassed, registerAutoApprove);
-
-                if (decision.outcome() == RegistrationOutcome.SUCCESS_WHITELISTED) {
-                    // Registration successful and approved, automatically add to whitelist
-                    debugLog("Execute: whitelist add " + normalizedUsername);
-                    org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
-                        org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + normalizedUsername);
-                    });
-
-                    // If Authme integration is enabled, register to Authme
-                    if (authmeService.isAuthmeEnabled() &&
-                        password != null && !password.trim().isEmpty()) {
-                        authmeService.registerToAuthme(normalizedUsername, password);
-                    }
-                }
-                if (!ok) {
-                    plugin.getLogger().warning("[VerifyMC] Registration failed: userDao.registerUser returned false, uuid=" + uuid + ", username=" + normalizedUsername + ", email=" + email);
-                }
-                sendJson(exchange, registrationApplicationService.buildRegistrationResponse(
-                    decision,
-                    ok,
-                    key -> getMsg(key, language)
-                ));
-                return;
-            }
-            sendJson(exchange, resp);
-        }));
+        server.createContext("/api/register", new RegistrationHandler(this::handleRegister));
         
         // Admin login
         server.createContext("/api/admin-login", new UserAdminHandler(exchange -> {
@@ -2039,6 +1757,257 @@ public class WebServer {
     }
 
     // Static resource handler
+    String normalizeUsernameForRegistration(String username, String platform) {
+        return normalizeUsernameByPlatform(username, platform);
+    }
+
+    private void handleRegister(HttpExchange exchange) throws IOException {
+        String requestId = exchange.getRequestHeaders().getFirst("X-Request-ID");
+        if (requestId == null || requestId.isBlank()) {
+            requestId = UUID.randomUUID().toString();
+        }
+        logRegistrationStage(requestId, "start", null);
+        if (!"POST".equals(exchange.getRequestMethod())) {
+            exchange.sendResponseHeaders(405, 0);
+            exchange.close();
+            return;
+        }
+
+        JSONObject req = new JSONObject(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+        RegistrationRequest request = RegistrationRequest.fromJson(req, this);
+        logRegistrationStage(requestId, "request_parsed", new JSONObject()
+                .put("email", maskEmail(request.email()))
+                .put("uuid", request.uuid())
+                .put("username", request.normalizedUsername()));
+
+        RegistrationValidationResult basicResult = validateBasicInput(request, requestId);
+        if (!basicResult.passed()) {
+            reject(exchange, basicResult.messageKey(), request.language(), basicResult.responseFields());
+            return;
+        }
+
+        QuestionnaireSubmissionRecord questionnaireSubmissionRecord = validateQuestionnaireSubmission(exchange, request, requestId);
+        if (questionnaireSubmissionRecord == null && questionnaireService.isEnabled()) {
+            return;
+        }
+
+        RegistrationValidationResult verificationResult = validateVerificationMethod(request, requestId);
+        if (!verificationResult.passed()) {
+            reject(exchange, verificationResult.messageKey(), request.language(), verificationResult.responseFields());
+            return;
+        }
+
+        RegistrationValidationResult discordResult = validateDiscordRequirement(request, requestId);
+        if (!discordResult.passed()) {
+            reject(exchange, discordResult.messageKey(), request.language(), discordResult.responseFields());
+            return;
+        }
+
+        JSONObject response = executeRegistration(request, questionnaireSubmissionRecord, requestId);
+        sendJson(exchange, response);
+    }
+
+    private RegistrationValidationResult validateBasicInput(RegistrationRequest request, String requestId) {
+        logRegistrationStage(requestId, "validate_basic_input", null);
+
+        if (authmeService.isAuthmeEnabled() && authmeService.isPasswordRequired()) {
+            if (request.password() == null || request.password().trim().isEmpty()) {
+                return RegistrationValidationResult.reject("register.password_required");
+            }
+            if (!authmeService.isValidPassword(request.password())) {
+                String passwordRegex = plugin.getConfig().getString("authme.password_regex", "^[a-zA-Z0-9_]{8,26}$");
+                return RegistrationValidationResult.reject("register.invalid_password", new JSONObject().put("regex", passwordRegex));
+            }
+        }
+
+        if (isEmailAliasLimitEnabled() && request.email().contains("+")) {
+            return RegistrationValidationResult.reject("register.alias_not_allowed");
+        }
+        if (isEmailDomainWhitelistEnabled()) {
+            String domain = request.email().contains("@") ? request.email().substring(request.email().indexOf('@') + 1) : "";
+            if (!getEmailDomainWhitelist().contains(domain)) {
+                return RegistrationValidationResult.reject("register.domain_not_allowed");
+            }
+        }
+        if (userDao.getUserByUsername(request.normalizedUsername()) != null) {
+            return RegistrationValidationResult.reject("register.username_exists");
+        }
+        if (!isValidUsername(request.normalizedUsername(), request.platform())) {
+            String usernameRegex = getUsernameRegexForUser(request.normalizedUsername(), request.platform());
+            return RegistrationValidationResult.reject("username.invalid", new JSONObject().put("regex", usernameRegex));
+        }
+        if (isUsernameCaseConflict(request.normalizedUsername())) {
+            return RegistrationValidationResult.reject("username.case_conflict");
+        }
+
+        int maxAccounts = plugin.getConfig().getInt("max_accounts_per_email", 2);
+        int emailCount = userDao.countUsersByEmail(request.email());
+        if (emailCount >= maxAccounts) {
+            return RegistrationValidationResult.reject("register.email_limit");
+        }
+        if (!isValidEmail(request.email())) {
+            return RegistrationValidationResult.reject("register.invalid_email");
+        }
+        if (!isValidUUID(request.uuid())) {
+            return RegistrationValidationResult.reject("register.invalid_uuid");
+        }
+        if (request.normalizedUsername() == null || request.normalizedUsername().trim().isEmpty()) {
+            return RegistrationValidationResult.reject("register.invalid_username");
+        }
+        return RegistrationValidationResult.pass();
+    }
+
+    private QuestionnaireSubmissionRecord validateQuestionnaireSubmission(HttpExchange exchange, RegistrationRequest request, String requestId) throws IOException {
+        logRegistrationStage(requestId, "validate_questionnaire_submission", null);
+        if (!questionnaireService.isEnabled()) {
+            return null;
+        }
+
+        JSONObject questionnaire = request.questionnaire();
+        if (questionnaire == null) {
+            reject(exchange, "register.questionnaire_required", request.language());
+            return null;
+        }
+
+        String questionnaireToken = questionnaire.optString("token", "");
+        long submittedAt = questionnaire.optLong("submitted_at", 0L);
+        long expiresAt = questionnaire.optLong("expires_at", 0L);
+        JSONObject answers = questionnaire.optJSONObject("answers");
+
+        if (questionnaireToken.isEmpty() || answers == null) {
+            reject(exchange, "register.questionnaire_required", request.language());
+            return null;
+        }
+
+        QuestionnaireSubmissionRecord record = questionnaireSubmissionStore.remove(questionnaireToken);
+        if (record == null) {
+            reject(exchange, "register.questionnaire_missing", request.language());
+            return null;
+        }
+
+        if (record.isExpired() || System.currentTimeMillis() > expiresAt || submittedAt <= 0 || expiresAt <= submittedAt) {
+            reject(exchange, "register.questionnaire_expired", request.language());
+            return null;
+        }
+
+        if (!record.answers.similar(answers) || record.submittedAt != submittedAt || record.expiresAt != expiresAt) {
+            reject(exchange, "register.questionnaire_invalid", request.language());
+            return null;
+        }
+
+        if (!record.passed && !record.manualReviewRequired) {
+            reject(exchange, "register.questionnaire_required", request.language());
+            return null;
+        }
+        return record;
+    }
+
+    private RegistrationValidationResult validateVerificationMethod(RegistrationRequest request, String requestId) {
+        logRegistrationStage(requestId, "validate_verification_method", null);
+        java.util.List<String> authMethods = plugin.getConfig().getStringList("auth_methods");
+        boolean useCaptcha = authMethods.contains("captcha");
+        boolean useEmail = authMethods.contains("email");
+
+        if (useCaptcha) {
+            if (request.captchaToken().isEmpty() || request.captchaAnswer().isEmpty()) {
+                return RegistrationValidationResult.reject("captcha.required");
+            }
+            if (!captchaService.validateCaptcha(request.captchaToken(), request.captchaAnswer())) {
+                return RegistrationValidationResult.reject("captcha.invalid");
+            }
+        }
+
+        if (useEmail || !useCaptcha) {
+            if (!codeService.checkCode(request.email(), request.code())) {
+                return RegistrationValidationResult.reject("verify.wrong_code");
+            }
+        }
+
+        return RegistrationValidationResult.pass();
+    }
+
+    private RegistrationValidationResult validateDiscordRequirement(RegistrationRequest request, String requestId) {
+        logRegistrationStage(requestId, "validate_discord_requirement", null);
+        if (discordService.isRequired() && !discordService.isLinked(request.normalizedUsername())) {
+            return RegistrationValidationResult.reject("discord.required", new JSONObject().put("discord_required", true));
+        }
+        return RegistrationValidationResult.pass();
+    }
+
+    private JSONObject executeRegistration(RegistrationRequest request,
+                                           QuestionnaireSubmissionRecord submissionRecord,
+                                           String requestId) {
+        logRegistrationStage(requestId, "execute_registration", null);
+        boolean manualReviewRequired = submissionRecord != null && submissionRecord.manualReviewRequired;
+        boolean questionnairePassed = submissionRecord != null && submissionRecord.passed;
+        boolean registerAutoApprove = plugin.getConfig().getBoolean("register.auto_approve", false);
+
+        RegistrationApplicationService.RegistrationDecision preDecision =
+                registrationApplicationService.resolveDecision(true, manualReviewRequired, questionnairePassed, registerAutoApprove);
+        String status = registrationApplicationService.resolveStatus(preDecision);
+
+        Integer questionnaireScore = submissionRecord != null ? submissionRecord.score : null;
+        Boolean questionnairePassedValue = submissionRecord != null ? submissionRecord.passed : null;
+        String questionnaireReviewSummary = submissionRecord != null ? buildQuestionnaireReviewSummary(submissionRecord.details) : null;
+        Long questionnaireScoredAt = submissionRecord != null ? submissionRecord.submittedAt : null;
+
+        boolean ok;
+        if (request.password() != null && !request.password().trim().isEmpty()) {
+            String storedPassword = authmeService.encodePasswordForStorage(request.password());
+            ok = userDao.registerUser(request.uuid(), request.normalizedUsername(), request.email(), status, storedPassword,
+                    questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
+        } else {
+            ok = userDao.registerUser(request.uuid(), request.normalizedUsername(), request.email(), status,
+                    questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
+        }
+
+        RegistrationApplicationService.RegistrationDecision decision =
+                registrationApplicationService.resolveDecision(ok, manualReviewRequired, questionnairePassed, registerAutoApprove);
+        if (decision.outcome() == RegistrationOutcome.SUCCESS_WHITELISTED) {
+            org.bukkit.Bukkit.getScheduler().runTask(plugin, () ->
+                    org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + request.normalizedUsername()));
+            if (authmeService.isAuthmeEnabled() && request.password() != null && !request.password().trim().isEmpty()) {
+                authmeService.registerToAuthme(request.normalizedUsername(), request.password());
+            }
+        }
+
+        return registrationApplicationService.buildRegistrationResponse(decision, ok, key -> getMsg(key, request.language()));
+    }
+
+    private void reject(HttpExchange exchange, String messageKey, String language) throws IOException {
+        reject(exchange, messageKey, language, new JSONObject());
+    }
+
+    private void reject(HttpExchange exchange, String messageKey, String language, JSONObject responseFields) throws IOException {
+        JSONObject resp = new JSONObject();
+        resp.put("success", false);
+        String message = getMsg(messageKey, language);
+        if (responseFields != null) {
+            if (responseFields.has("regex")) {
+                message = message.replace("{regex}", responseFields.optString("regex", ""));
+            }
+            for (String key : responseFields.keySet()) {
+                if (!"regex".equals(key)) {
+                    resp.put(key, responseFields.get(key));
+                }
+            }
+        }
+        resp.put("msg", message);
+        if (exchange != null) {
+            sendJson(exchange, resp);
+        }
+    }
+
+    private void logRegistrationStage(String requestId, String stage, JSONObject extra) {
+        JSONObject log = new JSONObject();
+        log.put("requestId", requestId);
+        log.put("stage", stage);
+        if (extra != null) {
+            log.put("extra", extra);
+        }
+        debugLog("registration_stage=" + log);
+    }
+
     static class StaticHandler implements HttpHandler {
         private final String baseDir;
         public StaticHandler(String baseDir) {
