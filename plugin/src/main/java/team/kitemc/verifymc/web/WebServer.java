@@ -475,7 +475,7 @@ public class WebServer {
             authme.put("enabled", config.getBoolean("authme.enabled", false));
             authme.put("mode", config.getString("authme.mode", "command"));
             authme.put("require_password", config.getBoolean("authme.require_password", false));
-            authme.put("password_regex", config.getString("authme.password_regex", "^[a-zA-Z0-9_]{3,16}$"));
+            authme.put("password_regex", config.getString("authme.password_regex", "^[a-zA-Z0-9_]{8,26}$"));
             // Username regex pattern
             frontend.put("username_regex", config.getString("username_regex", "^[a-zA-Z0-9_-]{3,16}$"));
             
@@ -1062,7 +1062,7 @@ public class WebServer {
                 if (!authmeService.isValidPassword(password)) {
                     JSONObject resp = new JSONObject();
                     resp.put("success", false);
-                    String passwordRegex = plugin.getConfig().getString("authme.password_regex", "^[a-zA-Z0-9_]{3,16}$");
+                    String passwordRegex = plugin.getConfig().getString("authme.password_regex", "^[a-zA-Z0-9_]{8,26}$");
                     resp.put("msg", getMsg("register.invalid_password", language).replace("{regex}", passwordRegex));
                     sendJson(exchange, resp);
                     return;
@@ -1898,7 +1898,7 @@ public class WebServer {
             // Validate password format
             if (!authmeService.isValidPassword(newPassword)) {
                 resp.put("success", false);
-                String passwordRegex = plugin.getConfig().getString("authme.password_regex", "^[a-zA-Z0-9_]{3,16}$");
+                String passwordRegex = plugin.getConfig().getString("authme.password_regex", "^[a-zA-Z0-9_]{8,26}$");
                 resp.put("msg", getMsg("admin.invalid_password", language).replace("{regex}", passwordRegex));
                 sendJson(exchange, resp);
                 return;
