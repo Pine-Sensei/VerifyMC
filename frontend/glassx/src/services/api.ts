@@ -90,6 +90,7 @@ export interface RegisterRequest {
   captchaToken?: string
   captchaAnswer?: string
   language: string
+  platform?: 'java' | 'bedrock'
   questionnaire?: QuestionnaireSubmission
 }
 
