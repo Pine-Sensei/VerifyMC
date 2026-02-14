@@ -32,6 +32,9 @@ import java.util.Base64;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.nio.charset.StandardCharsets;
+import team.kitemc.verifymc.registration.RegistrationOutcome;
+import team.kitemc.verifymc.registration.RegistrationOutcomeResolver;
+import team.kitemc.verifymc.registration.RegistrationOutcomeMessageKeyMapper;
 
 public class WebServer {
     private HttpServer server;
@@ -50,6 +53,8 @@ public class WebServer {
     private final ResourceBundle messages;
     private final boolean debug;
     private final HashMap<String, ResourceBundle> languageCache = new HashMap<>();
+    private final RegistrationOutcomeResolver registrationOutcomeResolver = new RegistrationOutcomeResolver();
+    private final RegistrationOutcomeMessageKeyMapper registrationOutcomeMessageKeyMapper = new RegistrationOutcomeMessageKeyMapper();
     
     // Authentication related
     private final ConcurrentHashMap<String, Long> validTokens = new ConcurrentHashMap<>();
@@ -1325,19 +1330,14 @@ public class WebServer {
                     plugin.getLogger().warning("[VerifyMC] Registration failed: userDao.registerUser returned false, uuid=" + uuid + ", username=" + normalizedUsername + ", email=" + email);
                 }
                 resp.put("success", ok);
-                if (ok) {
-                    if (!autoApprove && manualReviewRequired && !questionnairePassed) {
-                        resp.put("msg", getMsg("register.questionnaire_scoring_error_pending_review", language));
-                    } else if (!autoApprove && questionnairePassed) {
-                        resp.put("msg", getMsg("register.questionnaire_pending_review", language));
-                    } else if (autoApprove) {
-                        resp.put("msg", getMsg("register.success_whitelisted", language));
-                    } else {
-                        resp.put("msg", getMsg("register.success", language));
-                    }
-                } else {
-                    resp.put("msg", getMsg("register.failed", language));
-                }
+                RegistrationOutcome outcome = registrationOutcomeResolver.resolve(
+                    ok,
+                    manualReviewRequired,
+                    questionnairePassed,
+                    registerAutoApprove
+                );
+                String messageKey = registrationOutcomeMessageKeyMapper.toMessageKey(outcome);
+                resp.put("msg", getMsg(messageKey, language));
             }
             sendJson(exchange, resp);
         });
