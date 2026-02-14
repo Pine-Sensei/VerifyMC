@@ -1301,7 +1301,8 @@ public class WebServer {
 
                 // Choose registration method based on whether password is provided
                 if (password != null && !password.trim().isEmpty()) {
-                    ok = userDao.registerUser(uuid, normalizedUsername, email, status, password, questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
+                    String storedPassword = authmeService.encodePasswordForStorage(password);
+                    ok = userDao.registerUser(uuid, normalizedUsername, email, status, storedPassword, questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
                 } else {
                     ok = userDao.registerUser(uuid, normalizedUsername, email, status, questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
                 }
@@ -1953,7 +1954,8 @@ public class WebServer {
                 String targetUuid = (String) user.get("uuid");
                 
                 // Update password
-                boolean success = userDao.updateUserPassword(targetUuid, newPassword);
+                String storedPassword = authmeService.encodePasswordForStorage(newPassword);
+                boolean success = userDao.updateUserPassword(targetUuid, storedPassword);
                 
                 if (success) {
                     // If Authme integration is enabled, synchronize Authme password update

@@ -79,6 +79,14 @@ public class AuthmeService {
     }
 
     /**
+     * Encode password in AuthMe-compatible format for VerifyMC local storage.
+     * Accepts plain text and returns encoded value; already-encoded AuthMe values are returned as-is.
+     */
+    public String encodePasswordForStorage(String plainOrEncodedPassword) {
+        return buildStoredPassword(plainOrEncodedPassword);
+    }
+
+    /**
      * Synchronize approved users between VerifyMC and AuthMe.
      * Rules:
      * - Only approved local users are allowed to sync from local to AuthMe.
@@ -326,6 +334,12 @@ public class AuthmeService {
     }
 
     private String buildStoredPassword(String plainPassword) {
+        if (plainPassword == null) {
+            return null;
+        }
+        if (plainPassword.startsWith("$SHA$") || plainPassword.startsWith("$MD5vb$")) {
+            return plainPassword;
+        }
         String format = plugin.getConfig().getString("authme.database.password_format", "sha256").toLowerCase();
         switch (format) {
             case "sha256":
