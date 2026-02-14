@@ -337,29 +337,15 @@ public class AuthmeService {
         if (plainPassword == null) {
             return null;
         }
-        if (plainPassword.startsWith("$SHA$") || plainPassword.startsWith("$MD5vb$")) {
+        if (plainPassword.startsWith("$SHA$")) {
             return plainPassword;
         }
-        String format = plugin.getConfig().getString("authme.database.password_format", "sha256").toLowerCase();
-        switch (format) {
-            case "sha256":
-                return authmeSha256(plainPassword);
-            case "md5vb":
-                return authmeMd5vb(plainPassword);
-            case "plaintext":
-            default:
-                return plainPassword;
-        }
+        return authmeSha256(plainPassword);
     }
 
     private String authmeSha256(String plainPassword) {
         String salt = generateHexSalt(getSaltLength());
         return "$SHA$" + salt + "$" + sha256Hex(sha256Hex(plainPassword) + salt);
-    }
-
-    private String authmeMd5vb(String plainPassword) {
-        String salt = generateHexSalt(getSaltLength());
-        return "$MD5vb$" + salt + "$" + md5Hex(md5Hex(plainPassword) + salt);
     }
 
     private int getSaltLength() {
@@ -378,16 +364,6 @@ public class AuthmeService {
     private String sha256Hex(String data) {
         try {
             java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(data.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            return bytesToHex(hash);
-        } catch (Exception e) {
-            return data;
-        }
-    }
-
-    private String md5Hex(String data) {
-        try {
-            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("MD5");
             byte[] hash = digest.digest(data.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             return bytesToHex(hash);
         } catch (Exception e) {

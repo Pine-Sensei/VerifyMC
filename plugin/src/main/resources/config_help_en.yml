@@ -162,10 +162,9 @@ authme:
     # DB type in database mode: mysql / sqlite
     type: sqlite
     table: authme
-    # Stored password format when writing to AuthMe DB directly: sha256 / md5vb / plaintext
-    password_format: sha256
+    # Stored password format when writing to AuthMe DB directly: sha256 (only)
     sync_interval_seconds: 30
-    # AuthMe SHA256/MD5VB salt length (default 16)
+    # AuthMe SHA256 salt length (default 16)
     salt_length: 16
     mysql:
       host: 127.0.0.1
