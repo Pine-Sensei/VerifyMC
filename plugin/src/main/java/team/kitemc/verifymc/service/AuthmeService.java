@@ -98,11 +98,11 @@ public class AuthmeService {
 
         debugLog("Unregistering user from AuthMe by command: " + username);
         if (Bukkit.isPrimaryThread()) {
-            return executeAuthmeCommand("purgeplayer " + username);
+            return executeAuthmeCommand("purgeplayer " + username + " force");
         } else {
             try {
                 return Bukkit.getScheduler().callSyncMethod(plugin, () ->
-                    executeAuthmeCommand("purgeplayer " + username)
+                    executeAuthmeCommand("purgeplayer " + username + " force")
                 ).get();
             } catch (Exception e) {
                 debugLog("Failed to unregister user from AuthMe: " + e.getMessage());
