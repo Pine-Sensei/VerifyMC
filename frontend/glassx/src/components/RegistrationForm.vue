@@ -218,16 +218,8 @@ const validateUsername = () => {
   }
 
   const regex = getEffectiveUsernameRegex()
-  if (regex) {
-    const compiledRegex = new RegExp(regex)
-    const normalizedUsername = getNormalizedUsername()
-    const bedrockValidationPassed = selectedPlatform.value === 'bedrock' && bedrockEnabled.value
-      ? compiledRegex.test(username) || compiledRegex.test(normalizedUsername)
-      : compiledRegex.test(normalizedUsername)
-
-    if (!bedrockValidationPassed) {
-      errors.username = t('register.validation.username_format', { regex })
-    }
+  if (regex && !new RegExp(regex).test(getNormalizedUsername())) {
+    errors.username = t('register.validation.username_format', { regex })
   } else if (!regex && !/^[a-zA-Z0-9_]+$/.test(username)) {
     errors.username = t('register.validation.username_format', { regex: '^[a-zA-Z0-9_]+$' })
   }
