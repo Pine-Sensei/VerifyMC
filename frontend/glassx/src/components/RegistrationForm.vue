@@ -39,6 +39,9 @@
                 {{ $t('register.form.platform_bedrock') }}
               </button>
             </div>
+            <p v-if="selectedPlatform === 'bedrock'" class="mt-2 text-xs text-white/60">
+              {{ $t('register.form.platform_bedrock_prefix_hint', { prefix: bedrockPrefix }) }}
+            </p>
           </div>
 
           <div>
