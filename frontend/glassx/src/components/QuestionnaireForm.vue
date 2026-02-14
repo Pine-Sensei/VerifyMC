@@ -162,6 +162,10 @@ const isTextQuestion = (question: Question): question is Question & { type: 'tex
   return question.type === 'text'
 }
 
+const isSupportedQuestionType = (question: Question) => {
+  return isChoiceQuestion(question) || isTextQuestion(question)
+}
+
 const getErrorMessage = (payload?: { msg?: string; message?: string }) => {
   return payload?.msg || payload?.message || ''
 }
@@ -174,6 +178,10 @@ const initAnswer = (question: Question): QuestionnaireAnswer => ({
 
 const isFormValid = computed(() => {
   return questions.value.every(question => {
+    if (!isSupportedQuestionType(question)) {
+      return false
+    }
+
     const answer = answers[question.id] ?? initAnswer(question)
 
     if (isChoiceQuestion(question)) {
@@ -191,7 +199,7 @@ const isFormValid = computed(() => {
       return trimmedText.length >= minLength && trimmedText.length <= maxLength
     }
 
-    return !question.required
+    return false
   })
 })
 
