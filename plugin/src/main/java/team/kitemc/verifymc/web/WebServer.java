@@ -1295,7 +1295,7 @@ public class WebServer {
                 boolean questionnairePassed = submissionRecord != null && submissionRecord.passed;
                 boolean manualReviewRequired = submissionRecord != null && submissionRecord.manualReviewRequired;
                 boolean registerAutoApprove = plugin.getConfig().getBoolean("register.auto_approve", false);
-                boolean autoApprove = !manualReviewRequired && registerAutoApprove;
+                boolean autoApprove = registrationOutcomeResolver.shouldAutoApprove(manualReviewRequired, registerAutoApprove);
                 String status = autoApprove ? "approved" : "pending";
 
                 Integer questionnaireScore = submissionRecord != null ? submissionRecord.score : null;
@@ -1313,15 +1313,22 @@ public class WebServer {
                 }
                 
                 debugLog("registerUser result: " + ok);
-                if (ok && "approved".equals(status)) {
+                RegistrationOutcome outcome = registrationOutcomeResolver.resolve(
+                    ok,
+                    manualReviewRequired,
+                    questionnairePassed,
+                    registerAutoApprove
+                );
+
+                if (outcome == RegistrationOutcome.SUCCESS_WHITELISTED) {
                     // Registration successful and approved, automatically add to whitelist
                     debugLog("Execute: whitelist add " + normalizedUsername);
                     org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
                         org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + normalizedUsername);
                     });
-                    
+
                     // If Authme integration is enabled, register to Authme
-                    if (authmeService.isAuthmeEnabled() && 
+                    if (authmeService.isAuthmeEnabled() &&
                         password != null && !password.trim().isEmpty()) {
                         authmeService.registerToAuthme(normalizedUsername, password);
                     }
@@ -1330,12 +1337,6 @@ public class WebServer {
                     plugin.getLogger().warning("[VerifyMC] Registration failed: userDao.registerUser returned false, uuid=" + uuid + ", username=" + normalizedUsername + ", email=" + email);
                 }
                 resp.put("success", ok);
-                RegistrationOutcome outcome = registrationOutcomeResolver.resolve(
-                    ok,
-                    manualReviewRequired,
-                    questionnairePassed,
-                    registerAutoApprove
-                );
                 String messageKey = registrationOutcomeMessageKeyMapper.toMessageKey(outcome);
                 resp.put("msg", getMsg(messageKey, language));
             }

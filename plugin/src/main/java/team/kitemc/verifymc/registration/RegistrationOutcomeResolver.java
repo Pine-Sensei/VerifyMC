@@ -2,6 +2,10 @@ package team.kitemc.verifymc.registration;
 
 public class RegistrationOutcomeResolver {
 
+    public boolean shouldAutoApprove(boolean manualReviewRequired, boolean registerAutoApprove) {
+        return !manualReviewRequired && registerAutoApprove;
+    }
+
     public RegistrationOutcome resolve(boolean ok,
                                        boolean manualReviewRequired,
                                        boolean questionnairePassed,
@@ -10,7 +14,7 @@ public class RegistrationOutcomeResolver {
             return RegistrationOutcome.FAILED;
         }
 
-        boolean autoApprove = !manualReviewRequired && registerAutoApprove;
+        boolean autoApprove = shouldAutoApprove(manualReviewRequired, registerAutoApprove);
         if (!autoApprove && manualReviewRequired && !questionnairePassed) {
             return RegistrationOutcome.QUESTIONNAIRE_SCORING_ERROR_PENDING_REVIEW;
         }
