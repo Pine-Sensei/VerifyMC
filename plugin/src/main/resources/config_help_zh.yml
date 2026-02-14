@@ -158,15 +158,11 @@ authme:
   mode: command
   # 是否强制在Web注册时要求输入密码
   require_password: true
-  # 是否在通过审核时自动注册至Authme
-  auto_register: false
-  # 是否在删除用户时自动从Authme注销
-  auto_unregister: false
   # 密码正则表达式
   password_regex: "^[a-zA-Z0-9_]{3,16}$"
   database:
     # database 模式下数据库类型: mysql / sqlite
-    type: mysql
+    type: sqlite
     # AuthMe 表名
     table: authme
     # 直写密码格式: sha256 / md5vb / plaintext

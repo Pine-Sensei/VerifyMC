@@ -144,7 +144,7 @@ const config = ref<ConfigResponse>({
   login: { enable_email: false, email_smtp: '' },
   admin: {},
   frontend: { theme: '', logo_url: '', announcement: '', web_server_prefix: '', username_regex: '' },
-  authme: { enabled: false, require_password: false, auto_register: false, auto_unregister: false, password_regex: '' },
+  authme: { enabled: false, require_password: false, password_regex: '' },
   captcha: { enabled: false, email_enabled: true, type: 'math' },
   questionnaire: { enabled: false, pass_score: 60 }
 })

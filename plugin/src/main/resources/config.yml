@@ -64,11 +64,9 @@ authme:
   enabled: true
   mode: command
   require_password: true
-  auto_register: false
-  auto_unregister: false
   password_regex: "^[a-zA-Z0-9_]{3,16}$"
   database:
-    type: mysql
+    type: sqlite
     table: authme
     password_format: sha256
     sync_interval_seconds: 30

@@ -252,15 +252,11 @@ authme:
   mode: command
   # Whether to require password input during web registration
   require_password: true
-  # Whether to automatically register to Authme when approval is granted
-  auto_register: false
-  # Whether to automatically unregister from Authme when user is deleted
-  auto_unregister: false
   # Password regex pattern
   password_regex: "^[a-zA-Z0-9_]{3,16}$"
   database:
     # DB type in database mode: mysql / sqlite
-    type: mysql
+    type: sqlite
     table: authme
     # Stored password format when writing to AuthMe DB directly: sha256 / md5vb / plaintext
     password_format: sha256
