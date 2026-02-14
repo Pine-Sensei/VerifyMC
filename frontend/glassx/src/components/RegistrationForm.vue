@@ -255,7 +255,7 @@ const normalizeUsernameForPlatform = () => {
 
 const getEffectiveUsernameRegex = () => {
   if (selectedPlatform.value === 'bedrock' && bedrockEnabled.value) {
-    return config.value.bedrock?.username_regex || '^\\.[a-zA-Z0-9_\\s]{3,16}$'
+    return config.value.bedrock?.username_regex || '^[a-zA-Z0-9._-]{3,16}$'
   }
   return config.value.frontend?.username_regex
 }

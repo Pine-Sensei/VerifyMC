@@ -336,7 +336,7 @@ bedrock:
   # Prefix for bedrock players (commonly "." for Floodgate)
   prefix: "."
   # Regex for bedrock usernames
-  username_regex: "^\\.[a-zA-Z0-9_\\s]{3,16}$"
+  username_regex: "^[a-zA-Z0-9._-]{3,16}$"
 
 # ----------------------------------------
 # Questionnaire Configuration
