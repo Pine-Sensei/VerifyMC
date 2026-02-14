@@ -953,9 +953,15 @@ public class WebServer {
                 resp.put("token", questionnaireToken);
                 resp.put("submitted_at", submittedAt);
                 resp.put("expires_at", expiresAt);
-                resp.put("msg", result.isPassed() ? 
-                    getMsg("questionnaire.passed", language).replace("{score}", String.valueOf(result.getScore())) : 
-                    getMsg("questionnaire.failed", language).replace("{score}", String.valueOf(result.getScore())).replace("{pass_score}", String.valueOf(result.getPassScore())));
+                if (result.isPassed()) {
+                    resp.put("msg", getMsg("questionnaire.passed", language).replace("{score}", String.valueOf(result.getScore())));
+                } else if (manualReviewRequired) {
+                    resp.put("msg", getMsg("register.questionnaire_scoring_error_pending_review", language));
+                } else {
+                    resp.put("msg", getMsg("questionnaire.failed", language)
+                        .replace("{score}", String.valueOf(result.getScore()))
+                        .replace("{pass_score}", String.valueOf(result.getPassScore())));
+                }
 
                 JSONObject extra = new JSONObject();
                 extra.put("passed", result.isPassed());
@@ -1290,7 +1296,7 @@ public class WebServer {
                 boolean questionnairePassed = submissionRecord != null && submissionRecord.passed;
                 boolean manualReviewRequired = submissionRecord != null && submissionRecord.manualReviewRequired;
                 boolean registerAutoApprove = plugin.getConfig().getBoolean("register.auto_approve", false);
-                boolean autoApprove = !manualReviewRequired && registerAutoApprove;
+                boolean autoApprove = registerAutoApprove && (!manualReviewRequired || questionnairePassed);
                 String status = autoApprove ? "approved" : "pending";
 
                 Integer questionnaireScore = submissionRecord != null ? submissionRecord.score : null;
