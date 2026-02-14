@@ -6,6 +6,10 @@ public class RegistrationOutcomeResolver {
         return !manualReviewRequired && registerAutoApprove;
     }
 
+    public String resolveStatus(RegistrationOutcome outcome) {
+        return outcome == RegistrationOutcome.SUCCESS_WHITELISTED ? "approved" : "pending";
+    }
+
     public RegistrationOutcome resolve(boolean ok,
                                        boolean manualReviewRequired,
                                        boolean questionnairePassed,
