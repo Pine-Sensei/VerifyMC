@@ -32,6 +32,9 @@ import java.util.Base64;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.nio.charset.StandardCharsets;
+import team.kitemc.verifymc.registration.RegistrationOutcome;
+import team.kitemc.verifymc.registration.RegistrationOutcomeResolver;
+import team.kitemc.verifymc.registration.RegistrationOutcomeMessageKeyMapper;
 
 public class WebServer {
     private HttpServer server;
@@ -50,6 +53,8 @@ public class WebServer {
     private final ResourceBundle messages;
     private final boolean debug;
     private final HashMap<String, ResourceBundle> languageCache = new HashMap<>();
+    private final RegistrationOutcomeResolver registrationOutcomeResolver = new RegistrationOutcomeResolver();
+    private final RegistrationOutcomeMessageKeyMapper registrationOutcomeMessageKeyMapper = new RegistrationOutcomeMessageKeyMapper();
     
     // Authentication related
     private final ConcurrentHashMap<String, Long> validTokens = new ConcurrentHashMap<>();
@@ -1290,7 +1295,7 @@ public class WebServer {
                 boolean questionnairePassed = submissionRecord != null && submissionRecord.passed;
                 boolean manualReviewRequired = submissionRecord != null && submissionRecord.manualReviewRequired;
                 boolean registerAutoApprove = plugin.getConfig().getBoolean("register.auto_approve", false);
-                boolean autoApprove = !manualReviewRequired && registerAutoApprove;
+                boolean autoApprove = registrationOutcomeResolver.shouldAutoApprove(manualReviewRequired, registerAutoApprove);
                 String status = autoApprove ? "approved" : "pending";
 
                 Integer questionnaireScore = submissionRecord != null ? submissionRecord.score : null;
@@ -1308,15 +1313,22 @@ public class WebServer {
                 }
                 
                 debugLog("registerUser result: " + ok);
-                if (ok && "approved".equals(status)) {
+                RegistrationOutcome outcome = registrationOutcomeResolver.resolve(
+                    ok,
+                    manualReviewRequired,
+                    questionnairePassed,
+                    registerAutoApprove
+                );
+
+                if (outcome == RegistrationOutcome.SUCCESS_WHITELISTED) {
                     // Registration successful and approved, automatically add to whitelist
                     debugLog("Execute: whitelist add " + normalizedUsername);
                     org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
                         org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + normalizedUsername);
                     });
-                    
+
                     // If Authme integration is enabled, register to Authme
-                    if (authmeService.isAuthmeEnabled() && 
+                    if (authmeService.isAuthmeEnabled() &&
                         password != null && !password.trim().isEmpty()) {
                         authmeService.registerToAuthme(normalizedUsername, password);
                     }
@@ -1325,19 +1337,8 @@ public class WebServer {
                     plugin.getLogger().warning("[VerifyMC] Registration failed: userDao.registerUser returned false, uuid=" + uuid + ", username=" + normalizedUsername + ", email=" + email);
                 }
                 resp.put("success", ok);
-                if (ok) {
-                    if (!autoApprove && manualReviewRequired && !questionnairePassed) {
-                        resp.put("msg", getMsg("register.questionnaire_scoring_error_pending_review", language));
-                    } else if (!autoApprove && questionnairePassed) {
-                        resp.put("msg", getMsg("register.questionnaire_pending_review", language));
-                    } else if (autoApprove) {
-                        resp.put("msg", getMsg("register.success_whitelisted", language));
-                    } else {
-                        resp.put("msg", getMsg("register.success", language));
-                    }
-                } else {
-                    resp.put("msg", getMsg("register.failed", language));
-                }
+                String messageKey = registrationOutcomeMessageKeyMapper.toMessageKey(outcome);
+                resp.put("msg", getMsg(messageKey, language));
             }
             sendJson(exchange, resp);
         });
