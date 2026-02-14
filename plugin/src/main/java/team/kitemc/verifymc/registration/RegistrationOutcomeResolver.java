@@ -3,7 +3,7 @@ package team.kitemc.verifymc.registration;
 public class RegistrationOutcomeResolver {
 
     public boolean shouldAutoApprove(boolean manualReviewRequired, boolean registerAutoApprove) {
-        return !manualReviewRequired && registerAutoApprove;
+        return registerAutoApprove;
     }
 
     public String resolveStatus(RegistrationOutcome outcome) {
@@ -18,15 +18,14 @@ public class RegistrationOutcomeResolver {
             return RegistrationOutcome.FAILED;
         }
 
-        boolean autoApprove = shouldAutoApprove(manualReviewRequired, registerAutoApprove);
-        if (!autoApprove && manualReviewRequired && !questionnairePassed) {
+        if (manualReviewRequired && !questionnairePassed) {
             return RegistrationOutcome.QUESTIONNAIRE_SCORING_ERROR_PENDING_REVIEW;
         }
-        if (!autoApprove && questionnairePassed) {
-            return RegistrationOutcome.QUESTIONNAIRE_PENDING_REVIEW;
-        }
-        if (autoApprove) {
+        if (registerAutoApprove) {
             return RegistrationOutcome.SUCCESS_WHITELISTED;
+        }
+        if (questionnairePassed) {
+            return RegistrationOutcome.QUESTIONNAIRE_PENDING_REVIEW;
         }
         return RegistrationOutcome.SUCCESS_PENDING;
     }
