@@ -88,7 +88,6 @@ authme:
       mySQLColumnEmail: email
       mySQLColumnLogged: isLogged
       mySQLColumnHasSession: hasSession
-      mySQLtotpKey: totp
       mySQLColumnIp: ip
       mySQLColumnLastLogin: lastlogin
       mySQLColumnRegisterDate: regdate

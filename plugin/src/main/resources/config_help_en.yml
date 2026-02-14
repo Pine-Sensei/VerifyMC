@@ -193,8 +193,6 @@ authme:
       mySQLColumnLogged: isLogged
       # Column for storing if a player has a valid session or not
       mySQLColumnHasSession: hasSession
-      # Column for storing a player's TOTP key (for two-factor authentication)
-      mySQLtotpKey: totp
       # Column for storing the player's last IP
       mySQLColumnIp: ip
       # Column for storing players lastlogins
