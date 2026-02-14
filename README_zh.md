@@ -259,7 +259,7 @@ authme:
   # 是否强制在Web注册时要求输入密码
   require_password: true
   # 密码正则表达式
-  password_regex: "^[a-zA-Z0-9_]{3,16}$"
+  password_regex: "^[a-zA-Z0-9_]{8,26}$"
   database:
     # database 模式下数据库类型: mysql / sqlite
     type: sqlite

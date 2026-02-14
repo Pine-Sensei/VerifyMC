@@ -57,7 +57,7 @@ public class AuthmeService {
         if (password == null || password.trim().isEmpty()) {
             return false;
         }
-        String regex = plugin.getConfig().getString("authme.password_regex", "^[a-zA-Z0-9_]{3,16}$");
+        String regex = plugin.getConfig().getString("authme.password_regex", "^[a-zA-Z0-9_]{8,26}$");
         return Pattern.matches(regex, password);
     }
 

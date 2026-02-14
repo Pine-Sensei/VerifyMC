@@ -253,7 +253,7 @@ authme:
   # Whether to require password input during web registration
   require_password: true
   # Password regex pattern
-  password_regex: "^[a-zA-Z0-9_]{3,16}$"
+  password_regex: "^[a-zA-Z0-9_]{8,26}$"
   database:
     # DB type in database mode: mysql / sqlite
     type: sqlite
