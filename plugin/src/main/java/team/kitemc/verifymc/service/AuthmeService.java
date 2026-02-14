@@ -10,7 +10,6 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.sql.Types;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -278,7 +277,8 @@ public class AuthmeService {
         String selectSql = "SELECT " + nameCol + " FROM " + tableName() + " WHERE " + nameCol + " = ?";
 
         StringBuilder updateSql = new StringBuilder("UPDATE " + tableName() + " SET " + passCol + " = ?, "
-            + loggedCol + " = 0, " + hasSessionCol + " = 0");
+            + realNameCol + " = ?, " + regDateCol + " = ?, " + lastLoginCol + " = ?, "
+            + ipCol + " = ?, " + regIpCol + " = ?, " + loggedCol + " = 0, " + hasSessionCol + " = 0");
         if (hasSaltColumn()) {
             updateSql.append(", ").append(saltCol).append(" = ?");
         }
@@ -288,7 +288,7 @@ public class AuthmeService {
             + regDateCol + ", " + lastLoginCol + ", " + ipCol + ", " + regIpCol + ", " + loggedCol
             + ", " + hasSessionCol + ", " + xCol + ", " + yCol + ", " + zCol + ", " + worldCol
             + ", " + yawCol + ", " + pitchCol + ", " + emailCol + ", " + totpCol);
-        StringBuilder insertValues = new StringBuilder("?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?");
+        StringBuilder insertValues = new StringBuilder("?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 0, ?, 0, 0, ?, ?");
         if (hasSaltColumn()) {
             insertColumns.append(", ").append(saltCol);
             insertValues.append(", ?");
@@ -296,6 +296,7 @@ public class AuthmeService {
         String insertSql = "INSERT INTO " + tableName() + " (" + insertColumns + ") VALUES (" + insertValues + ")";
 
         long now = System.currentTimeMillis() / 1000;
+        String loopback = "127.0.0.1";
         String storedPassword = buildStoredPassword(password);
 
         try (Connection conn = getAuthmeConnection();
@@ -310,6 +311,11 @@ public class AuthmeService {
                 try (PreparedStatement update = conn.prepareStatement(updateSql.toString())) {
                     int idx = 1;
                     update.setString(idx++, storedPassword);
+                    update.setString(idx++, username);
+                    update.setLong(idx++, now);
+                    update.setLong(idx++, now);
+                    update.setString(idx++, loopback);
+                    update.setString(idx++, loopback);
                     if (hasSaltColumn()) {
                         update.setString(idx++, "");
                     }
@@ -324,16 +330,9 @@ public class AuthmeService {
                     insert.setString(idx++, storedPassword);
                     insert.setLong(idx++, now);
                     insert.setLong(idx++, now);
-                    insert.setString(idx++, "");
-                    insert.setString(idx++, "");
-                    insert.setInt(idx++, 0);
-                    insert.setInt(idx++, 0);
-                    insert.setNull(idx++, Types.DOUBLE);
-                    insert.setNull(idx++, Types.DOUBLE);
-                    insert.setNull(idx++, Types.DOUBLE);
-                    insert.setString(idx++, "");
-                    insert.setNull(idx++, Types.FLOAT);
-                    insert.setNull(idx++, Types.FLOAT);
+                    insert.setString(idx++, loopback);
+                    insert.setString(idx++, loopback);
+                    insert.setString(idx++, "world");
                     insert.setString(idx++, "");
                     insert.setString(idx++, "");
                     if (hasSaltColumn()) {
