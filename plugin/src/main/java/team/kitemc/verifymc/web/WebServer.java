@@ -17,6 +17,9 @@ import team.kitemc.verifymc.service.AuthmeService;
 import team.kitemc.verifymc.service.CaptchaService;
 import team.kitemc.verifymc.service.QuestionnaireService;
 import team.kitemc.verifymc.service.DiscordService;
+import team.kitemc.verifymc.service.RegistrationApplicationService;
+import team.kitemc.verifymc.service.QuestionnaireApplicationService;
+import team.kitemc.verifymc.service.ReviewApplicationService;
 import org.bukkit.plugin.Plugin;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -33,8 +36,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.nio.charset.StandardCharsets;
 import team.kitemc.verifymc.registration.RegistrationOutcome;
-import team.kitemc.verifymc.registration.RegistrationOutcomeResolver;
-import team.kitemc.verifymc.registration.RegistrationOutcomeMessageKeyMapper;
 
 public class WebServer {
     private HttpServer server;
@@ -53,8 +54,9 @@ public class WebServer {
     private final ResourceBundle messages;
     private final boolean debug;
     private final HashMap<String, ResourceBundle> languageCache = new HashMap<>();
-    private final RegistrationOutcomeResolver registrationOutcomeResolver = new RegistrationOutcomeResolver();
-    private final RegistrationOutcomeMessageKeyMapper registrationOutcomeMessageKeyMapper = new RegistrationOutcomeMessageKeyMapper();
+    private final RegistrationApplicationService registrationApplicationService = new RegistrationApplicationService();
+    private final QuestionnaireApplicationService questionnaireApplicationService = new QuestionnaireApplicationService();
+    private final ReviewApplicationService reviewApplicationService = new ReviewApplicationService();
     
     // Authentication related
     private final ConcurrentHashMap<String, Long> validTokens = new ConcurrentHashMap<>();
@@ -730,10 +732,7 @@ public class WebServer {
             
             // Verify authentication
             if (!isAuthenticated(exchange)) {
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("message", "Authentication required");
-                sendJson(exchange, resp);
+                sendJson(exchange, ApiResponseFactory.failure("Authentication required"));
                 return;
             }
             
@@ -796,7 +795,7 @@ public class WebServer {
         });
         
         // /api/questionnaire - Get questionnaire questions
-        server.createContext("/api/questionnaire", exchange -> {
+        server.createContext("/api/questionnaire", new QuestionnaireHandler(exchange -> {
             debugLog("/api/questionnaire called");
             if (!"GET".equals(exchange.getRequestMethod())) { 
                 exchange.sendResponseHeaders(405, 0); 
@@ -821,10 +820,10 @@ public class WebServer {
                 resp.put("msg", "Failed to get questionnaire");
             }
             sendJson(exchange, resp);
-        });
+        }));
         
         // /api/submit-questionnaire - Submit questionnaire answers
-        server.createContext("/api/submit-questionnaire", exchange -> {
+        server.createContext("/api/submit-questionnaire", new QuestionnaireHandler(exchange -> {
             debugLog("/api/submit-questionnaire called");
             if (!"POST".equals(exchange.getRequestMethod())) { 
                 exchange.sendResponseHeaders(405, 0); 
@@ -866,18 +865,14 @@ public class WebServer {
                 // Parse answers from request
                 JSONObject answersJson = req.optJSONObject("answers");
                 if (answersJson == null) {
-                    resp.put("success", false);
-                    resp.put("msg", getMsg("questionnaire.answers_required", language));
-                    sendJson(exchange, resp);
+                    sendJson(exchange, questionnaireApplicationService.buildAnswersRequiredResponse(getMsg("questionnaire.answers_required", language)));
                     return;
                 }
                 
                 JSONObject questionnaire = questionnaireService.getQuestionnaire(language);
                 JSONArray questionDefs = questionnaire.optJSONArray("questions");
                 if (questionDefs == null) {
-                    resp.put("success", false);
-                    resp.put("msg", getMsg("questionnaire.answers_required", language));
-                    sendJson(exchange, resp);
+                    sendJson(exchange, questionnaireApplicationService.buildAnswersRequiredResponse(getMsg("questionnaire.answers_required", language)));
                     return;
                 }
 
@@ -978,11 +973,11 @@ public class WebServer {
                 resp.put("msg", "Failed to submit questionnaire: " + e.getMessage());
             }
             sendJson(exchange, resp);
-        });
+        }));
         
 
         // /api/send_code send verification code interface with rate limiting and authentication
-        server.createContext("/api/send_code", exchange -> {
+        server.createContext("/api/send_code", new RegistrationHandler(exchange -> {
             debugLog("/api/send_code called");
             if (!"POST".equals(exchange.getRequestMethod())) { 
                 exchange.sendResponseHeaders(405, 0); 
@@ -1055,10 +1050,10 @@ public class WebServer {
             }
             
             sendJson(exchange, resp);
-        });
+        }));
         
         // /api/register registration interface
-        server.createContext("/api/register", exchange -> {
+        server.createContext("/api/register", new RegistrationHandler(exchange -> {
             debugLog("/api/register called");
             if (!"POST".equals(exchange.getRequestMethod())) { exchange.sendResponseHeaders(405, 0); exchange.close(); return; }
             JSONObject req = new JSONObject(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
@@ -1295,7 +1290,7 @@ public class WebServer {
                 boolean questionnairePassed = submissionRecord != null && submissionRecord.passed;
                 boolean manualReviewRequired = submissionRecord != null && submissionRecord.manualReviewRequired;
                 boolean registerAutoApprove = plugin.getConfig().getBoolean("register.auto_approve", false);
-                boolean autoApprove = registrationOutcomeResolver.shouldAutoApprove(manualReviewRequired, registerAutoApprove);
+                boolean autoApprove = registrationApplicationService.shouldAutoApprove(manualReviewRequired, registerAutoApprove);
                 String status = autoApprove ? "approved" : "pending";
 
                 Integer questionnaireScore = submissionRecord != null ? submissionRecord.score : null;
@@ -1313,14 +1308,10 @@ public class WebServer {
                 }
                 
                 debugLog("registerUser result: " + ok);
-                RegistrationOutcome outcome = registrationOutcomeResolver.resolve(
-                    ok,
-                    manualReviewRequired,
-                    questionnairePassed,
-                    registerAutoApprove
-                );
+                RegistrationApplicationService.RegistrationDecision decision =
+                    registrationApplicationService.resolveDecision(ok, manualReviewRequired, questionnairePassed, registerAutoApprove);
 
-                if (outcome == RegistrationOutcome.SUCCESS_WHITELISTED) {
+                if (decision.outcome() == RegistrationOutcome.SUCCESS_WHITELISTED) {
                     // Registration successful and approved, automatically add to whitelist
                     debugLog("Execute: whitelist add " + normalizedUsername);
                     org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
@@ -1336,15 +1327,18 @@ public class WebServer {
                 if (!ok) {
                     plugin.getLogger().warning("[VerifyMC] Registration failed: userDao.registerUser returned false, uuid=" + uuid + ", username=" + normalizedUsername + ", email=" + email);
                 }
-                resp.put("success", ok);
-                String messageKey = registrationOutcomeMessageKeyMapper.toMessageKey(outcome);
-                resp.put("msg", getMsg(messageKey, language));
+                sendJson(exchange, registrationApplicationService.buildRegistrationResponse(
+                    decision,
+                    ok,
+                    key -> getMsg(key, language)
+                ));
+                return;
             }
             sendJson(exchange, resp);
-        });
+        }));
         
         // Admin login
-        server.createContext("/api/admin-login", exchange -> {
+        server.createContext("/api/admin-login", new UserAdminHandler(exchange -> {
             if (!"POST".equals(exchange.getRequestMethod())) { 
                 exchange.sendResponseHeaders(405, 0); 
                 exchange.close(); 
@@ -1368,10 +1362,10 @@ public class WebServer {
             }
             
             sendJson(exchange, resp);
-        });
+        }));
         
         // Admin token verification
-        server.createContext("/api/admin-verify", exchange -> {
+        server.createContext("/api/admin-verify", new UserAdminHandler(exchange -> {
             if (!"POST".equals(exchange.getRequestMethod())) { 
                 exchange.sendResponseHeaders(405, 0); 
                 exchange.close(); 
@@ -1389,16 +1383,13 @@ public class WebServer {
             }
             
             sendJson(exchange, resp);
-        });
+        }));
         
         // Get pending users list - requires authentication
-        server.createContext("/api/pending-list", exchange -> {
+        server.createContext("/api/pending-list", new ReviewHandler(exchange -> {
             // Verify authentication
             if (!isAuthenticated(exchange)) {
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("message", "Authentication required");
-                sendJson(exchange, resp);
+                sendJson(exchange, ApiResponseFactory.failure("Authentication required"));
                 return;
             }
             
@@ -1425,10 +1416,10 @@ public class WebServer {
                 resp.put("message", getMsg("admin.load_failed", language));
             }
             sendJson(exchange, resp);
-        });
+        }));
         
         // Unified user review interface - requires authentication
-        server.createContext("/api/review", exchange -> {
+        server.createContext("/api/review", new ReviewHandler(exchange -> {
             if (!"POST".equals(exchange.getRequestMethod())) { 
                 exchange.sendResponseHeaders(405, 0); 
                 exchange.close(); 
@@ -1437,10 +1428,7 @@ public class WebServer {
             
             // Verify authentication
             if (!isAuthenticated(exchange)) {
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("message", "Authentication required");
-                sendJson(exchange, resp);
+                sendJson(exchange, ApiResponseFactory.failure("Authentication required"));
                 return;
             }
             
@@ -1451,18 +1439,12 @@ public class WebServer {
             
             // Input validation
             if (!isValidUUID(uuid)) {
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("message", "Invalid UUID format");
-                sendJson(exchange, resp);
+                sendJson(exchange, ApiResponseFactory.failure("Invalid UUID format"));
                 return;
             }
             
             if (!"approve".equals(action) && !"reject".equals(action)) {
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("message", "Invalid action");
-                sendJson(exchange, resp);
+                sendJson(exchange, ApiResponseFactory.failure("Invalid action"));
                 return;
             }
             
@@ -1529,35 +1511,29 @@ public class WebServer {
                     }).start();
                 }
                 
-                resp.put("success", success);
-                resp.put("msg", success ? 
-                    ("approve".equals(action) ? getMsg("review.approve_success", language) : getMsg("review.reject_success", language)) :
-                    getMsg("review.failed", language));
-                
+                JSONObject reviewResp = reviewApplicationService.buildReviewResponse(success, "approve".equals(action), key -> getMsg(key, language));
+
                 // WebSocket push
                 if (success) {
                     JSONObject wsMsg = new JSONObject();
                     wsMsg.put("type", action);
                     wsMsg.put("uuid", uuid);
-                    wsMsg.put("msg", resp.getString("msg"));
+                    wsMsg.put("msg", reviewResp.getString("msg"));
                     wsServer.broadcastMessage(wsMsg.toString());
                 }
+                sendJson(exchange, reviewResp);
+                return;
             } catch (Exception e) {
-                resp.put("success", false);
-                resp.put("message", getMsg("review.failed", language));
+                sendJson(exchange, reviewApplicationService.buildReviewResponse(false, false, key -> getMsg(key, language)));
+                return;
             }
-            
-            sendJson(exchange, resp);
-        });
+        }));
         
         // Get all users - requires authentication
-        server.createContext("/api/all-users", exchange -> {
+        server.createContext("/api/all-users", new UserAdminHandler(exchange -> {
             // Verify authentication
             if (!isAuthenticated(exchange)) {
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("message", "Authentication required");
-                sendJson(exchange, resp);
+                sendJson(exchange, ApiResponseFactory.failure("Authentication required"));
                 return;
             }
 
@@ -1581,16 +1557,13 @@ public class WebServer {
                 resp.put("message", getMsg("admin.load_failed", language));
             }
             sendJson(exchange, resp);
-        });
+        }));
         
         // Get users with pagination - requires authentication
-        server.createContext("/api/users-paginated", exchange -> {
+        server.createContext("/api/users-paginated", new UserAdminHandler(exchange -> {
             // Verify authentication
             if (!isAuthenticated(exchange)) {
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("message", "Authentication required");
-                sendJson(exchange, resp);
+                sendJson(exchange, ApiResponseFactory.failure("Authentication required"));
                 return;
             }
 
@@ -1678,10 +1651,10 @@ public class WebServer {
                 resp.put("message", getMsg("admin.load_failed", language));
             }
             sendJson(exchange, resp);
-        });
+        }));
         
         // Delete user - requires authentication
-        server.createContext("/api/delete-user", exchange -> {
+        server.createContext("/api/delete-user", new UserAdminHandler(exchange -> {
             if (!"POST".equals(exchange.getRequestMethod())) { 
                 exchange.sendResponseHeaders(405, 0); 
                 exchange.close(); 
@@ -1690,10 +1663,7 @@ public class WebServer {
             
             // Verify authentication
             if (!isAuthenticated(exchange)) {
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("message", "Authentication required");
-                sendJson(exchange, resp);
+                sendJson(exchange, ApiResponseFactory.failure("Authentication required"));
                 return;
             }
             
@@ -1703,10 +1673,7 @@ public class WebServer {
             
             // Input validation
             if (!isValidUUID(uuid)) {
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("message", "Invalid UUID format");
-                sendJson(exchange, resp);
+                sendJson(exchange, ApiResponseFactory.failure("Invalid UUID format"));
                 return;
             }
             
@@ -1746,10 +1713,10 @@ public class WebServer {
             }
             
             sendJson(exchange, resp);
-        });
+        }));
         
         // Ban user - requires authentication
-        server.createContext("/api/ban-user", exchange -> {
+        server.createContext("/api/ban-user", new UserAdminHandler(exchange -> {
             if (!"POST".equals(exchange.getRequestMethod())) { 
                 exchange.sendResponseHeaders(405, 0); 
                 exchange.close(); 
@@ -1758,10 +1725,7 @@ public class WebServer {
             
             // Verify authentication
             if (!isAuthenticated(exchange)) {
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("message", "Authentication required");
-                sendJson(exchange, resp);
+                sendJson(exchange, ApiResponseFactory.failure("Authentication required"));
                 return;
             }
             
@@ -1771,10 +1735,7 @@ public class WebServer {
             
             // Input validation
             if (!isValidUUID(uuid)) {
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("message", "Invalid UUID format");
-                sendJson(exchange, resp);
+                sendJson(exchange, ApiResponseFactory.failure("Invalid UUID format"));
                 return;
             }
             
@@ -1814,10 +1775,10 @@ public class WebServer {
             }
             
             sendJson(exchange, resp);
-        });
+        }));
         
         // Unban user - requires authentication
-        server.createContext("/api/unban-user", exchange -> {
+        server.createContext("/api/unban-user", new UserAdminHandler(exchange -> {
             if (!"POST".equals(exchange.getRequestMethod())) { 
                 exchange.sendResponseHeaders(405, 0); 
                 exchange.close(); 
@@ -1826,10 +1787,7 @@ public class WebServer {
             
             // Verify authentication
             if (!isAuthenticated(exchange)) {
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("message", "Authentication required");
-                sendJson(exchange, resp);
+                sendJson(exchange, ApiResponseFactory.failure("Authentication required"));
                 return;
             }
             
@@ -1839,10 +1797,7 @@ public class WebServer {
             
             // Input validation
             if (!isValidUUID(uuid)) {
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("message", "Invalid UUID format");
-                sendJson(exchange, resp);
+                sendJson(exchange, ApiResponseFactory.failure("Invalid UUID format"));
                 return;
             }
             
@@ -1884,10 +1839,10 @@ public class WebServer {
             }
             
             sendJson(exchange, resp);
-        });
+        }));
         
         // Change user password
-        server.createContext("/api/change-password", exchange -> {
+        server.createContext("/api/change-password", new UserAdminHandler(exchange -> {
             if (!"POST".equals(exchange.getRequestMethod())) { 
                 exchange.sendResponseHeaders(405, 0); 
                 exchange.close(); 
@@ -1896,10 +1851,7 @@ public class WebServer {
             
             // Verify authentication
             if (!isAuthenticated(exchange)) {
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("message", "Authentication required");
-                sendJson(exchange, resp);
+                sendJson(exchange, ApiResponseFactory.failure("Authentication required"));
                 return;
             }
             
@@ -1977,10 +1929,10 @@ public class WebServer {
             }
             
             sendJson(exchange, resp);
-        });
+        }));
         
         // Get user status
-        server.createContext("/api/user-status", exchange -> {
+        server.createContext("/api/user-status", new UserAdminHandler(exchange -> {
             if (!"GET".equals(exchange.getRequestMethod())) { 
                 exchange.sendResponseHeaders(405, 0); 
                 exchange.close(); 
@@ -2023,16 +1975,13 @@ public class WebServer {
                 resp.put("message", "UUID parameter required");
             }
             sendJson(exchange, resp);
-        });
+        }));
         
         // Version check API - requires authentication
         server.createContext("/api/version-check", exchange -> {
             // Verify authentication
             if (!isAuthenticated(exchange)) {
-                JSONObject resp = new JSONObject();
-                resp.put("success", false);
-                resp.put("message", "Authentication required");
-                sendJson(exchange, resp);
+                sendJson(exchange, ApiResponseFactory.failure("Authentication required"));
                 return;
             }
             
