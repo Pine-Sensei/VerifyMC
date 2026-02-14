@@ -379,7 +379,8 @@ const handleSubmit = async () => {
       username: getNormalizedUsername(),
       email: form.email.trim().toLowerCase(),
       uuid: generateUUID(),
-      language: locale.value
+      language: locale.value,
+      platform: selectedPlatform.value
     }
 
     if (emailEnabled.value) registerData.code = form.code

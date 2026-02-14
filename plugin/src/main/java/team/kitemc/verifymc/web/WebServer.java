@@ -308,19 +308,40 @@ public class WebServer {
         return uuid != null && UUID_PATTERN.matcher(uuid).matches();
     }
     
-    private boolean isValidUsername(String username) {
+    private boolean isValidUsername(String username, String platform) {
         if (username == null || username.trim().isEmpty()) {
             return false;
         }
-        String regex = getUsernameRegexForUser(username);
+        String regex = getUsernameRegexForUser(username, platform);
         return username.matches(regex);
     }
 
-    private String getUsernameRegexForUser(String username) {
+    private String normalizeUsernameByPlatform(String username, String platform) {
+        if (username == null) {
+            return null;
+        }
+        String trimmed = username.trim();
+        if (trimmed.isEmpty()) {
+            return trimmed;
+        }
+
         boolean bedrockEnabled = plugin.getConfig().getBoolean("bedrock.enabled", false);
         String bedrockPrefix = plugin.getConfig().getString("bedrock.prefix", ".");
+        boolean explicitBedrock = "bedrock".equalsIgnoreCase(platform);
 
-        if (bedrockEnabled && username != null && username.startsWith(bedrockPrefix)) {
+        if (bedrockEnabled && explicitBedrock && bedrockPrefix != null && !bedrockPrefix.isEmpty() && !trimmed.startsWith(bedrockPrefix)) {
+            return bedrockPrefix + trimmed;
+        }
+
+        return trimmed;
+    }
+
+    private String getUsernameRegexForUser(String username, String platform) {
+        boolean bedrockEnabled = plugin.getConfig().getBoolean("bedrock.enabled", false);
+        String bedrockPrefix = plugin.getConfig().getString("bedrock.prefix", ".");
+        boolean explicitBedrock = "bedrock".equalsIgnoreCase(platform);
+
+        if (bedrockEnabled && (explicitBedrock || (username != null && username.startsWith(bedrockPrefix)))) {
             return plugin.getConfig().getString("bedrock.username_regex", "^\\.[a-zA-Z0-9_\\s]{3,16}$");
         }
 
@@ -1045,8 +1066,10 @@ public class WebServer {
             String captchaToken = req.optString("captchaToken", "");
             String captchaAnswer = req.optString("captchaAnswer", "");
             String language = req.optString("language", "en");
+            String platform = req.optString("platform", "java");
             JSONObject questionnaire = req.optJSONObject("questionnaire");
-            debugLog("register params: email=" + maskEmail(email) + ", codeHash=" + hashToken(code) + ", uuid=" + uuid + ", username=" + username + ", hasPassword=" + !password.isEmpty() + ", hasCaptcha=" + !captchaToken.isEmpty());
+            String normalizedUsername = normalizeUsernameByPlatform(username, platform);
+            debugLog("register params: email=" + maskEmail(email) + ", codeHash=" + hashToken(code) + ", uuid=" + uuid + ", username=" + normalizedUsername + ", platform=" + platform + ", hasPassword=" + !password.isEmpty() + ", hasCaptcha=" + !captchaToken.isEmpty());
 
             // Check if password is required
             if (authmeService.isAuthmeEnabled() && authmeService.isPasswordRequired()) {
@@ -1091,8 +1114,8 @@ public class WebServer {
                 }
             }
             // Username uniqueness check
-            if (userDao.getUserByUsername(username) != null) {
-                debugLog("Username already exists: " + username);
+            if (userDao.getUserByUsername(normalizedUsername) != null) {
+                debugLog("Username already exists: " + normalizedUsername);
                 JSONObject resp = new JSONObject();
                 resp.put("success", false);
                 resp.put("msg", "Username already exists");
@@ -1100,15 +1123,15 @@ public class WebServer {
                 return;
             }
             // Pre-registration username rule validation and case conflict check
-            if (!isValidUsername(username)) {
+            if (!isValidUsername(normalizedUsername, platform)) {
                 JSONObject resp = new JSONObject();
                 resp.put("success", false);
-                String usernameRegex = getUsernameRegexForUser(username);
+                String usernameRegex = getUsernameRegexForUser(normalizedUsername, platform);
                 resp.put("msg", getMsg("username.invalid", language).replace("{regex}", usernameRegex));
                 sendJson(exchange, resp);
                 return;
             }
-            if (isUsernameCaseConflict(username)) {
+            if (isUsernameCaseConflict(normalizedUsername)) {
                 JSONObject resp = new JSONObject();
                 resp.put("success", false);
                 resp.put("msg", getMsg("username.case_conflict", language));
@@ -1141,7 +1164,7 @@ public class WebServer {
                 sendJson(exchange, resp);
                 return;
             }
-            if (username == null || username.trim().isEmpty()) {
+            if (normalizedUsername == null || normalizedUsername.trim().isEmpty()) {
                 JSONObject resp = new JSONObject();
                 resp.put("success", false);
                 resp.put("msg", getMsg("register.invalid_username", language));
@@ -1252,15 +1275,15 @@ public class WebServer {
                 
                 // Check Discord binding if required
                 if (discordService.isRequired()) {
-                    if (!discordService.isLinked(username)) {
-                        debugLog("Discord binding required but user not linked: " + username);
+                    if (!discordService.isLinked(normalizedUsername)) {
+                        debugLog("Discord binding required but user not linked: " + normalizedUsername);
                         resp.put("success", false);
                         resp.put("msg", getMsg("discord.required", language));
                         resp.put("discord_required", true);
                         sendJson(exchange, resp);
                         return;
                     }
-                    debugLog("Discord binding verified for: " + username);
+                    debugLog("Discord binding verified for: " + normalizedUsername);
                 }
                 
                 debugLog("All checks passed, registering user");
@@ -1279,27 +1302,27 @@ public class WebServer {
 
                 // Choose registration method based on whether password is provided
                 if (password != null && !password.trim().isEmpty()) {
-                    ok = userDao.registerUser(uuid, username, email, status, password, questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
+                    ok = userDao.registerUser(uuid, normalizedUsername, email, status, password, questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
                 } else {
-                    ok = userDao.registerUser(uuid, username, email, status, questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
+                    ok = userDao.registerUser(uuid, normalizedUsername, email, status, questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
                 }
                 
                 debugLog("registerUser result: " + ok);
                 if (ok && "approved".equals(status)) {
                     // Registration successful and approved, automatically add to whitelist
-                    debugLog("Execute: whitelist add " + username);
+                    debugLog("Execute: whitelist add " + normalizedUsername);
                     org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
-                        org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + username);
+                        org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + normalizedUsername);
                     });
                     
                     // If Authme integration is enabled, register to Authme
                     if (authmeService.isAuthmeEnabled() && 
                         password != null && !password.trim().isEmpty()) {
-                        authmeService.registerToAuthme(username, password);
+                        authmeService.registerToAuthme(normalizedUsername, password);
                     }
                 }
                 if (!ok) {
-                    plugin.getLogger().warning("[VerifyMC] Registration failed: userDao.registerUser returned false, uuid=" + uuid + ", username=" + username + ", email=" + email);
+                    plugin.getLogger().warning("[VerifyMC] Registration failed: userDao.registerUser returned false, uuid=" + uuid + ", username=" + normalizedUsername + ", email=" + email);
                 }
                 resp.put("success", ok);
                 if (ok) {
