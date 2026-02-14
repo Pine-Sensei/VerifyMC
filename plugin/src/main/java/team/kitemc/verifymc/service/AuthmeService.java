@@ -58,12 +58,12 @@ public class AuthmeService {
         if (password == null || password.trim().isEmpty()) {
             return false;
         }
-        String regex = plugin.getConfig().getString("authme.password_regex", "^[a-zA-Z0-9_]{3,16}$");
+        String regex = plugin.getConfig().getString("authme.password_regex", "^[!-~]{5,30}$");
         try {
             return Pattern.matches(regex, password);
         } catch (java.util.regex.PatternSyntaxException e) {
             plugin.getLogger().warning("[VerifyMC] Invalid authme.password_regex in config: " + regex + " — " + e.getMessage());
-            return Pattern.matches("^[a-zA-Z0-9_]{3,16}$", password);
+            return Pattern.matches("^[!-~]{5,30}$", password);
         }
     }
 

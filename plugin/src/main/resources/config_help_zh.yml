@@ -162,8 +162,8 @@ authme:
   auto_register: false
   # 是否在删除用户时自动从Authme注销
   auto_unregister: false
-  # 密码正则表达式
-  password_regex: "^[a-zA-Z0-9_]{3,16}$"
+  # 密码正则表达式，默认与 AuthMe 的 allowedPasswordCharacters 对齐：所有可见 ASCII 字符，长度 5-30
+  password_regex: "^[!-~]{5,30}$"
 
 # ----------------------------------------
 # 图形验证码配置

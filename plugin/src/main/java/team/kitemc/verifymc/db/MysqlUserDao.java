@@ -197,7 +197,7 @@ public class MysqlUserDao implements UserDao {
             ps.setString(2, username);
             ps.setString(3, email);
             ps.setString(4, status);
-            ps.setString(5, password);
+            ps.setString(5, hashPassword(password));
             ps.setLong(6, System.currentTimeMillis());
             if (questionnaireScore != null)
                 ps.setInt(7, questionnaireScore);
@@ -237,11 +237,25 @@ public class MysqlUserDao implements UserDao {
         }
     }
 
+    private String hashPassword(String password) {
+        if (password == null || password.isEmpty()) return null;
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(password.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            debugLog("SHA-256 not available, storing password hash failed");
+            return null;
+        }
+    }
+
     @Override
     public boolean updateUserPassword(String uuidOrName, String password) {
         String sql = "UPDATE users SET password=? WHERE uuid=? OR username=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, password);
+            ps.setString(1, hashPassword(password));
             ps.setString(2, uuidOrName);
             ps.setString(3, uuidOrName);
             int rows = ps.executeUpdate();

@@ -1,30 +1,26 @@
 release: true
-version: 1.5.0
+version: 1.5.1
 release_notes: |
-  [Chinese](https://github.com/KiteMC/VerifyMC/blob/v1.5.0/release_notes_zh.md) | English | [Official Documentation](https://kitemc.com/docs/verifymc/)
+  [Chinese](https://github.com/KiteMC/VerifyMC/blob/v1.5.1/release_notes_zh.md) | English | [Official Documentation](https://kitemc.com/docs/verifymc/)
 
-  # VerifyMC v1.5.0 Release Notes
+  # VerifyMC v1.5.1 Release Notes
 
-  Starting from this version, VerifyMC adopts proper Semantic Versioning (SemVer). Previous versions v1.2.5, v1.2.8, v1.2.10 introduced major features but only bumped PATCH. Historical tags cannot be changed, so we corrected versioning from this release: v1.2.5 = v1.3.0, v1.2.8 = v1.4.0, current = v1.5.0.
+  ## Bug Fixes
 
-  ## Security Fixes
+  - Aligned password regex default with AuthMe (changed from ^[a-zA-Z0-9_]{3,16}$ to ^[!-~]{5,30}$), fixing registration failures when passwords contain special characters or exceed 16 chars
+  - Fixed hashed password being passed to AuthMe during manual approval (now skipped, admin uses /api/change-password instead)
+  - Fixed MysqlUserDao not hashing passwords (now consistent with FileUserDao)
+  - Fixed plugin reload (/vmc reload) causing other plugins ClassLoader to close by replacing disable/enable with safe config-only hot reload
 
-  - Admin login brute force protection (5 attempts per IP / 5 minutes)
-  - WebSocket connections now require admin token authentication
-  - Passwords stored as SHA-256 hashes instead of plaintext
-  - /api/check-whitelist no longer exposes user email addresses
-  - X-Forwarded-For header no longer trusted by default (new trust_proxy config)
-  - IP-based rate limiting on verification code sending (10 per IP / 10 minutes)
-  - Fixed registration race condition allowing duplicate usernames
-  - Fixed registration validation order (format checks before DB queries)
+  ## Security Improvements
 
-  ## Bug Fixes and Improvements
+  - Token generation now uses SecureRandom instead of Math.random()
+  - Admin password comparison uses constant-time method to prevent timing attacks
+  - Email notification thread set to daemon to prevent blocking server shutdown
 
-  - Added api-version to plugin.yml to fix legacy material support warning
-  - Added Leaves server core detection
-  - Fixed Jakarta Mail resource loading in shaded jar
-  - Fixed hot-reload resource initialization failure on Paper
-  - Fixed regex validation crash on invalid config patterns (fallback to defaults)
-  - Daemon cleanup thread for expired tokens, submissions, and rate limit records
-  - Thread-safe language cache
+  ## i18n and UX
+
+  - Hardcoded 'Username already exists' message replaced with i18n support
+  - Added reload success/failure/theme-changed messages in both Chinese and English
+  - QuestionnaireService now supports config hot reload via /vmc reload
 

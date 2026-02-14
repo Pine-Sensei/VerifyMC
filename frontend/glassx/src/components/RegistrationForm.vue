@@ -273,8 +273,8 @@ const validatePassword = () => {
         }
       } catch (e) {
         console.warn('Invalid password_regex from config:', authmeConfig.value.password_regex, e)
-        if (!/^[a-zA-Z0-9_]{3,16}$/.test(form.password)) {
-          errors.password = t('register.validation.password_format', { regex: '^[a-zA-Z0-9_]{3,16}$' })
+        if (!/^[!-~]{5,30}$/.test(form.password)) {
+          errors.password = t('register.validation.password_format', { regex: '^[!-~]{5,30}$' })
         }
       }
     }

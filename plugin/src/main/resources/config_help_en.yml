@@ -162,8 +162,8 @@ authme:
   auto_register: false
   # Whether to automatically unregister from Authme when user is deleted
   auto_unregister: false
-  # Password regex pattern
-  password_regex: "^[a-zA-Z0-9_]{3,16}$"
+  # Password regex pattern, aligned with AuthMe's allowedPasswordCharacters: all visible ASCII, length 5-30
+  password_regex: "^[!-~]{5,30}$"
 
 # ----------------------------------------
 # Captcha Configuration

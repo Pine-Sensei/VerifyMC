@@ -304,13 +304,14 @@ public class WebServer {
      */
     private String generateSecureToken() {
         try {
-            String timestamp = String.valueOf(System.currentTimeMillis());
-            String random = String.valueOf(Math.random());
-            String secret = plugin.getConfig().getString("admin.password", "default_secret");
+            java.security.SecureRandom secureRandom = new java.security.SecureRandom();
+            byte[] randomBytes = new byte[32];
+            secureRandom.nextBytes(randomBytes);
 
             MessageDigest md = MessageDigest.getInstance("SHA-256");
-            String combined = timestamp + random + secret;
-            byte[] hash = md.digest(combined.getBytes());
+            md.update(randomBytes);
+            md.update(String.valueOf(System.nanoTime()).getBytes());
+            byte[] hash = md.digest();
             String token = Base64.getEncoder().encodeToString(hash);
 
             // Store token and expiry time
@@ -318,8 +319,8 @@ public class WebServer {
 
             return token;
         } catch (NoSuchAlgorithmException e) {
-            // Fallback to simple token
-            String token = "admin_token_" + System.currentTimeMillis() + "_" + Math.random();
+            // Fallback to UUID-based token
+            String token = UUID.randomUUID().toString() + UUID.randomUUID().toString();
             validTokens.put(token, System.currentTimeMillis() + TOKEN_EXPIRY_TIME);
             return token;
         }
@@ -518,7 +519,7 @@ public class WebServer {
             authme.put("require_password", config.getBoolean("authme.require_password", false));
             authme.put("auto_register", config.getBoolean("authme.auto_register", false));
             authme.put("auto_unregister", config.getBoolean("authme.auto_unregister", false));
-            authme.put("password_regex", config.getString("authme.password_regex", "^[a-zA-Z0-9_]{3,16}$"));
+            authme.put("password_regex", config.getString("authme.password_regex", "^[!-~]{5,30}$"));
             // Username regex pattern
             frontend.put("username_regex", config.getString("username_regex", "^[a-zA-Z0-9_-]{3,16}$"));
 
@@ -1116,7 +1117,7 @@ public class WebServer {
                 if (!authmeService.isValidPassword(password)) {
                     JSONObject resp = new JSONObject();
                     resp.put("success", false);
-                    String passwordRegex = plugin.getConfig().getString("authme.password_regex", "^[a-zA-Z0-9_]{3,16}$");
+                    String passwordRegex = plugin.getConfig().getString("authme.password_regex", "^[!-~]{5,30}$");
                     resp.put("msg", getMsg("register.invalid_password", language).replace("{regex}", passwordRegex));
                     sendJson(exchange, resp);
                     return;
@@ -1179,7 +1180,7 @@ public class WebServer {
                 debugLog("Username already exists: " + username);
                 JSONObject resp = new JSONObject();
                 resp.put("success", false);
-                resp.put("msg", "Username already exists");
+                resp.put("msg", getMsg("register.username_exists", language));
                 sendJson(exchange, resp);
                 return;
             }
@@ -1395,7 +1396,7 @@ public class WebServer {
             String adminPassword = plugin.getConfig().getString("admin.password", "");
             JSONObject resp = new JSONObject();
 
-            if (password.equals(adminPassword)) {
+            if (MessageDigest.isEqual(password.getBytes(StandardCharsets.UTF_8), adminPassword.getBytes(StandardCharsets.UTF_8))) {
                 String token = generateSecureToken();
                 resp.put("success", true);
                 resp.put("token", token);
@@ -1532,11 +1533,9 @@ public class WebServer {
                             org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + username);
                         });
 
-                        // If Authme integration is enabled and auto registration is enabled, and password exists, register to Authme
-                        if (authmeService.isAuthmeEnabled() && authmeService.isAutoRegisterEnabled() &&
-                            password != null && !password.trim().isEmpty()) {
-                            authmeService.registerToAuthme(username, password);
-                        }
+                        // Note: AuthMe auto-register is skipped during manual review because
+                        // stored passwords are SHA-256 hashes (not plaintext). Admin should use
+                        // /api/change-password to set the password for AuthMe users after approval.
                     } else {
                         // Review rejected, ensure user is not in whitelist
                         debugLog("Execute: whitelist remove " + username);
@@ -1558,13 +1557,15 @@ public class WebServer {
                     final boolean approved = "approve".equals(action);
                     final String finalReason = reason;
                     final String finalLanguage = language;
-                    new Thread(() -> {
+                    Thread mailThread = new Thread(() -> {
                         try {
                             mailService.sendReviewResultNotification(finalEmail, finalUsername, approved, finalReason, finalLanguage);
                         } catch (Exception e) {
                             debugLog("Failed to send review result notification: " + e.getMessage());
                         }
-                    }).start();
+                    });
+                    mailThread.setDaemon(true);
+                    mailThread.start();
                 }
 
                 resp.put("success", success);
@@ -1955,7 +1956,7 @@ public class WebServer {
             // Validate password format
             if (!authmeService.isValidPassword(newPassword)) {
                 resp.put("success", false);
-                String passwordRegex = plugin.getConfig().getString("authme.password_regex", "^[a-zA-Z0-9_]{3,16}$");
+                String passwordRegex = plugin.getConfig().getString("authme.password_regex", "^[!-~]{5,30}$");
                 resp.put("msg", getMsg("admin.invalid_password", language).replace("{regex}", passwordRegex));
                 sendJson(exchange, resp);
                 return;

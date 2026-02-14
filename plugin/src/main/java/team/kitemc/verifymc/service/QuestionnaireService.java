@@ -57,6 +57,13 @@ public class QuestionnaireService {
     }
 
     /**
+     * Reload questionnaire configuration from disk (called by /vmc reload)
+     */
+    public void reloadConfig() {
+        loadQuestionnaireConfig();
+    }
+
+    /**
      * Load questionnaire configuration from file
      */
     private void loadQuestionnaireConfig() {

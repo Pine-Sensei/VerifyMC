@@ -368,30 +368,39 @@ public class VerifyMC extends JavaPlugin implements Listener {
      */
     private void reloadPlugin(CommandSender sender, String language) {
         try {
-            // Check if theme has changed
             String oldTheme = getConfig().getString("frontend.theme", "default");
-            File configFile = new File(getDataFolder(), "config.yml");
-            String configContent = new String(java.nio.file.Files.readAllBytes(configFile.toPath()), java.nio.charset.StandardCharsets.UTF_8);
-            String newTheme = oldTheme;
-            java.util.regex.Matcher m = java.util.regex.Pattern.compile("frontend.theme\\s*:\\s*(\\w+)").matcher(configContent);
-            if (m.find()) newTheme = m.group(1);
+
+            // Reload config from disk
+            reloadConfig();
+            FileConfiguration config = getConfig();
+
+            // Refresh cached config values
+            whitelistMode = config.getString("whitelist_mode", "bukkit");
+            whitelistJsonSync = config.getBoolean("whitelist_json_sync", true);
+            webRegisterUrl = config.getString("web_register_url", "https://yourdomain.com/");
+            webServerPrefix = config.getString("web_server_prefix", "[VerifyMC]");
+            debug = config.getBoolean("debug", false);
+
+            // Reload i18n messages
+            String configLang = getConfigLanguage();
+            messages = resourceManager.loadI18nBundle(configLang);
+
+            // Reload questionnaire config
+            if (questionnaireService != null) {
+                questionnaireService.reloadConfig();
+            }
+
+            // Check theme change (requires server restart)
+            String newTheme = config.getString("frontend.theme", "default");
             boolean themeChanged = !oldTheme.equals(newTheme);
-            sender.sendMessage("§aRestarting plugin...");
-            Bukkit.getScheduler().runTask(this, () -> {
-                try {
-                    Bukkit.getPluginManager().disablePlugin(this);
-                    Bukkit.getPluginManager().enablePlugin(this);
-                    sender.sendMessage("§aPlugin restart successful");
-                    sender.sendMessage("§7Note: /vmc reload can only reload partial plugin configurations. For a complete reload, please restart the server.");
-                    if (themeChanged) {
-                        sender.sendMessage("§ePlease restart server to switch frontend theme");
-                    }
-                } catch (Exception e) {
-                    sender.sendMessage("§cPlugin restart failed: " + e.getMessage());
-                }
-            });
+
+            sender.sendMessage("§a" + getMessage("command.reload_success", language));
+            if (themeChanged) {
+                sender.sendMessage("§e" + getMessage("command.reload_theme_changed", language));
+            }
+            sender.sendMessage("§7" + getMessage("command.reload_note", language));
         } catch (Exception e) {
-            sender.sendMessage("§cPlugin restart failed: " + e.getMessage());
+            sender.sendMessage("§c" + getMessage("command.reload_failed", language) + ": " + e.getMessage());
         }
     }
 
@@ -419,7 +428,7 @@ public class VerifyMC extends JavaPlugin implements Listener {
             // Validate password format (if password is provided)
             if (password != null && !password.isEmpty() && authmeService.isAuthmeEnabled()) {
                 if (!authmeService.isValidPassword(password)) {
-                    String passwordRegex = getConfig().getString("authme.password_regex", "^[a-zA-Z0-9_]{3,16}$");
+                    String passwordRegex = getConfig().getString("authme.password_regex", "^[!-~]{5,30}$");
                     sender.sendMessage("§c" + getMessage("command.invalid_password", language).replace("{regex}", passwordRegex));
                     return;
                 }
