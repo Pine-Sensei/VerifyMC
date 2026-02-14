@@ -127,6 +127,9 @@ import Button from './ui/Button.vue'
 const emit = defineEmits(['passed', 'back', 'skip'])
 const notification = useNotification()
 
+const submitSuccessFallback = () => t('questionnaire.passed')
+const submitFailedFallback = () => t('questionnaire.failed')
+
 const loading = ref(true)
 const submitting = ref(false)
 const submitted = ref(false)
@@ -208,6 +211,9 @@ const loadQuestionnaire = async () => {
     if (data.success && data.data) {
       questionnaireEnabled.value = data.data.enabled
       questions.value = data.data.questions || []
+      Object.keys(answers).forEach(key => {
+        delete answers[Number(key)]
+      })
       questions.value.forEach(question => {
         answers[question.id] = initAnswer(question)
       })
@@ -233,14 +239,17 @@ const handleSubmit = async () => {
 
   try {
     const formattedAnswers: Record<string, QuestionnaireAnswer> = Object.fromEntries(
-      Object.entries(answers).map(([questionId, answer]) => [
-        questionId,
-        {
-          type: answer.type,
-          selectedOptionIds: [...answer.selectedOptionIds],
-          textAnswer: answer.textAnswer
-        }
-      ])
+      questions.value.map(question => {
+        const answer = answers[question.id] ?? initAnswer(question)
+        return [
+          String(question.id),
+          {
+            type: answer.type,
+            selectedOptionIds: [...answer.selectedOptionIds],
+            textAnswer: answer.textAnswer
+          }
+        ]
+      })
     )
 
     const data: SubmitQuestionnaireResponse = await apiService.submitQuestionnaire({
@@ -261,11 +270,11 @@ const handleSubmit = async () => {
       result.value = submissionResult
 
       if (data.passed) {
-        notification.success(t('questionnaire.passed'), getErrorMessage(data))
+        notification.success(t('questionnaire.passed'), getErrorMessage(data) || submitSuccessFallback())
         emit('passed', submissionResult)
       } else {
         submitted.value = true
-        notification.warning(t('questionnaire.failed'), getErrorMessage(data))
+        notification.warning(t('questionnaire.failed'), getErrorMessage(data) || submitFailedFallback())
       }
     } else {
       notification.error(t('common.error'), getErrorMessage(data) || t('questionnaire.submit_error'))

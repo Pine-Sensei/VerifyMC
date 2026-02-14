@@ -67,12 +67,14 @@ export interface QuestionInputMeta {
   placeholder?: string
 }
 
+export type QuestionType = 'single_choice' | 'multiple_choice' | 'text'
+
 export interface Question {
   id: number
   question: string
-  type: 'single_choice' | 'multiple_choice' | 'text' | string
+  type: QuestionType
   required: boolean
-  options: QuestionOption[]
+  options?: QuestionOption[]
   input?: QuestionInputMeta
 }
 
@@ -193,6 +195,10 @@ class ApiService {
     }
   }
 
+  private getResponseMessage(payload: { msg?: string; message?: string } | null | undefined): string {
+    return payload?.msg || payload?.message || ''
+  }
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE}${endpoint}`
     const response = await fetch(url, {
@@ -206,7 +212,8 @@ class ApiService {
     }
 
     const data = await response.json()
-    if (data && data.success === false && data.message && data.message.includes('Authentication required')) {
+    const responseMessage = this.getResponseMessage(data)
+    if (data && data.success === false && responseMessage.includes('Authentication required')) {
       sessionService.handleUnauthorized()
       throw new Error('Authentication required')
     }
