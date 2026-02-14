@@ -163,7 +163,7 @@ authme:
     type: sqlite
     # AuthMe 表名
     table: authme
-    # 直写密码格式：仅支持 sha256
+    # 密码格式仅支持 sha256，如原先不是，请在 AuthMe 中切换（AuthMe支持惰性回退）。
     # VerifyMC 与 AuthMe 双向同步间隔（秒）
     sync_interval_seconds: 30
     # AuthMe SHA256 默认盐长度（默认 16）
