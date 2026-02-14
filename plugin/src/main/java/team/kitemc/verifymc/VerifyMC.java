@@ -163,6 +163,7 @@ public class VerifyMC extends JavaPlugin implements Listener {
 
         // Set UserDao for AuthMe synchronization
         authmeService.setUserDao(userDao);
+        migratePlaintextPasswords();
         if (authmeService.isAuthmeEnabled()) {
             authmeService.syncApprovedUsers();
         }
@@ -803,6 +804,24 @@ public class VerifyMC extends JavaPlugin implements Listener {
         mysqlConfig.setProperty("user", getConfig().getString("storage.mysql.user"));
         mysqlConfig.setProperty("password", getConfig().getString("storage.mysql.password"));
         return mysqlConfig;
+    }
+
+    private void migratePlaintextPasswords() {
+        int migrated = 0;
+        for (Map<String, Object> user : userDao.getAllUsers()) {
+            String uuid = (String) user.get("uuid");
+            String password = (String) user.get("password");
+            if (uuid == null || password == null || password.trim().isEmpty()) {
+                continue;
+            }
+            String encoded = authmeService.encodePasswordForStorage(password);
+            if (!password.equals(encoded) && userDao.updateUserPassword(uuid, encoded)) {
+                migrated++;
+            }
+        }
+        if (migrated > 0) {
+            getLogger().info("[VerifyMC] Migrated " + migrated + " stored passwords to AuthMe-compatible hash format.");
+        }
     }
     
     /**
