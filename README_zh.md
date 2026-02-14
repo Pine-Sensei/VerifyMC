@@ -55,7 +55,7 @@
 ## 🛠️ 技术栈
 
 - Java（Bukkit/Spigot/Paper/Folia 插件）
-- 前端：Vue3 + Tailwind CSS（支持自定义主题）
+- 前端：Vue3 + Tailwind CSS（支持自定义主题，背景统一由全局样式维护；历史背景组件 `BackgroundView.vue` / `PageBackground.vue` 已移除）
 - WebSocket 实时通信
 - 邮件服务：SMTP
 
