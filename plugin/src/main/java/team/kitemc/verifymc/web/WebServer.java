@@ -1857,6 +1857,7 @@ public class WebServer {
                 }
                 
                 String username = (String) user.get("username");
+                String password = (String) user.get("password");
                 boolean success = userDao.updateUserStatus(uuid, "approved");
                 
                 if (success && username != null) {
@@ -1865,6 +1866,12 @@ public class WebServer {
                     org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
                         org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + username);
                     });
+
+                    // If Authme integration is enabled and password exists, register to Authme
+                    if (authmeService.isAuthmeEnabled() &&
+                        password != null && !password.trim().isEmpty()) {
+                        authmeService.registerToAuthme(username, password);
+                    }
                 }
                 
                 resp.put("success", success);
