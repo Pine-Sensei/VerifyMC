@@ -19,9 +19,7 @@ import java.util.regex.Pattern;
 
 /**
  * AuthMe integration service class
- * Supports two modes:
- * 1) command: execute AuthMe console commands
- * 2) database: operate directly on AuthMe storage (mysql / sqlite)
+ * Uses direct database operations (mysql / sqlite).
  */
 public class AuthmeService {
     private final Plugin plugin;
@@ -45,14 +43,6 @@ public class AuthmeService {
         return plugin.getConfig().getBoolean("authme.require_password", false);
     }
 
-    public String getMode() {
-        return plugin.getConfig().getString("authme.mode", "command").toLowerCase();
-    }
-
-    public boolean isDatabaseMode() {
-        return "database".equals(getMode());
-    }
-
     public boolean isValidPassword(String password) {
         if (password == null || password.trim().isEmpty()) {
             return false;
@@ -67,23 +57,7 @@ public class AuthmeService {
             return false;
         }
 
-        if (isDatabaseMode()) {
-            return upsertAuthmeUser(username, password);
-        }
-
-        debugLog("Registering user to AuthMe by command: " + username);
-        if (Bukkit.isPrimaryThread()) {
-            return executeAuthmeCommand("register " + username + " " + password);
-        } else {
-            try {
-                return Bukkit.getScheduler().callSyncMethod(plugin, () ->
-                    executeAuthmeCommand("register " + username + " " + password)
-                ).get();
-            } catch (Exception e) {
-                debugLog("Failed to register user to AuthMe: " + e.getMessage());
-                return false;
-            }
-        }
+        return upsertAuthmeUser(username, password);
     }
 
     public boolean unregisterFromAuthme(String username) {
@@ -92,23 +66,7 @@ public class AuthmeService {
             return false;
         }
 
-        if (isDatabaseMode()) {
-            return deleteAuthmeUser(username);
-        }
-
-        debugLog("Unregistering user from AuthMe by command: " + username);
-        if (Bukkit.isPrimaryThread()) {
-            return executeAuthmeCommand("purgeplayer " + username + " force");
-        } else {
-            try {
-                return Bukkit.getScheduler().callSyncMethod(plugin, () ->
-                    executeAuthmeCommand("purgeplayer " + username + " force")
-                ).get();
-            } catch (Exception e) {
-                debugLog("Failed to unregister user from AuthMe: " + e.getMessage());
-                return false;
-            }
-        }
+        return deleteAuthmeUser(username);
     }
 
     public boolean changePasswordInAuthme(String username, String newPassword) {
@@ -117,23 +75,7 @@ public class AuthmeService {
             return false;
         }
 
-        if (isDatabaseMode()) {
-            return updateAuthmePassword(username, newPassword);
-        }
-
-        debugLog("Changing password in AuthMe by command: " + username);
-        if (Bukkit.isPrimaryThread()) {
-            return executeAuthmeCommand("password " + username + " " + newPassword);
-        } else {
-            try {
-                return Bukkit.getScheduler().callSyncMethod(plugin, () ->
-                    executeAuthmeCommand("password " + username + " " + newPassword)
-                ).get();
-            } catch (Exception e) {
-                debugLog("Failed to change password in AuthMe: " + e.getMessage());
-                return false;
-            }
-        }
+        return updateAuthmePassword(username, newPassword);
     }
 
     /**
@@ -143,7 +85,7 @@ public class AuthmeService {
      * - If AuthMe has user while local missing or pending, create/update local to approved.
      */
     public void syncApprovedUsers() {
-        if (!isAuthmeEnabled() || !isDatabaseMode() || userDao == null) {
+        if (!isAuthmeEnabled() || userDao == null) {
             return;
         }
         try {
@@ -447,17 +389,6 @@ public class AuthmeService {
         return sb.toString();
     }
 
-    private boolean executeAuthmeCommand(String command) {
-        try {
-            debugLog("Executing AuthMe command: " + command);
-            boolean result = Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "authme " + command);
-            debugLog("AuthMe command result: " + result);
-            return result;
-        } catch (Exception e) {
-            debugLog("Exception executing AuthMe command: " + e.getMessage());
-            return false;
-        }
-    }
 
     private void debugLog(String msg) {
         if (debug) {

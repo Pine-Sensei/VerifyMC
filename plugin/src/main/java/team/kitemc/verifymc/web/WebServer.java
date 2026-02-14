@@ -494,7 +494,6 @@ public class WebServer {
             // authme configuration
             JSONObject authme = new JSONObject();
             authme.put("enabled", config.getBoolean("authme.enabled", false));
-            authme.put("mode", config.getString("authme.mode", "command"));
             authme.put("require_password", config.getBoolean("authme.require_password", false));
             authme.put("password_regex", config.getString("authme.password_regex", "^[a-zA-Z0-9_]{8,26}$"));
             // Username regex pattern

@@ -161,9 +161,9 @@ public class VerifyMC extends JavaPlugin implements Listener {
         }
         autoMigrateIfNeeded(messages);
 
-        // Set UserDao for AuthMe DB mode synchronization
+        // Set UserDao for AuthMe synchronization
         authmeService.setUserDao(userDao);
-        if (authmeService.isAuthmeEnabled() && authmeService.isDatabaseMode()) {
+        if (authmeService.isAuthmeEnabled()) {
             authmeService.syncApprovedUsers();
         }
         
@@ -203,8 +203,8 @@ public class VerifyMC extends JavaPlugin implements Listener {
         // Always register event listener for player login interception
         getServer().getPluginManager().registerEvents(this, this);
 
-        // Periodic AuthMe DB mode synchronization
-        if (authmeService.isAuthmeEnabled() && authmeService.isDatabaseMode()) {
+        // Periodic AuthMe synchronization
+        if (authmeService.isAuthmeEnabled()) {
             long syncTicks = Math.max(20L, getConfig().getLong("authme.database.sync_interval_seconds", 30L) * 20L);
             new BukkitRunnable() {
                 @Override
