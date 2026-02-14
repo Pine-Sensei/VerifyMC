@@ -333,7 +333,6 @@ public class AuthmeService {
                     insert.setString(idx++, loopback);
                     insert.setString(idx++, "world");
                     insert.setString(idx++, "");
-                    insert.setString(idx++, "");
                     if (hasSaltColumn()) {
                         insert.setString(idx++, "");
                     }
