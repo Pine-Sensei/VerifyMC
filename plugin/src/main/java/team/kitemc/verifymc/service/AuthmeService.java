@@ -106,9 +106,9 @@ public class AuthmeService {
                 }
             }
 
-            List<String> authmeUsers = listAuthmeUsers();
+            Map<String, String> authmePasswordsByName = listAuthmePasswords();
             Map<String, String> authmeByLowerName = new HashMap<>();
-            for (String name : authmeUsers) {
+            for (String name : authmePasswordsByName.keySet()) {
                 authmeByLowerName.put(name.toLowerCase(), name);
             }
 
@@ -120,18 +120,34 @@ public class AuthmeService {
                 if (username == null || !"approved".equals(status)) {
                     continue;
                 }
-                if (!authmeByLowerName.containsKey(username.toLowerCase()) && password != null && !password.trim().isEmpty()) {
+                String authName = authmeByLowerName.get(username.toLowerCase());
+                if (authName == null && password != null && !password.trim().isEmpty()) {
                     upsertAuthmeUser(username, password);
+                    continue;
+                }
+
+                // if local has password but AuthMe row exists with empty password, repair it
+                if (authName != null && password != null && !password.trim().isEmpty()) {
+                    String authPassword = authmePasswordsByName.get(authName);
+                    if (authPassword == null || authPassword.trim().isEmpty()) {
+                        updateAuthmePassword(authName, password);
+                    }
                 }
             }
 
             // authme -> local approved
-            for (String authName : authmeUsers) {
+            for (Map.Entry<String, String> entry : authmePasswordsByName.entrySet()) {
+                String authName = entry.getKey();
+                String authPassword = entry.getValue();
                 Map<String, Object> local = localByLowerName.get(authName.toLowerCase());
                 if (local == null) {
                     OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(authName);
                     UUID id = offlinePlayer.getUniqueId();
-                    userDao.registerUser(id.toString(), authName, "", "approved");
+                    if (authPassword != null && !authPassword.trim().isEmpty()) {
+                        userDao.registerUser(id.toString(), authName, "", "approved", authPassword);
+                    } else {
+                        userDao.registerUser(id.toString(), authName, "", "approved");
+                    }
                     continue;
                 }
                 String status = (String) local.get("status");
@@ -139,6 +155,19 @@ public class AuthmeService {
                     String uuid = (String) local.get("uuid");
                     if (uuid != null) {
                         userDao.updateUserStatus(uuid, "approved");
+                    }
+                }
+
+                // keep local password in sync with AuthMe hash
+                if (authPassword != null && !authPassword.trim().isEmpty()) {
+                    String localPassword = (String) local.get("password");
+                    if (localPassword == null || localPassword.trim().isEmpty() || !authPassword.equals(localPassword)) {
+                        String uuid = (String) local.get("uuid");
+                        if (uuid != null) {
+                            userDao.updateUserPassword(uuid, authPassword);
+                        } else {
+                            userDao.updateUserPassword(authName, authPassword);
+                        }
                     }
                 }
             }
@@ -191,17 +220,20 @@ public class AuthmeService {
         return saltCol != null && !saltCol.trim().isEmpty();
     }
 
-    private List<String> listAuthmeUsers() throws Exception {
-        List<String> names = new ArrayList<>();
-        String sql = "SELECT " + nameColumn() + " FROM " + tableName();
+    private Map<String, String> listAuthmePasswords() throws Exception {
+        Map<String, String> result = new HashMap<>();
+        String sql = "SELECT " + nameColumn() + ", " + passwordColumn() + " FROM " + tableName();
         try (Connection conn = getAuthmeConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                names.add(rs.getString(1));
+                String username = rs.getString(1);
+                if (username != null) {
+                    result.put(username, rs.getString(2));
+                }
             }
         }
-        return names;
+        return result;
     }
 
     private boolean upsertAuthmeUser(String username, String password) {
