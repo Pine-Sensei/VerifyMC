@@ -107,7 +107,7 @@ captcha:
 bedrock:
   enabled: false
   prefix: "."
-  username_regex: "^[a-zA-Z0-9._-]{3,16}$"
+  username_regex: "^[a-zA-Z0-9._-]{3,15}$"
 questionnaire:
   enabled: false
   pass_score: 60
