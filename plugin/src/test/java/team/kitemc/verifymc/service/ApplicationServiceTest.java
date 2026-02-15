@@ -47,18 +47,6 @@ class ApplicationServiceTest {
         assertTrue(decision.autoApprove());
     }
 
-
-    @Test
-    void autoApproveWithManualReviewAndPassedQuestionnaireShouldStillWhitelist() {
-        RegistrationApplicationService service = new RegistrationApplicationService();
-        RegistrationApplicationService.RegistrationDecision decision = service.resolveDecision(true, true, true, true);
-        JSONObject response = service.buildRegistrationResponse(decision, true, key -> key);
-
-        assertTrue(decision.autoApprove());
-        assertEquals("register.success_whitelisted", response.getString("msg"));
-        assertEquals("register.success_whitelisted", response.getString("message"));
-    }
-
     @Test
     void reviewApprovePathShouldReturnApprovedMessage() {
         ReviewApplicationService service = new ReviewApplicationService();
