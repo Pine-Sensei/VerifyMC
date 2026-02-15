@@ -832,7 +832,6 @@ public class WebServer {
                 JSONObject resultJson = result.toJson();
                 JSONArray details = resultJson.optJSONArray("details");
                 boolean manualReviewRequired = resultJson.optBoolean("manual_review_required", false);
-                boolean scoringServiceUnavailable = hasScoringServiceFailure(details);
 
                 long submittedAt = System.currentTimeMillis();
                 long expiresAt = submittedAt + 10 * 60 * 1000;
@@ -843,7 +842,6 @@ public class WebServer {
                     result.getPassScore(),
                     details,
                     manualReviewRequired,
-                    scoringServiceUnavailable,
                     answersJson,
                     submittedAt
                 ));
@@ -865,7 +863,6 @@ public class WebServer {
                 extra.put("passed", result.isPassed());
                 extra.put("score", result.getScore());
                 extra.put("manualReview", manualReviewRequired);
-                extra.put("scoringServiceUnavailable", scoringServiceUnavailable);
                 extra.put("questionCount", answers.size());
                 logQuestionnaireCall("submitted", clientIp, requestUuid, requestEmail, requestId, extra);
                 
@@ -879,7 +876,7 @@ public class WebServer {
             }
             sendJson(exchange, resp);
         }));
-
+        
 
         // /api/send_code send verification code interface with rate limiting and authentication
         server.createContext("/api/send_code", new RegistrationHandler(exchange -> {
@@ -1862,25 +1859,4 @@ public class WebServer {
             return messages; // Fallback to default
         }
     }
-    private boolean hasScoringServiceFailure(JSONArray details) {
-        if (details == null || details.isEmpty()) {
-            return false;
-        }
-        for (int i = 0; i < details.length(); i++) {
-            JSONObject detail = details.optJSONObject(i);
-            if (detail == null || !detail.optBoolean("manual_review", false)) {
-                continue;
-            }
-            String reason = detail.optString("reason", "").toLowerCase(java.util.Locale.ROOT);
-            if (reason.contains("unavailable")
-                    || reason.contains("circuit breaker")
-                    || reason.contains("queue saturated")
-                    || reason.contains("interrupted")) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-
 } 
