@@ -153,10 +153,8 @@ public class AuthmeService {
                 String status = (String) local.get("status");
                 if (!"approved".equals(status)) {
                     String uuid = (String) local.get("uuid");
-                    if (uuid != null && !uuid.trim().isEmpty()) {
+                    if (uuid != null) {
                         userDao.updateUserStatus(uuid, "approved");
-                    } else {
-                        userDao.updateUserStatus(authName, "approved");
                     }
                 }
 
