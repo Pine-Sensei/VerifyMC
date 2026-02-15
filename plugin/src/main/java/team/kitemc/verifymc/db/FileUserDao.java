@@ -2,12 +2,13 @@ package team.kitemc.verifymc.db;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.Gson;
 
-public class FileUserDao extends BaseUserDao {
+public class FileUserDao implements UserDao {
     private final File file;
-    private final Map<String, Map<String, Object>> users = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, Map<String, Object>> users = new ConcurrentHashMap<>();
     private final Gson gson = new Gson();
     private final boolean debug;
     private final org.bukkit.plugin.Plugin plugin;
@@ -30,6 +31,11 @@ public class FileUserDao extends BaseUserDao {
         if (debug && plugin != null) plugin.getLogger().info("[DEBUG] FileUserDao: " + msg);
     }
     
+    /**
+     * Safely convert regTime value to Long, handling both Long and Double types
+     * @param regTimeValue The regTime value from JSON
+     * @return Long value or null if conversion fails
+     */
     private Long getRegTimeAsLong(Object regTimeValue) {
         if (regTimeValue == null) {
             return null;
@@ -60,16 +66,19 @@ public class FileUserDao extends BaseUserDao {
         try (Reader reader = new FileReader(file)) {
             Map<String, Map<String, Object>> loaded = gson.fromJson(reader, new TypeToken<Map<String, Map<String, Object>>>(){}.getType());
             if (loaded != null) {
+                // Compatibility handling: Upgrade old version data format
                 boolean hasUpgraded = false;
                 for (Map.Entry<String, Map<String, Object>> entry : loaded.entrySet()) {
                     Map<String, Object> user = entry.getValue();
                     if (user != null) {
+                        // Check and add missing fields
                         if (!user.containsKey("password")) {
                             user.put("password", null);
                             hasUpgraded = true;
                             debugLog("Added missing password field for user: " + user.get("username"));
                         }
                         
+                        // Ensure all required fields exist
                         if (!user.containsKey("uuid")) {
                             user.put("uuid", entry.getKey());
                             hasUpgraded = true;
@@ -82,6 +91,7 @@ public class FileUserDao extends BaseUserDao {
                             debugLog("Added missing regTime field for user: " + user.get("username"));
                         }
                         
+                        // Add discord_id field if missing
                         if (!user.containsKey("discord_id")) {
                             user.put("discord_id", null);
                             hasUpgraded = true;
@@ -110,6 +120,7 @@ public class FileUserDao extends BaseUserDao {
                 users.putAll(loaded);
                 debugLog("Loaded " + loaded.size() + " users from database");
                 
+                // If data upgrade occurred, save immediately
                 if (hasUpgraded) {
                     debugLog("Data format upgraded, saving updated data");
                     save();
@@ -153,6 +164,7 @@ public class FileUserDao extends BaseUserDao {
                                 String questionnaireReviewSummary, Long questionnaireScoredAt) {
         debugLog("registerUser called: uuid=" + uuid + ", username=" + username + ", email=" + email + ", status=" + status);
         try {
+            // Check if user already exists
             if (users.containsKey(uuid)) {
                 debugLog("User already exists with UUID: " + uuid + ", skipping registration");
                 return false;
@@ -187,6 +199,7 @@ public class FileUserDao extends BaseUserDao {
                                 String questionnaireReviewSummary, Long questionnaireScoredAt) {
         debugLog("registerUser with password called: uuid=" + uuid + ", username=" + username + ", email=" + email + ", status=" + status);
         try {
+            // Check if user already exists
             if (users.containsKey(uuid)) {
                 debugLog("User already exists with UUID: " + uuid + ", skipping registration");
                 return false;
@@ -235,7 +248,20 @@ public class FileUserDao extends BaseUserDao {
     @Override
     public boolean updateUserPassword(String uuidOrName, String password) {
         debugLog("updateUserPassword called: uuidOrName=" + uuidOrName);
-        Map<String, Object> user = findUserByUuidOrName(uuidOrName);
+        Map<String, Object> user = null;
+        
+        // First try to find as UUID
+        user = users.get(uuidOrName);
+        
+        // If not found, try to find as username
+        if (user == null) {
+            for (Map<String, Object> u : users.values()) {
+                if (u.get("username") != null && u.get("username").toString().equalsIgnoreCase(uuidOrName)) {
+                    user = u;
+                    break;
+                }
+            }
+        }
         
         if (user == null) {
             debugLog("User not found: " + uuidOrName);
@@ -246,18 +272,6 @@ public class FileUserDao extends BaseUserDao {
         save();
         debugLog("User password updated: " + user.get("username"));
         return true;
-    }
-
-    private Map<String, Object> findUserByUuidOrName(String uuidOrName) {
-        Map<String, Object> user = users.get(uuidOrName);
-        if (user == null) {
-            for (Map<String, Object> u : users.values()) {
-                if (u.get("username") != null && u.get("username").toString().equalsIgnoreCase(uuidOrName)) {
-                    return u;
-                }
-            }
-        }
-        return user;
     }
 
     @Override
@@ -330,7 +344,29 @@ public class FileUserDao extends BaseUserDao {
     
     @Override
     public List<Map<String, Object>> getUsersWithPagination(int page, int pageSize) {
-        return getUsersWithPaginationAndSearch(page, pageSize, null);
+        debugLog("Getting users with pagination: page=" + page + ", pageSize=" + pageSize);
+        List<Map<String, Object>> allUsers = new ArrayList<>(users.values());
+        
+        // Sort by registration time (newest first)
+        allUsers.sort((a, b) -> {
+            Long timeA = getRegTimeAsLong(a.get("regTime"));
+            Long timeB = getRegTimeAsLong(b.get("regTime"));
+            if (timeA == null) timeA = 0L;
+            if (timeB == null) timeB = 0L;
+            return timeB.compareTo(timeA);
+        });
+        
+        int startIndex = (page - 1) * pageSize;
+        int endIndex = Math.min(startIndex + pageSize, allUsers.size());
+        
+        if (startIndex >= allUsers.size()) {
+            debugLog("Page " + page + " is out of range, returning empty list");
+            return new ArrayList<>();
+        }
+        
+        List<Map<String, Object>> result = allUsers.subList(startIndex, endIndex);
+        debugLog("Returning " + result.size() + " users for page " + page);
+        return result;
     }
     
     @Override
@@ -345,6 +381,7 @@ public class FileUserDao extends BaseUserDao {
         debugLog("Getting users with pagination and search: page=" + page + ", pageSize=" + pageSize + ", query=" + searchQuery);
         List<Map<String, Object>> filteredUsers = new ArrayList<>();
         
+        // Filter users based on search query
         String query = searchQuery != null ? searchQuery.toLowerCase().trim() : "";
         for (Map<String, Object> user : users.values()) {
             if (query.isEmpty()) {
@@ -358,6 +395,7 @@ public class FileUserDao extends BaseUserDao {
             }
         }
         
+        // Sort by registration time (newest first)
         filteredUsers.sort((a, b) -> {
             Long timeA = getRegTimeAsLong(a.get("regTime"));
             Long timeB = getRegTimeAsLong(b.get("regTime"));
@@ -403,7 +441,16 @@ public class FileUserDao extends BaseUserDao {
     
     @Override
     public int getApprovedUserCount() {
-        return getApprovedUserCountWithSearch(null);
+        debugLog("Getting approved user count (excluding pending)");
+        int count = 0;
+        for (Map<String, Object> user : users.values()) {
+            String status = user.get("status") != null ? user.get("status").toString() : "";
+            if (!"pending".equalsIgnoreCase(status)) {
+                count++;
+            }
+        }
+        debugLog("Approved user count: " + count);
+        return count;
     }
     
     @Override
@@ -433,7 +480,37 @@ public class FileUserDao extends BaseUserDao {
     
     @Override
     public List<Map<String, Object>> getApprovedUsersWithPagination(int page, int pageSize) {
-        return getApprovedUsersWithPaginationAndSearch(page, pageSize, null);
+        debugLog("Getting approved users with pagination: page=" + page + ", pageSize=" + pageSize);
+        List<Map<String, Object>> approvedUsers = new ArrayList<>();
+        
+        // Filter out pending users
+        for (Map<String, Object> user : users.values()) {
+            String status = user.get("status") != null ? user.get("status").toString() : "";
+            if (!"pending".equalsIgnoreCase(status)) {
+                approvedUsers.add(user);
+            }
+        }
+        
+        // Sort by registration time (newest first)
+        approvedUsers.sort((a, b) -> {
+            Long timeA = getRegTimeAsLong(a.get("regTime"));
+            Long timeB = getRegTimeAsLong(b.get("regTime"));
+            if (timeA == null) timeA = 0L;
+            if (timeB == null) timeB = 0L;
+            return timeB.compareTo(timeA);
+        });
+        
+        int startIndex = (page - 1) * pageSize;
+        int endIndex = Math.min(startIndex + pageSize, approvedUsers.size());
+        
+        if (startIndex >= approvedUsers.size()) {
+            debugLog("Page " + page + " is out of range for approved users, returning empty list");
+            return new ArrayList<>();
+        }
+        
+        List<Map<String, Object>> result = approvedUsers.subList(startIndex, endIndex);
+        debugLog("Returning " + result.size() + " approved users for page " + page);
+        return result;
     }
     
     @Override
@@ -441,6 +518,7 @@ public class FileUserDao extends BaseUserDao {
         debugLog("Getting approved users with pagination and search: page=" + page + ", pageSize=" + pageSize + ", query=" + searchQuery);
         List<Map<String, Object>> filteredUsers = new ArrayList<>();
         
+        // Filter users based on search query and exclude pending users
         String query = searchQuery != null ? searchQuery.toLowerCase().trim() : "";
         for (Map<String, Object> user : users.values()) {
             String status = user.get("status") != null ? user.get("status").toString() : "";
@@ -457,6 +535,7 @@ public class FileUserDao extends BaseUserDao {
             }
         }
         
+        // Sort by registration time (newest first)
         filteredUsers.sort((a, b) -> {
             Long timeA = getRegTimeAsLong(a.get("regTime"));
             Long timeB = getRegTimeAsLong(b.get("regTime"));
@@ -481,7 +560,20 @@ public class FileUserDao extends BaseUserDao {
     @Override
     public boolean updateUserDiscordId(String uuidOrName, String discordId) {
         debugLog("updateUserDiscordId called: uuidOrName=" + uuidOrName + ", discordId=" + discordId);
-        Map<String, Object> user = findUserByUuidOrName(uuidOrName);
+        Map<String, Object> user = null;
+        
+        // First try to find as UUID
+        user = users.get(uuidOrName);
+        
+        // If not found, try to find as username
+        if (user == null) {
+            for (Map<String, Object> u : users.values()) {
+                if (u.get("username") != null && u.get("username").toString().equalsIgnoreCase(uuidOrName)) {
+                    user = u;
+                    break;
+                }
+            }
+        }
         
         if (user == null) {
             debugLog("User not found: " + uuidOrName);
@@ -513,34 +605,4 @@ public class FileUserDao extends BaseUserDao {
         debugLog("Checking if Discord ID is linked: " + discordId);
         return getUserByDiscordId(discordId) != null;
     }
-
-    @Override
-    public User getUserEntityByUuid(String uuid) {
-        return mapToUser(getUserByUuid(uuid));
-    }
-
-    @Override
-    public User getUserEntityByUsername(String username) {
-        return mapToUser(getUserByUsername(username));
-    }
-
-    @Override
-    public PaginatedResult<User> getUsersWithPaginationEntity(int page, int pageSize) {
-        List<Map<String, Object>> maps = getUsersWithPagination(page, pageSize);
-        List<User> userList = new ArrayList<>();
-        for (Map<String, Object> map : maps) {
-            userList.add(mapToUser(map));
-        }
-        return PaginatedResult.fromUsers(userList, page, pageSize, getTotalUserCount());
-    }
-
-    @Override
-    public PaginatedResult<User> getUsersWithPaginationAndSearchEntity(int page, int pageSize, String searchQuery) {
-        List<Map<String, Object>> maps = getUsersWithPaginationAndSearch(page, pageSize, searchQuery);
-        List<User> userList = new ArrayList<>();
-        for (Map<String, Object> map : maps) {
-            userList.add(mapToUser(map));
-        }
-        return PaginatedResult.fromUsers(userList, page, pageSize, getTotalUserCountWithSearch(searchQuery));
-    }
-}
+} 

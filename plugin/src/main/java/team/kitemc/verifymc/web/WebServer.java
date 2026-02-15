@@ -698,7 +698,7 @@ public class WebServer {
         });
         
         // /api/questionnaire - Get questionnaire questions
-        server.createContext("/api/questionnaire", exchange -> {
+        server.createContext("/api/questionnaire", new QuestionnaireHandler(exchange -> {
             debugLog("/api/questionnaire called");
             if (!"GET".equals(exchange.getRequestMethod())) { 
                 exchange.sendResponseHeaders(405, 0); 
@@ -726,7 +726,7 @@ public class WebServer {
         }));
         
         // /api/submit-questionnaire - Submit questionnaire answers
-        server.createContext("/api/submit-questionnaire", exchange -> {
+        server.createContext("/api/submit-questionnaire", new QuestionnaireHandler(exchange -> {
             debugLog("/api/submit-questionnaire called");
             if (!"POST".equals(exchange.getRequestMethod())) { 
                 exchange.sendResponseHeaders(405, 0); 
@@ -879,7 +879,7 @@ public class WebServer {
         
 
         // /api/send_code send verification code interface with rate limiting and authentication
-        server.createContext("/api/send_code", exchange -> {
+        server.createContext("/api/send_code", new RegistrationHandler(exchange -> {
             debugLog("/api/send_code called");
             if (!"POST".equals(exchange.getRequestMethod())) { 
                 exchange.sendResponseHeaders(405, 0); 
@@ -975,18 +975,18 @@ public class WebServer {
                 this::isValidUUID,
                 this::debugLog
         );
-        server.createContext("/api/register", registrationProcessingHandler);
+        server.createContext("/api/register", new RegistrationHandler(registrationProcessingHandler));
 
         AdminUserOperationHandler adminUserOperationHandler = new AdminUserOperationHandler(plugin, webAuthHelper, this::getMsg);
         
         // Admin login
-        server.createContext("/api/admin-login", adminUserOperationHandler.adminLoginHandler());
+        server.createContext("/api/admin-login", new UserAdminHandler(adminUserOperationHandler.adminLoginHandler()));
 
         // Admin token verification
-        server.createContext("/api/admin-verify", adminUserOperationHandler.adminVerifyHandler());
+        server.createContext("/api/admin-verify", new UserAdminHandler(adminUserOperationHandler.adminVerifyHandler()));
 
         // Get pending users list - requires authentication
-        server.createContext("/api/pending-list", exchange -> {
+        server.createContext("/api/pending-list", new ReviewHandler(exchange -> {
             // Verify authentication
             if (!webAuthHelper.isAuthenticated(exchange)) {
                 sendJson(exchange, ApiResponseFactory.failure("Authentication required"));
@@ -1019,7 +1019,7 @@ public class WebServer {
         }));
         
         // Unified user review interface - requires authentication
-        server.createContext("/api/review", exchange -> {
+        server.createContext("/api/review", new ReviewHandler(exchange -> {
             if (!"POST".equals(exchange.getRequestMethod())) { 
                 exchange.sendResponseHeaders(405, 0); 
                 exchange.close(); 
@@ -1130,7 +1130,7 @@ public class WebServer {
         }));
         
         // Get all users - requires authentication
-        server.createContext("/api/all-users", exchange -> {
+        server.createContext("/api/all-users", new UserAdminHandler(exchange -> {
             // Verify authentication
             if (!webAuthHelper.isAuthenticated(exchange)) {
                 sendJson(exchange, ApiResponseFactory.failure("Authentication required"));
@@ -1160,7 +1160,7 @@ public class WebServer {
         }));
         
         // Get users with pagination - requires authentication
-        server.createContext("/api/users-paginated", exchange -> {
+        server.createContext("/api/users-paginated", new UserAdminHandler(exchange -> {
             // Verify authentication
             if (!webAuthHelper.isAuthenticated(exchange)) {
                 sendJson(exchange, ApiResponseFactory.failure("Authentication required"));
@@ -1254,7 +1254,7 @@ public class WebServer {
         }));
         
         // Delete user - requires authentication
-        server.createContext("/api/delete-user", exchange -> {
+        server.createContext("/api/delete-user", new UserAdminHandler(exchange -> {
             if (!"POST".equals(exchange.getRequestMethod())) { 
                 exchange.sendResponseHeaders(405, 0); 
                 exchange.close(); 
@@ -1316,7 +1316,7 @@ public class WebServer {
         }));
         
         // Ban user - requires authentication
-        server.createContext("/api/ban-user", exchange -> {
+        server.createContext("/api/ban-user", new UserAdminHandler(exchange -> {
             if (!"POST".equals(exchange.getRequestMethod())) { 
                 exchange.sendResponseHeaders(405, 0); 
                 exchange.close(); 
@@ -1378,7 +1378,7 @@ public class WebServer {
         }));
         
         // Unban user - requires authentication
-        server.createContext("/api/unban-user", exchange -> {
+        server.createContext("/api/unban-user", new UserAdminHandler(exchange -> {
             if (!"POST".equals(exchange.getRequestMethod())) { 
                 exchange.sendResponseHeaders(405, 0); 
                 exchange.close(); 
@@ -1442,7 +1442,7 @@ public class WebServer {
         }));
         
         // Change user password
-        server.createContext("/api/change-password", exchange -> {
+        server.createContext("/api/change-password", new UserAdminHandler(exchange -> {
             if (!"POST".equals(exchange.getRequestMethod())) { 
                 exchange.sendResponseHeaders(405, 0); 
                 exchange.close(); 
@@ -1532,7 +1532,7 @@ public class WebServer {
         }));
         
         // Get user status
-        server.createContext("/api/user-status", exchange -> {
+        server.createContext("/api/user-status", new UserAdminHandler(exchange -> {
             if (!"GET".equals(exchange.getRequestMethod())) { 
                 exchange.sendResponseHeaders(405, 0); 
                 exchange.close(); 

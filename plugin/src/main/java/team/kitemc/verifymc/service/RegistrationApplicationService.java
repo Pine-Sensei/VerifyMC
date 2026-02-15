@@ -7,11 +7,10 @@ import team.kitemc.verifymc.registration.RegistrationOutcomeMessageKeyMapper;
 import team.kitemc.verifymc.registration.RegistrationOutcomeResolver;
 import team.kitemc.verifymc.web.ApiResponseFactory;
 
-public class RegistrationApplicationService implements IRegistrationApplicationService {
+public class RegistrationApplicationService {
     private final RegistrationOutcomeResolver resolver = new RegistrationOutcomeResolver();
     private final RegistrationOutcomeMessageKeyMapper messageKeyMapper = new RegistrationOutcomeMessageKeyMapper();
 
-    @Override
     public RegistrationDecision resolveDecision(
             boolean registerOk,
             boolean manualReviewRequired,
@@ -23,23 +22,19 @@ public class RegistrationApplicationService implements IRegistrationApplicationS
         return new RegistrationDecision(autoApprove, outcome);
     }
 
-    @Override
     public boolean shouldAutoApprove(boolean manualReviewRequired, boolean registerAutoApprove) {
         return resolver.shouldAutoApprove(manualReviewRequired, registerAutoApprove);
     }
 
-    @Override
     public String resolveStatus(RegistrationDecision decision) {
         return resolver.resolveStatus(decision.outcome());
     }
 
-    @Override
     public JSONObject buildRegistrationResponse(RegistrationDecision decision, boolean registerOk, Function<String, String> messageResolver) {
         String message = messageResolver.apply(messageKeyMapper.toMessageKey(decision.outcome()));
         return ApiResponseFactory.create(registerOk, message);
     }
 
-    @Override
     public JSONObject buildRegistrationResponse(
             boolean registerOk,
             boolean manualReviewRequired,

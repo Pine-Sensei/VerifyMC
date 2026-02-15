@@ -16,7 +16,7 @@ import java.util.*;
  * Questionnaire service for handling registration questionnaire
  * Supports single/multiple choice/text questions with scoring system
  */
-public class QuestionnaireService implements IQuestionnaireService {
+public class QuestionnaireService {
     private final Plugin plugin;
     private final boolean debug;
     private FileConfiguration questionnaireConfig;
@@ -125,7 +125,6 @@ public class QuestionnaireService implements IQuestionnaireService {
     }
 
 
-    @Override
     public JSONObject getQuestionnaire(String language) {
         JSONObject result = new JSONObject();
         result.put("enabled", isEnabled());
@@ -205,7 +204,6 @@ public class QuestionnaireService implements IQuestionnaireService {
         return result;
     }
 
-    @Override
     public QuestionnaireResult evaluateAnswers(Map<Integer, QuestionAnswer> answers) {
         if (!isEnabled() || questionnaireConfig == null) {
             return new QuestionnaireResult(true, 100, getPassScore(), Collections.emptyList());
@@ -367,7 +365,6 @@ public class QuestionnaireService implements IQuestionnaireService {
         return 1;
     }
 
-    @Override
     public void reload() {
         loadQuestionnaireConfig();
     }

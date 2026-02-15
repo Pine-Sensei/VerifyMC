@@ -4,19 +4,17 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class VerifyCodeService implements IVerifyCodeService {
+public class VerifyCodeService {
     private final ConcurrentHashMap<String, CodeEntry> codeMap = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, Long> rateLimitMap = new ConcurrentHashMap<>();
-    private final long expireMillis;
-    private final long rateLimitMillis;
+    private final ConcurrentHashMap<String, Long> rateLimitMap = new ConcurrentHashMap<>(); // Rate limiting for email sending
+    private final long expireMillis = 5 * 60 * 1000; // 5分钟
+    private final long rateLimitMillis = 60 * 1000; // 60秒频率限制
     private final boolean debug;
     private final org.bukkit.plugin.Plugin plugin;
 
     public VerifyCodeService(org.bukkit.plugin.Plugin plugin) {
         this.plugin = plugin;
         this.debug = plugin.getConfig().getBoolean("debug", false);
-        this.expireMillis = plugin.getConfig().getInt("verify_code.expire_seconds", 300) * 1000L;
-        this.rateLimitMillis = plugin.getConfig().getInt("verify_code.rate_limit_seconds", 60) * 1000L;
         startCleanupTask();
     }
 
@@ -85,7 +83,6 @@ public class VerifyCodeService implements IVerifyCodeService {
      * @param email Email to check
      * @return true if email can send code (not rate limited)
      */
-    @Override
     public boolean canSendCode(String email) {
         debugLog("canSendCode called for email: " + email);
         Long lastSentTime = rateLimitMap.get(email);
@@ -146,7 +143,6 @@ public class VerifyCodeService implements IVerifyCodeService {
      * @param code Code to verify
      * @return true if code is valid
      */
-    @Override
     public boolean checkCode(String key, String code) {
         debugLog("checkCode called: key=" + key + ", code=" + code);
         CodeEntry entry = codeMap.get(key);
