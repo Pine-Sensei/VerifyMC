@@ -10,7 +10,7 @@ class ApplicationServiceTest {
     @Test
     void registrationSuccessPathShouldReturnSuccessMessage() {
         RegistrationApplicationService service = new RegistrationApplicationService();
-        RegistrationApplicationService.RegistrationDecision decision = service.resolveDecision(true, false, true, true);
+        RegistrationApplicationService.RegistrationDecision decision = service.resolveDecision(true, false, true, false, true);
         JSONObject response = service.buildRegistrationResponse(decision, true, key -> key);
 
         assertTrue(response.getBoolean("success"));
@@ -29,9 +29,9 @@ class ApplicationServiceTest {
     }
 
     @Test
-    void autoApproveWithManualReviewFlagAndFailedQuestionnaireShouldGoPendingReview() {
+    void autoApproveWithScoringFailureAndFailedQuestionnaireShouldGoScoringErrorPendingReview() {
         RegistrationApplicationService service = new RegistrationApplicationService();
-        RegistrationApplicationService.RegistrationDecision decision = service.resolveDecision(true, true, false, true);
+        RegistrationApplicationService.RegistrationDecision decision = service.resolveDecision(true, true, false, true, true);
         JSONObject response = service.buildRegistrationResponse(decision, true, key -> key);
 
         assertTrue(response.getBoolean("success"));
@@ -40,11 +40,23 @@ class ApplicationServiceTest {
     }
 
     @Test
-    void autoApproveWithPassedQuestionnaireShouldStillWhitelist() {
+    void autoApproveWithQuestionnairePassedShouldStillWhitelist() {
         RegistrationApplicationService service = new RegistrationApplicationService();
-        RegistrationApplicationService.RegistrationDecision decision = service.resolveDecision(true, false, true, true);
+        RegistrationApplicationService.RegistrationDecision decision = service.resolveDecision(true, false, true, false, true);
 
         assertTrue(decision.autoApprove());
+        assertEquals("approved", service.resolveStatus(decision));
+    }
+
+    @Test
+    void autoApproveWithFailedQuestionnaireAndNonScoringManualReviewShouldGoPendingReview() {
+        RegistrationApplicationService service = new RegistrationApplicationService();
+        RegistrationApplicationService.RegistrationDecision decision = service.resolveDecision(true, true, false, false, true);
+        JSONObject response = service.buildRegistrationResponse(decision, true, key -> key);
+
+        assertTrue(response.getBoolean("success"));
+        assertEquals("register.questionnaire_pending_review", response.getString("msg"));
+        assertEquals("register.questionnaire_pending_review", response.getString("message"));
     }
 
     @Test

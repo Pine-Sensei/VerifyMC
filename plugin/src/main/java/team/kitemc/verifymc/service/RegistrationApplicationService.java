@@ -15,10 +15,11 @@ public class RegistrationApplicationService {
             boolean registerOk,
             boolean manualReviewRequired,
             boolean questionnairePassed,
+            boolean scoringServiceUnavailable,
             boolean registerAutoApprove
     ) {
         boolean autoApprove = resolver.shouldAutoApprove(manualReviewRequired, registerAutoApprove);
-        RegistrationOutcome outcome = resolver.resolve(registerOk, manualReviewRequired, questionnairePassed, registerAutoApprove);
+        RegistrationOutcome outcome = resolver.resolve(registerOk, manualReviewRequired, scoringServiceUnavailable, questionnairePassed, registerAutoApprove);
         return new RegistrationDecision(autoApprove, outcome);
     }
 
@@ -39,10 +40,11 @@ public class RegistrationApplicationService {
             boolean registerOk,
             boolean manualReviewRequired,
             boolean questionnairePassed,
+            boolean scoringServiceUnavailable,
             boolean registerAutoApprove,
             Function<String, String> messageResolver
     ) {
-        RegistrationDecision decision = resolveDecision(registerOk, manualReviewRequired, questionnairePassed, registerAutoApprove);
+        RegistrationDecision decision = resolveDecision(registerOk, manualReviewRequired, questionnairePassed, scoringServiceUnavailable, registerAutoApprove);
         return buildRegistrationResponse(decision, registerOk, messageResolver);
     }
 
