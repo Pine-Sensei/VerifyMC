@@ -15,7 +15,15 @@ public class RouteMatch {
         return handler;
     }
 
+    public RouteHandler handler() {
+        return handler;
+    }
+
     public Map<String, String> getParams() {
+        return params;
+    }
+
+    public Map<String, String> pathParams() {
         return params;
     }
 }

@@ -7,6 +7,7 @@ import team.kitemc.verifymc.infrastructure.config.ConfigurationService;
 import team.kitemc.verifymc.infrastructure.lifecycle.Lifecycle;
 import team.kitemc.verifymc.infrastructure.lifecycle.LifecycleState;
 import team.kitemc.verifymc.listener.PlayerLoginListener;
+import team.kitemc.verifymc.service.VersionCheckService;
 
 public class VerifyMC extends JavaPlugin implements Lifecycle {
     private static VerifyMC instance;
@@ -102,11 +103,6 @@ public class VerifyMC extends JavaPlugin implements Lifecycle {
     }
 
     @Override
-    public String getName() {
-        return "VerifyMC";
-    }
-
-    @Override
     public LifecycleState getState() {
         return state;
     }
@@ -140,5 +136,12 @@ public class VerifyMC extends JavaPlugin implements Lifecycle {
 
     public ServiceInitializer getServiceInitializer() {
         return serviceInitializer;
+    }
+
+    public VersionCheckService getVersionCheckService() {
+        if (serviceInitializer != null) {
+            return serviceInitializer.getContainer().getBean(VersionCheckService.class);
+        }
+        return null;
     }
 }

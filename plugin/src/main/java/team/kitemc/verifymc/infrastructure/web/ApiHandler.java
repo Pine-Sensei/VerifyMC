@@ -55,15 +55,11 @@ public class ApiHandler implements HttpHandler {
             RequestContext context = new RequestContext(exchange, match.getParams());
 
             for (Middleware middleware : router.getMiddlewares()) {
-                if (!middleware.intercept(context)) {
-                    return;
-                }
+                middleware.handle(context);
             }
 
             RouteHandler handler = match.getHandler();
-            ApiResponse response = handler.handle(context);
-
-            sendResponse(exchange, response);
+            handler.handle(context);
 
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error handling API request: " + path, e);

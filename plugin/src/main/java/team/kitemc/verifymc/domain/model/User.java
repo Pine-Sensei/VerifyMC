@@ -15,6 +15,7 @@ public final class User {
     private final Boolean questionnairePassed;
     private final String questionnaireReviewSummary;
     private final Long questionnaireScoredAt;
+    private final String reason;
 
     private User(Builder builder) {
         this.uuid = builder.uuid;
@@ -28,6 +29,7 @@ public final class User {
         this.questionnairePassed = builder.questionnairePassed;
         this.questionnaireReviewSummary = builder.questionnaireReviewSummary;
         this.questionnaireScoredAt = builder.questionnaireScoredAt;
+        this.reason = builder.reason;
     }
 
     public String getUuid() {
@@ -74,6 +76,10 @@ public final class User {
         return questionnaireScoredAt;
     }
 
+    public String getReason() {
+        return reason;
+    }
+
     public boolean isApproved() {
         return status == UserStatus.APPROVED;
     }
@@ -103,6 +109,7 @@ public final class User {
         map.put("questionnaire_passed", questionnairePassed);
         map.put("questionnaire_review_summary", questionnaireReviewSummary);
         map.put("questionnaire_scored_at", questionnaireScoredAt);
+        map.put("reason", reason);
         return map;
     }
 
@@ -123,6 +130,7 @@ public final class User {
         builder.questionnairePassed(getBooleanValue(map.get("questionnaire_passed")));
         builder.questionnaireReviewSummary((String) map.get("questionnaire_review_summary"));
         builder.questionnaireScoredAt(getLongValue(map.get("questionnaire_scored_at")));
+        builder.reason((String) map.get("reason"));
         return builder.build();
     }
 
@@ -176,7 +184,8 @@ public final class User {
                 .questionnaireScore(this.questionnaireScore)
                 .questionnairePassed(this.questionnairePassed)
                 .questionnaireReviewSummary(this.questionnaireReviewSummary)
-                .questionnaireScoredAt(this.questionnaireScoredAt);
+                .questionnaireScoredAt(this.questionnaireScoredAt)
+                .reason(this.reason);
     }
 
     public static class Builder {
@@ -191,6 +200,7 @@ public final class User {
         private Boolean questionnairePassed;
         private String questionnaireReviewSummary;
         private Long questionnaireScoredAt;
+        private String reason;
 
         public Builder uuid(String uuid) {
             this.uuid = uuid;
@@ -244,6 +254,11 @@ public final class User {
 
         public Builder questionnaireScoredAt(Long questionnaireScoredAt) {
             this.questionnaireScoredAt = questionnaireScoredAt;
+            return this;
+        }
+
+        public Builder reason(String reason) {
+            this.reason = reason;
             return this;
         }
 

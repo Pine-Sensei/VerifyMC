@@ -30,16 +30,6 @@ public interface Lifecycle {
      */
     void stop() throws Exception;
 
-    /**
-     * 获取组件名称
-     * @return 组件名称
-     */
-    String getName();
-
-    /**
-     * 获取组件状态
-     * @return 当前状态
-     */
     LifecycleState getState();
 
     /**
@@ -47,15 +37,4 @@ public interface Lifecycle {
      * @param state 新状态
      */
     void setState(LifecycleState state);
-
-    /**
-     * 组件生命周期状态枚举
-     */
-    enum LifecycleState {
-        NEW,           // 新创建，未初始化
-        INITIALIZED,   // 已初始化
-        STARTED,       // 已启动
-        STOPPED,       // 已停止
-        FAILED         // 失败
-    }
 }

@@ -268,7 +268,12 @@ public class WebServer {
         return plugin.getConfig().getString("username_regex", "^[a-zA-Z0-9_-]{3,16}$");
     }
     private boolean isUsernameCaseConflict(String username) {
-        return ((team.kitemc.verifymc.VerifyMC)plugin).isUsernameCaseConflict(username);
+        Map<String, Object> existingUser = userDao.getUserByUsername(username);
+        if (existingUser == null) {
+            return false;
+        }
+        String existingUsername = (String) existingUser.get("username");
+        return existingUsername != null && !existingUsername.equals(username);
     }
     
     /**
@@ -1639,6 +1644,10 @@ public class WebServer {
 
     public void stop() {
         if (server != null) server.stop(0);
+    }
+
+    public int getPort() {
+        return port;
     }
 
     // Static resource handler

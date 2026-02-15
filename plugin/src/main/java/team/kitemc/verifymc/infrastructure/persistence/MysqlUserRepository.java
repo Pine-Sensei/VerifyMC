@@ -78,6 +78,7 @@ public class MysqlUserRepository implements UserRepository {
             ensureColumnExists(stmt, "questionnaire_passed", "BOOLEAN NULL");
             ensureColumnExists(stmt, "questionnaire_review_summary", "TEXT NULL");
             ensureColumnExists(stmt, "questionnaire_scored_at", "BIGINT NULL");
+            ensureColumnExists(stmt, "reason", "TEXT NULL");
 
             ensureIndex(stmt, "idx_username", "CREATE INDEX idx_username ON users(username)");
             ensureIndex(stmt, "idx_email", "CREATE INDEX idx_email ON users(email)");
@@ -137,8 +138,8 @@ public class MysqlUserRepository implements UserRepository {
 
     private boolean insertUser(Connection conn, User user) throws SQLException {
         String sql = "INSERT INTO users (uuid, username, email, status, password, regTime, discord_id, " +
-                "questionnaire_score, questionnaire_passed, questionnaire_review_summary, questionnaire_scored_at) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                "questionnaire_score, questionnaire_passed, questionnaire_review_summary, questionnaire_scored_at, reason) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, user.getUuid());
             ps.setString(2, user.getUsername());
@@ -151,6 +152,7 @@ public class MysqlUserRepository implements UserRepository {
             setNullableBoolean(ps, 9, user.getQuestionnairePassed());
             ps.setString(10, user.getQuestionnaireReviewSummary());
             setNullableLong(ps, 11, user.getQuestionnaireScoredAt());
+            ps.setString(12, user.getReason());
             ps.executeUpdate();
             debugLog("User inserted: " + user.getUsername());
             return true;
@@ -159,7 +161,7 @@ public class MysqlUserRepository implements UserRepository {
 
     private boolean updateUser(Connection conn, User user) throws SQLException {
         String sql = "UPDATE users SET username=?, email=?, status=?, password=?, discord_id=?, " +
-                "questionnaire_score=?, questionnaire_passed=?, questionnaire_review_summary=?, questionnaire_scored_at=? " +
+                "questionnaire_score=?, questionnaire_passed=?, questionnaire_review_summary=?, questionnaire_scored_at=?, reason=? " +
                 "WHERE uuid=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, user.getUsername());
@@ -171,7 +173,8 @@ public class MysqlUserRepository implements UserRepository {
             setNullableBoolean(ps, 7, user.getQuestionnairePassed());
             ps.setString(8, user.getQuestionnaireReviewSummary());
             setNullableLong(ps, 9, user.getQuestionnaireScoredAt());
-            ps.setString(10, user.getUuid());
+            ps.setString(10, user.getReason());
+            ps.setString(11, user.getUuid());
             int rows = ps.executeUpdate();
             debugLog("User updated: " + user.getUsername() + ", rows affected: " + rows);
             return rows > 0;
@@ -584,6 +587,7 @@ public class MysqlUserRepository implements UserRepository {
                 .questionnairePassed((Boolean) rs.getObject("questionnaire_passed"))
                 .questionnaireReviewSummary(rs.getString("questionnaire_review_summary"))
                 .questionnaireScoredAt((Long) rs.getObject("questionnaire_scored_at"))
+                .reason(rs.getString("reason"))
                 .build();
     }
 }

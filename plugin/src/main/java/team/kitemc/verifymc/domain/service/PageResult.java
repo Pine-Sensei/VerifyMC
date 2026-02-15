@@ -46,6 +46,10 @@ public final class PageResult<T> {
         return page > 1;
     }
 
+    public boolean hasPrev() {
+        return page > 1;
+    }
+
     public boolean isEmpty() {
         return items.isEmpty();
     }

@@ -94,19 +94,17 @@ public class Router {
             return match;
         }
         RouteHandler wrappedHandler = ctx -> {
-            List<Middleware> middlewareList = new ArrayList<>(middlewares);
-            executeChain(ctx, middlewareList, 0, match.handler());
+            for (Middleware middleware : middlewares) {
+                if (ctx.isHalted()) {
+                    return;
+                }
+                middleware.handle(ctx);
+            }
+            if (!ctx.isHalted()) {
+                match.handler().handle(ctx);
+            }
         };
         return new RouteMatch(wrappedHandler, match.pathParams());
-    }
-
-    private void executeChain(RequestContext ctx, List<Middleware> middlewareList, int index, RouteHandler finalHandler) throws Exception {
-        if (index >= middlewareList.size()) {
-            finalHandler.handle(ctx);
-            return;
-        }
-        Middleware middleware = middlewareList.get(index);
-        middleware.handle(ctx, () -> executeChain(ctx, middlewareList, index + 1, finalHandler));
     }
 
     private static class RouteEntry {

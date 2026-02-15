@@ -16,7 +16,7 @@ public class ApiResponse {
     private final Object data;
     private final long timestamp;
 
-    private ApiResponse(boolean success, String code, String message, Object data) {
+    public ApiResponse(boolean success, String code, String message, Object data) {
         this.success = success;
         this.code = code;
         this.message = message;

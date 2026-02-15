@@ -43,7 +43,7 @@ public class CorsMiddleware implements Middleware {
     }
 
     @Override
-    public void handle(RequestContext ctx, MiddlewareChain next) throws Exception {
+    public void handle(RequestContext ctx) throws Exception {
         String origin = ctx.getHeader("Origin");
 
         if ("OPTIONS".equals(ctx.getMethod())) {
@@ -52,7 +52,6 @@ public class CorsMiddleware implements Middleware {
         }
 
         setCorsHeaders(ctx, origin);
-        next.next();
     }
 
     private void handlePreflight(RequestContext ctx, String origin) throws Exception {
@@ -69,7 +68,7 @@ public class CorsMiddleware implements Middleware {
         }
 
         ctx.getRawExchange().getResponseHeaders().set("Access-Control-Max-Age", String.valueOf(maxAge));
-        ctx.status(204);
+        ctx.getRawExchange().sendResponseHeaders(204, -1);
     }
 
     private void setCorsHeaders(RequestContext ctx, String origin) {

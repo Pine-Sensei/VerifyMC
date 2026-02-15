@@ -4,6 +4,7 @@ import com.sun.net.httpserver.HttpServer;
 import org.bukkit.plugin.Plugin;
 import team.kitemc.verifymc.infrastructure.annotation.Service;
 import team.kitemc.verifymc.infrastructure.lifecycle.Lifecycle;
+import team.kitemc.verifymc.infrastructure.lifecycle.LifecycleState;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -75,11 +76,6 @@ public class WebServer implements Lifecycle {
     }
 
     @Override
-    public String getName() {
-        return "WebServer";
-    }
-
-    @Override
     public LifecycleState getState() {
         return state;
     }
@@ -129,10 +125,9 @@ public class WebServer implements Lifecycle {
                         "Authentication required"
                     );
                     sendResponse(context, response, 401);
-                    return false;
+                    context.halt();
                 }
             }
-            return true;
         };
     }
 
@@ -140,7 +135,6 @@ public class WebServer implements Lifecycle {
         return context -> {
             LOGGER.log(Level.FINE, "{0} {1} from {2}", 
                 new Object[]{context.getMethod(), context.getPath(), context.getClientIp()});
-            return true;
         };
     }
 
@@ -152,9 +146,8 @@ public class WebServer implements Lifecycle {
             
             if ("OPTIONS".equals(context.getMethod())) {
                 sendResponse(context, ApiResponse.success(), 200);
-                return false;
+                context.halt();
             }
-            return true;
         };
     }
 
@@ -183,5 +176,9 @@ public class WebServer implements Lifecycle {
 
     public void updateStaticDir(String newDir) {
         staticFileHandler.setBaseDir(newDir);
+    }
+
+    public int getPort() {
+        return port;
     }
 }

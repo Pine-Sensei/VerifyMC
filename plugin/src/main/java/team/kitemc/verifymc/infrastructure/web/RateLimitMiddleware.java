@@ -26,7 +26,7 @@ public class RateLimitMiddleware implements Middleware {
     }
 
     @Override
-    public void handle(RequestContext ctx, MiddlewareChain next) throws Exception {
+    public void handle(RequestContext ctx) throws Exception {
         String key = keyExtractor.extract(ctx);
         long now = System.currentTimeMillis();
 
@@ -54,11 +54,9 @@ public class RateLimitMiddleware implements Middleware {
             errorResponse.put("message", "Too many requests. Please try again later.");
             errorResponse.put("retry_after_ms", retryAfter);
 
-            ctx.json(429, errorResponse);
+            ctx.sendJson(429, errorResponse);
             return;
         }
-
-        next.next();
     }
 
     public void cleanup() {

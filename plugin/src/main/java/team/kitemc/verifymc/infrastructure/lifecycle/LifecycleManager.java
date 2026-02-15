@@ -6,6 +6,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import team.kitemc.verifymc.infrastructure.lifecycle.LifecycleState;
+
 /**
  * 生命周期管理器
  * 负责管理所有实现Lifecycle接口的组件的生命周期
@@ -22,10 +24,7 @@ public class LifecycleManager {
      * @param component 组件实例
      */
     public void register(Lifecycle component) {
-        String name = component.getName();
-        if (name == null || name.isEmpty()) {
-            name = component.getClass().getSimpleName();
-        }
+        String name = component.getClass().getSimpleName();
         components.put(name, component);
         startupOrder.add(name);
         LOGGER.info("已注册生命周期组件: " + name);
@@ -54,7 +53,7 @@ public class LifecycleManager {
         if (component != null) {
             startupOrder.remove(name);
             try {
-                if (component.getState() == Lifecycle.LifecycleState.STARTED) {
+                if (component.getState() == LifecycleState.STARTED) {
                     component.stop();
                 }
             } catch (Exception e) {
@@ -71,13 +70,13 @@ public class LifecycleManager {
         LOGGER.info("开始初始化所有生命周期组件...");
         for (String name : startupOrder) {
             Lifecycle component = components.get(name);
-            if (component != null && component.getState() == Lifecycle.LifecycleState.NEW) {
+            if (component != null && component.getState() == LifecycleState.NEW) {
                 try {
                     component.initialize();
                     LOGGER.info("组件初始化完成: " + name);
                 } catch (Exception e) {
                     LOGGER.log(Level.SEVERE, "组件初始化失败: " + name, e);
-                    component.setState(Lifecycle.LifecycleState.FAILED);
+                    component.setState(LifecycleState.FAILED);
                 }
             }
         }
@@ -96,17 +95,17 @@ public class LifecycleManager {
         for (String name : startupOrder) {
             Lifecycle component = components.get(name);
             if (component != null) {
-                Lifecycle.LifecycleState state = component.getState();
-                if (state == Lifecycle.LifecycleState.INITIALIZED || state == Lifecycle.LifecycleState.NEW) {
+                LifecycleState state = component.getState();
+                if (state == LifecycleState.INITIALIZED || state == LifecycleState.NEW) {
                     try {
-                        if (state == Lifecycle.LifecycleState.NEW) {
+                        if (state == LifecycleState.NEW) {
                             component.initialize();
                         }
                         component.start();
                         LOGGER.info("组件启动完成: " + name);
                     } catch (Exception e) {
                         LOGGER.log(Level.SEVERE, "组件启动失败: " + name, e);
-                        component.setState(Lifecycle.LifecycleState.FAILED);
+                        component.setState(LifecycleState.FAILED);
                     }
                 }
             }
@@ -129,13 +128,13 @@ public class LifecycleManager {
         java.util.Collections.reverse(reverseOrder);
         for (String name : reverseOrder) {
             Lifecycle component = components.get(name);
-            if (component != null && component.getState() == Lifecycle.LifecycleState.STARTED) {
+            if (component != null && component.getState() == LifecycleState.STARTED) {
                 try {
                     component.stop();
                     LOGGER.info("组件停止完成: " + name);
                 } catch (Exception e) {
                     LOGGER.log(Level.WARNING, "组件停止时发生异常: " + name, e);
-                    component.setState(Lifecycle.LifecycleState.FAILED);
+                    component.setState(LifecycleState.FAILED);
                 }
             }
         }
@@ -181,7 +180,7 @@ public class LifecycleManager {
      * @param state 目标状态
      * @return 处于该状态的组件名称列表
      */
-    public List<String> getComponentsByState(Lifecycle.LifecycleState state) {
+    public List<String> getComponentsByState(LifecycleState state) {
         List<String> result = new ArrayList<>();
         for (ConcurrentHashMap.Entry<String, Lifecycle> entry : components.entrySet()) {
             if (entry.getValue().getState() == state) {

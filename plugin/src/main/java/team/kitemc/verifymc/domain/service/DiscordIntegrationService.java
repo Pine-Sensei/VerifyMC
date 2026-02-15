@@ -1,5 +1,7 @@
 package team.kitemc.verifymc.domain.service;
 
+import team.kitemc.verifymc.infrastructure.config.ConfigurationService;
+
 import org.json.JSONObject;
 import org.json.JSONArray;
 

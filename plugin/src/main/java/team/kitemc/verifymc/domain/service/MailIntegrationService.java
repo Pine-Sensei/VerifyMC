@@ -1,5 +1,7 @@
 package team.kitemc.verifymc.domain.service;
 
+import team.kitemc.verifymc.infrastructure.config.ConfigurationService;
+
 import jakarta.mail.*;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;

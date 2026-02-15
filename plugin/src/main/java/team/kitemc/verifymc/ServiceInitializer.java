@@ -163,7 +163,7 @@ public class ServiceInitializer {
         discordService.setUserDao(userDao);
         container.registerInstance(DiscordService.class.getSimpleName(), discordService);
 
-        team.kitemc.verifymc.mail.MailService mailService = new team.kitemc.verifymc.mail.MailService(plugin, this::getMessage);
+        team.kitemc.verifymc.mail.MailService mailService = new team.kitemc.verifymc.mail.MailService(plugin, (key, lang) -> getMessage(key, lang));
         container.registerInstance(team.kitemc.verifymc.mail.MailService.class.getSimpleName(), mailService);
     }
 
@@ -417,7 +417,10 @@ public class ServiceInitializer {
     }
 
     private String getMessage(String key) {
-        String lang = configService.getLanguage();
+        return getMessage(key, configService.getLanguage());
+    }
+
+    private String getMessage(String key, String lang) {
         try {
             ResourceBundle messages = loadMessages(lang);
             if (messages.containsKey(key)) {

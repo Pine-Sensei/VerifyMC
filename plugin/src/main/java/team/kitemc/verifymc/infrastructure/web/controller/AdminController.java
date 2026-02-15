@@ -87,10 +87,11 @@ public class AdminController implements RouteHandler {
                 break;
             default:
                 ctx.sendNotFound("Endpoint not found");
+                break;
         }
     }
 
-    private void handleAdminLogin(RequestContext ctx) throws IOException {
+    private void handleAdminLogin(RequestContext ctx) throws Exception {
         if (!"POST".equals(ctx.getMethod())) {
             ctx.sendMethodNotAllowed();
             return;
@@ -98,7 +99,6 @@ public class AdminController implements RouteHandler {
 
         JSONObject body = ctx.getBody();
         String password = body.optString("password", "");
-        String language = body.optString("language", "en");
 
         String adminPassword = configService.getString("admin.password", "");
 
@@ -116,7 +116,7 @@ public class AdminController implements RouteHandler {
         ctx.sendJson(resp);
     }
 
-    private void handleAdminVerify(RequestContext ctx) throws IOException {
+    private void handleAdminVerify(RequestContext ctx) throws Exception {
         if (!webAuthHelper.isAuthenticated(ctx.getExchange())) {
             ctx.sendUnauthorized();
             return;
@@ -128,7 +128,7 @@ public class AdminController implements RouteHandler {
         ctx.sendJson(resp);
     }
 
-    private void handleUsersPaginated(RequestContext ctx) throws IOException {
+    private void handleUsersPaginated(RequestContext ctx) throws Exception {
         if (!webAuthHelper.isAuthenticated(ctx.getExchange())) {
             ctx.sendUnauthorized();
             return;
@@ -137,7 +137,6 @@ public class AdminController implements RouteHandler {
         int page = ctx.getQueryParamAsInt("page", 1);
         int pageSize = ctx.getQueryParamAsInt("pageSize", 10);
         String search = ctx.getQueryParam("search", "");
-        String language = ctx.getLanguage();
 
         if (pageSize > 100) pageSize = 100;
         if (pageSize < 1) pageSize = 10;
@@ -181,13 +180,12 @@ public class AdminController implements RouteHandler {
         ctx.sendJson(resp);
     }
 
-    private void handleAllUsers(RequestContext ctx) throws IOException {
+    private void handleAllUsers(RequestContext ctx) throws Exception {
         if (!webAuthHelper.isAuthenticated(ctx.getExchange())) {
             ctx.sendUnauthorized();
             return;
         }
 
-        String language = ctx.getLanguage();
         JSONObject resp = new JSONObject();
 
         try {
@@ -211,7 +209,7 @@ public class AdminController implements RouteHandler {
         ctx.sendJson(resp);
     }
 
-    private void handleDeleteUser(RequestContext ctx) throws IOException {
+    private void handleDeleteUser(RequestContext ctx) throws Exception {
         if (!"POST".equals(ctx.getMethod())) {
             ctx.sendMethodNotAllowed();
             return;
@@ -224,7 +222,6 @@ public class AdminController implements RouteHandler {
 
         JSONObject body = ctx.getBody();
         String uuid = body.optString("uuid", "").trim();
-        String language = body.optString("language", "en");
 
         if (!isValidUUID(uuid)) {
             ctx.sendJson(ApiResponse.error(
@@ -267,7 +264,7 @@ public class AdminController implements RouteHandler {
         ctx.sendJson(resp);
     }
 
-    private void handleBanUser(RequestContext ctx) throws IOException {
+    private void handleBanUser(RequestContext ctx) throws Exception {
         if (!"POST".equals(ctx.getMethod())) {
             ctx.sendMethodNotAllowed();
             return;
@@ -280,7 +277,6 @@ public class AdminController implements RouteHandler {
 
         JSONObject body = ctx.getBody();
         String uuid = body.optString("uuid", "").trim();
-        String language = body.optString("language", "en");
 
         if (!isValidUUID(uuid)) {
             ctx.sendJson(ApiResponse.error(
@@ -323,7 +319,7 @@ public class AdminController implements RouteHandler {
         ctx.sendJson(resp);
     }
 
-    private void handleUnbanUser(RequestContext ctx) throws IOException {
+    private void handleUnbanUser(RequestContext ctx) throws Exception {
         if (!"POST".equals(ctx.getMethod())) {
             ctx.sendMethodNotAllowed();
             return;
@@ -336,7 +332,6 @@ public class AdminController implements RouteHandler {
 
         JSONObject body = ctx.getBody();
         String uuid = body.optString("uuid", "").trim();
-        String language = body.optString("language", "en");
 
         if (!isValidUUID(uuid)) {
             ctx.sendJson(ApiResponse.error(
@@ -379,7 +374,7 @@ public class AdminController implements RouteHandler {
         ctx.sendJson(resp);
     }
 
-    private void handleChangePassword(RequestContext ctx) throws IOException {
+    private void handleChangePassword(RequestContext ctx) throws Exception {
         if (!"POST".equals(ctx.getMethod())) {
             ctx.sendMethodNotAllowed();
             return;
@@ -394,7 +389,6 @@ public class AdminController implements RouteHandler {
         String uuid = body.optString("uuid", "").trim();
         String username = body.optString("username", "").trim();
         String newPassword = body.optString("newPassword", "");
-        String language = body.optString("language", "en");
 
         JSONObject resp = new JSONObject();
 
@@ -413,7 +407,6 @@ public class AdminController implements RouteHandler {
         }
 
         if (!authmeIntegrationService.isValidPassword(newPassword)) {
-            String passwordRegex = configService.getString("authme.password_regex", "^[a-zA-Z0-9_]{8,26}$");
             resp.put("success", false);
             resp.put("msg", "admin.invalid_password");
             ctx.sendJson(resp);
@@ -455,7 +448,7 @@ public class AdminController implements RouteHandler {
         ctx.sendJson(resp);
     }
 
-    private void handleUserStatus(RequestContext ctx) throws IOException {
+    private void handleUserStatus(RequestContext ctx) throws Exception {
         if (!"GET".equals(ctx.getMethod())) {
             ctx.sendMethodNotAllowed();
             return;
@@ -495,7 +488,7 @@ public class AdminController implements RouteHandler {
         ctx.sendJson(resp);
     }
 
-    private void handleReloadConfig(RequestContext ctx) throws IOException {
+    private void handleReloadConfig(RequestContext ctx) throws Exception {
         if (!"POST".equals(ctx.getMethod())) {
             ctx.sendMethodNotAllowed();
             return;
@@ -521,7 +514,7 @@ public class AdminController implements RouteHandler {
         ctx.sendJson(resp);
     }
 
-    private void handleVersionCheck(RequestContext ctx) throws IOException {
+    private void handleVersionCheck(RequestContext ctx) throws Exception {
         if (!webAuthHelper.isAuthenticated(ctx.getExchange())) {
             ctx.sendUnauthorized();
             return;
@@ -540,12 +533,12 @@ public class AdminController implements RouteHandler {
                 VersionCheckService versionService = mainPlugin.getVersionCheckService();
 
                 if (versionService != null) {
-                    VersionCheckService.VersionCheckResult result = versionService.checkForUpdates();
+                    VersionCheckService.UpdateCheckResult result = versionService.checkForUpdatesAsync().get();
                     resp.put("success", true);
                     resp.put("current_version", result.getCurrentVersion());
                     resp.put("latest_version", result.getLatestVersion());
-                    resp.put("has_update", result.hasUpdate());
-                    resp.put("download_url", result.getDownloadUrl());
+                    resp.put("has_update", result.isUpdateAvailable());
+                    resp.put("download_url", versionService.getReleasesUrl());
                 } else {
                     resp.put("success", false);
                     resp.put("error", "Version check service not available");

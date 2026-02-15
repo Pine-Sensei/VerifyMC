@@ -2,6 +2,7 @@ package team.kitemc.verifymc.infrastructure.web;
 
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.function.Function;
 
 public class AuthMiddleware implements Middleware {
@@ -20,7 +21,7 @@ public class AuthMiddleware implements Middleware {
     }
 
     @Override
-    public void handle(RequestContext ctx, MiddlewareChain next) throws Exception {
+    public void handle(RequestContext ctx) throws Exception {
         String token = tokenExtractor.extract(ctx);
 
         if (token == null || token.isEmpty()) {
@@ -36,11 +37,9 @@ public class AuthMiddleware implements Middleware {
 
         ctx.setAttribute("auth.user", result.getUser());
         ctx.setAttribute("auth.token", token);
-
-        next.next();
     }
 
-    private void sendUnauthorized(RequestContext ctx, String message) throws Exception {
+    private void sendUnauthorized(RequestContext ctx, String message) throws IOException {
         ctx.getRawExchange().getResponseHeaders().set("WWW-Authenticate", "Bearer realm=\"" + realm + "\"");
 
         JSONObject errorResponse = new JSONObject();
@@ -48,7 +47,7 @@ public class AuthMiddleware implements Middleware {
         errorResponse.put("error", "unauthorized");
         errorResponse.put("message", message);
 
-        ctx.json(401, errorResponse);
+        ctx.sendJson(401, errorResponse);
     }
 
     @FunctionalInterface
