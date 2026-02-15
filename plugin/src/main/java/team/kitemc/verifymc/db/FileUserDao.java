@@ -231,17 +231,30 @@ public class FileUserDao implements UserDao {
     }
 
     @Override
-    public boolean updateUserStatus(String uuid, String status) {
-        debugLog("updateUserStatus called: uuid=" + uuid + ", status=" + status);
-        Map<String, Object> user = users.get(uuid);
+    public boolean updateUserStatus(String uuidOrName, String status) {
+        debugLog("updateUserStatus called: uuidOrName=" + uuidOrName + ", status=" + status);
+        Map<String, Object> user = users.get(uuidOrName);
+        String identity = uuidOrName;
+
         if (user == null) {
-            debugLog("User not found: " + uuid);
+            for (Map.Entry<String, Map<String, Object>> entry : users.entrySet()) {
+                Map<String, Object> candidate = entry.getValue();
+                if (candidate.get("username") != null && candidate.get("username").toString().equalsIgnoreCase(uuidOrName)) {
+                    user = candidate;
+                    identity = entry.getKey();
+                    break;
+                }
+            }
+        }
+
+        if (user == null) {
+            debugLog("User not found: " + uuidOrName);
             return false;
         }
         String oldStatus = (String) user.get("status");
         user.put("status", status);
         save();
-        debugLog("User status updated: " + uuid + " from " + oldStatus + " to " + status);
+        debugLog("User status updated: " + identity + " from " + oldStatus + " to " + status);
         return true;
     }
 
