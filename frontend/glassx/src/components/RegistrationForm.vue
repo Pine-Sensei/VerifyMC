@@ -331,7 +331,7 @@ const isFinalStepValid = computed(() => {
   if (!isBasicStepValid.value) return false
   if (!questionnaireEnabled.value) return true
   if (!questionnaireResult.value) return false
-  return questionnaireResult.value.passed === true
+  return questionnaireResult.value.passed === true || questionnaireResult.value.manual_review_required === true
 })
 
 const goToQuestionnaire = () => {

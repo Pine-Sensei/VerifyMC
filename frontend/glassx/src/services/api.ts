@@ -83,6 +83,7 @@ export interface SubmitQuestionnaireResponse {
   passed: boolean
   score: number
   pass_score: number
+  manual_review_required?: boolean
   token?: string
   submitted_at?: number
   expires_at?: number
@@ -94,6 +95,7 @@ export interface QuestionnaireSubmission {
   passed: boolean
   score: number
   pass_score: number
+  manual_review_required?: boolean
   answers: Record<string, QuestionnaireAnswer>
   token: string
   submitted_at: number
