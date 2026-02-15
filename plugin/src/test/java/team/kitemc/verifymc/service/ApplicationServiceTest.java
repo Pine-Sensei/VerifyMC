@@ -49,11 +49,14 @@ class ApplicationServiceTest {
 
 
     @Test
-    void autoApproveShouldBeDisabledWhenManualReviewRequired() {
+    void autoApproveWithManualReviewAndPassedQuestionnaireShouldStillWhitelist() {
         RegistrationApplicationService service = new RegistrationApplicationService();
-        RegistrationApplicationService.RegistrationDecision decision = service.resolveDecision(true, true, false, true);
+        RegistrationApplicationService.RegistrationDecision decision = service.resolveDecision(true, true, true, true);
+        JSONObject response = service.buildRegistrationResponse(decision, true, key -> key);
 
-        assertFalse(decision.autoApprove());
+        assertTrue(decision.autoApprove());
+        assertEquals("register.success_whitelisted", response.getString("msg"));
+        assertEquals("register.success_whitelisted", response.getString("message"));
     }
 
     @Test
