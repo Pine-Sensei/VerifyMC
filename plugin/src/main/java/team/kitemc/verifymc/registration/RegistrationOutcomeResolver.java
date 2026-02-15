@@ -3,7 +3,7 @@ package team.kitemc.verifymc.registration;
 public class RegistrationOutcomeResolver {
 
     public boolean shouldAutoApprove(boolean manualReviewRequired, boolean registerAutoApprove) {
-        return registerAutoApprove;
+        return registerAutoApprove && !manualReviewRequired;
     }
 
     public String resolveStatus(RegistrationOutcome outcome) {

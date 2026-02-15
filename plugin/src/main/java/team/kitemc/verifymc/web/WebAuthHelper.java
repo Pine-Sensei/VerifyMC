@@ -8,12 +8,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.plugin.Plugin;
 
 public class WebAuthHelper {
-    private static final long TOKEN_EXPIRY_TIME = 3600000;
     private final Plugin plugin;
+    private final long tokenExpiryTime;
     private final ConcurrentHashMap<String, Long> validTokens = new ConcurrentHashMap<>();
 
     public WebAuthHelper(Plugin plugin) {
         this.plugin = plugin;
+        this.tokenExpiryTime = plugin.getConfig().getInt("web.admin_token_expire_seconds", 3600) * 1000L;
     }
 
     public boolean isAuthenticated(HttpExchange exchange) {
@@ -35,20 +36,21 @@ public class WebAuthHelper {
             String combined = timestamp + random + secret;
             byte[] hash = md.digest(combined.getBytes());
             String token = Base64.getEncoder().encodeToString(hash);
-            validTokens.put(token, System.currentTimeMillis() + TOKEN_EXPIRY_TIME);
+            validTokens.put(token, System.currentTimeMillis() + tokenExpiryTime);
             return token;
         } catch (NoSuchAlgorithmException e) {
             String token = "admin_token_" + System.currentTimeMillis() + "_" + Math.random();
-            validTokens.put(token, System.currentTimeMillis() + TOKEN_EXPIRY_TIME);
+            validTokens.put(token, System.currentTimeMillis() + tokenExpiryTime);
             return token;
         }
     }
 
     public void startTokenCleanupTask() {
+        final long cleanupInterval = plugin.getConfig().getInt("web.token_cleanup_interval_seconds", 300) * 1000L;
         new Thread(() -> {
             while (true) {
                 try {
-                    Thread.sleep(300000);
+                    Thread.sleep(cleanupInterval);
                     long currentTime = System.currentTimeMillis();
                     validTokens.entrySet().removeIf(entry -> entry.getValue() < currentTime);
                 } catch (InterruptedException e) {

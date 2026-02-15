@@ -11,7 +11,7 @@ import java.nio.file.Files;
 import java.nio.charset.StandardCharsets;
 import java.io.File;
 
-public class MailService {
+public class MailService implements IMailService {
     private final Plugin plugin;
     private final BiFunction<String, String, String> getMessage;
     private Session session;
@@ -164,6 +164,7 @@ public class MailService {
      * Check if notification on rejection is enabled
      * @return true if notification on rejection is enabled
      */
+    @Override
     public boolean isNotifyOnReject() {
         return plugin.getConfig().getBoolean("user_notification.on_reject", true);
     }
@@ -177,6 +178,7 @@ public class MailService {
      * @param language User's interface language
      * @return true if email sent successfully
      */
+    @Override
     public boolean sendReviewResultNotification(String email, String username, boolean approved, String reason, String language) {
         if (!isUserNotificationEnabled()) {
             debugLog("User notification is disabled");
@@ -303,6 +305,23 @@ public class MailService {
                        "<p style=\"color: #999; font-size: 12px;\">This email was automatically sent by VerifyMC</p>" +
                        "</div></body></html>";
             }
+        }
+    }
+
+    @Override
+    public void sendMail(String to, String subject, String body) {
+        debugLog("sendMail called: to=" + to + ", subject=" + subject);
+        try {
+            Message message = new MimeMessage(session);
+            message.setFrom(new InternetAddress(from));
+            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
+            message.setSubject(subject);
+            message.setContent(body, "text/html; charset=utf-8");
+            Transport.send(message);
+            debugLog("Email sent successfully");
+        } catch (Exception e) {
+            debugLog("Failed to send email: " + e.getMessage());
+            plugin.getLogger().warning("Failed to send email: " + e.getMessage());
         }
     }
 }

@@ -21,20 +21,18 @@ import java.util.regex.Pattern;
  * AuthMe integration service class
  * Uses direct database operations (mysql / sqlite).
  */
-public class AuthmeService {
+public class AuthmeService implements IAuthmeService {
     private final Plugin plugin;
     private final boolean debug;
-    private UserDao userDao;
+    private final UserDao userDao;
 
-    public AuthmeService(Plugin plugin) {
+    public AuthmeService(Plugin plugin, UserDao userDao) {
         this.plugin = plugin;
+        this.userDao = userDao;
         this.debug = plugin.getConfig().getBoolean("debug", false);
     }
 
-    public void setUserDao(UserDao userDao) {
-        this.userDao = userDao;
-    }
-
+    @Override
     public boolean isAuthmeEnabled() {
         return plugin.getConfig().getBoolean("authme.enabled", false);
     }
@@ -82,6 +80,7 @@ public class AuthmeService {
      * Encode password in AuthMe-compatible format for VerifyMC local storage.
      * Accepts plain text and returns encoded value; already-encoded AuthMe values are returned as-is.
      */
+    @Override
     public String encodePasswordForStorage(String plainOrEncodedPassword) {
         return buildStoredPassword(plainOrEncodedPassword);
     }
@@ -92,6 +91,7 @@ public class AuthmeService {
      * - Only approved local users are allowed to sync from local to AuthMe.
      * - If AuthMe has user while local missing or pending, create/update local to approved.
      */
+    @Override
     public void syncApprovedUsers() {
         if (!isAuthmeEnabled() || userDao == null) {
             return;
