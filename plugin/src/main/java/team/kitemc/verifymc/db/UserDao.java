@@ -181,4 +181,35 @@ public interface UserDao {
      * @return true if Discord ID is already linked
      */
     boolean isDiscordIdLinked(String discordId);
+    
+    /**
+     * Get user entity by UUID
+     * @param uuid User UUID
+     * @return User entity or null if not found
+     */
+    User getUserEntityByUuid(String uuid);
+    
+    /**
+     * Get user entity by username
+     * @param username Username
+     * @return User entity or null if not found
+     */
+    User getUserEntityByUsername(String username);
+    
+    /**
+     * Get users with pagination as entities
+     * @param page Page number (starting from 1)
+     * @param pageSize Number of users per page
+     * @return Paginated result of user entities
+     */
+    PaginatedResult<User> getUsersWithPaginationEntity(int page, int pageSize);
+    
+    /**
+     * Get users with pagination and search as entities
+     * @param page Page number (starting from 1)
+     * @param pageSize Number of users per page
+     * @param searchQuery Search query for username or email
+     * @return Paginated result of user entities matching the search criteria
+     */
+    PaginatedResult<User> getUsersWithPaginationAndSearchEntity(int page, int pageSize, String searchQuery);
 } 

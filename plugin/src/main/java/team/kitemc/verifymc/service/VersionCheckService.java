@@ -15,23 +15,25 @@ import java.util.regex.Pattern;
  * Version check service for VerifyMC plugin
  * Checks for updates from GitHub repository
  */
-public class VersionCheckService {
+public class VersionCheckService implements IVersionCheckService {
     private static final String GITHUB_POM_URL = "https://raw.githubusercontent.com/KiteMC/VerifyMC/refs/heads/master/plugin/pom.xml";
     private static final String GITHUB_RELEASES_URL = "https://github.com/KiteMC/VerifyMC/releases";
     private static final Pattern VERSION_PATTERN = Pattern.compile("<version>([^<]+)</version>");
-    private static final int TIMEOUT_MS = 10000; // 10 seconds timeout
     
     private final Plugin plugin;
     private final boolean debug;
+    private final int timeoutMs;
+    private final long checkInterval;
     private String currentVersion;
     private String latestVersion;
     private boolean updateAvailable = false;
     private long lastCheckTime = 0;
-    private static final long CHECK_INTERVAL = 3600000; // 1 hour in milliseconds
     
     public VersionCheckService(Plugin plugin) {
         this.plugin = plugin;
         this.debug = plugin.getConfig().getBoolean("debug", false);
+        this.timeoutMs = plugin.getConfig().getInt("version_check.timeout_ms", 10000);
+        this.checkInterval = plugin.getConfig().getLong("version_check.check_interval_ms", 3600000L);
         this.currentVersion = plugin.getDescription().getVersion();
         debugLog("VersionCheckService initialized with current version: " + currentVersion);
     }
@@ -46,6 +48,7 @@ public class VersionCheckService {
      * Check for updates asynchronously
      * @return CompletableFuture with update check result
      */
+    @Override
     public CompletableFuture<UpdateCheckResult> checkForUpdatesAsync() {
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -53,7 +56,7 @@ public class VersionCheckService {
                 
                 // Check if we need to perform the check (rate limiting)
                 long currentTime = System.currentTimeMillis();
-                if (currentTime - lastCheckTime < CHECK_INTERVAL && latestVersion != null) {
+                if (currentTime - lastCheckTime < checkInterval && latestVersion != null) {
                     debugLog("Using cached version check result");
                     return new UpdateCheckResult(true, currentVersion, latestVersion, updateAvailable, null);
                 }
@@ -92,8 +95,8 @@ public class VersionCheckService {
             URL url = new URL(GITHUB_POM_URL);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
-            connection.setConnectTimeout(TIMEOUT_MS);
-            connection.setReadTimeout(TIMEOUT_MS);
+            connection.setConnectTimeout(timeoutMs);
+            connection.setReadTimeout(timeoutMs);
             connection.setRequestProperty("User-Agent", "VerifyMC-Plugin/" + currentVersion);
             
             int responseCode = connection.getResponseCode();
@@ -191,6 +194,7 @@ public class VersionCheckService {
      * Get current version
      * @return Current plugin version
      */
+    @Override
     public String getCurrentVersion() {
         return currentVersion;
     }
@@ -223,6 +227,7 @@ public class VersionCheckService {
      * Get version check result as JSON
      * @return JSON object with version information
      */
+    @Override
     public JSONObject getVersionInfoJson() {
         JSONObject json = new JSONObject();
         json.put("currentVersion", currentVersion);

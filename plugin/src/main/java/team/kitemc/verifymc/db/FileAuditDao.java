@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class FileAuditDao implements AuditDao {
+public class FileAuditDao extends BaseAuditDao {
     private final File file;
     private final List<AuditRecord> audits = new ArrayList<>();
     private final Gson gson = new Gson();
@@ -60,30 +60,15 @@ public class FileAuditDao implements AuditDao {
     }
 
     private AuditRecord mapToRecord(Map<String, Object> map) {
-        Long id = asLong(map.get("id"));
-        String action = asString(map.get("action"));
-        String operator = asString(map.get("operator"));
-        String target = asString(map.get("target"));
-        String detail = asString(map.get("detail"));
-        Long timestampValue = asLong(map.get("timestamp"));
+        Long id = getLong(map, "id");
+        String uuid = getString(map, "uuid");
+        String username = getString(map, "username");
+        String action = getString(map, "action");
+        String operator = getString(map, "operator");
+        String reason = getString(map, "reason");
+        Long timestampValue = getLong(map, "timestamp");
         long timestamp = timestampValue != null ? timestampValue : 0L;
-        return new AuditRecord(id, action, operator, target, detail, timestamp);
-    }
-
-    private String asString(Object value) {
-        return value == null ? "" : String.valueOf(value);
-    }
-
-    private Long asLong(Object value) {
-        if (value == null) return null;
-        if (value instanceof Number number) {
-            return number.longValue();
-        }
-        try {
-            return Long.parseLong(String.valueOf(value));
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return new AuditRecord(id, uuid, username, action, operator, reason, timestamp);
     }
 
     @Override
@@ -95,6 +80,7 @@ public class FileAuditDao implements AuditDao {
 
     @Override
     public synchronized void addAudit(AuditRecord audit) {
+        validateRecord(audit);
         audits.add(audit);
         save();
     }

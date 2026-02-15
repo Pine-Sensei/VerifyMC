@@ -150,3 +150,14 @@ discord:
   redirect_uri: "https://yourdomain.com/api/discord/callback"
   guild_id: ""
   required: false
+  state_expire_seconds: 600
+  token_cache_expire_seconds: 3600
+verify_code:
+  expire_seconds: 300
+  rate_limit_seconds: 60
+web:
+  admin_token_expire_seconds: 3600
+  token_cleanup_interval_seconds: 300
+version_check:
+  timeout_ms: 10000
+  check_interval_ms: 3600000

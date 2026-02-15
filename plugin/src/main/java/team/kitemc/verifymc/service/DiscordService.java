@@ -22,54 +22,39 @@ import java.util.concurrent.ConcurrentHashMap;
  * Discord OAuth2 integration service
  * Handles Discord account linking and guild membership verification
  */
-public class DiscordService {
+public class DiscordService implements IDiscordService {
     private final Plugin plugin;
     private final boolean debug;
-    private UserDao userDao;
+    private final UserDao userDao;
     
-    // OAuth2 configuration
     private String clientId;
     private String clientSecret;
     private String redirectUri;
     private String guildId;
     private boolean required;
     
-    // State tokens for OAuth2 flow (state -> StateData)
     private final Map<String, StateData> stateTokens = new ConcurrentHashMap<>();
     
-    // Token cache (username -> DiscordToken) - temporary cache for active sessions
     private final Map<String, TokenData> tokenCache = new ConcurrentHashMap<>();
     
     private static final String DISCORD_API_BASE = "https://discord.com/api/v10";
     private static final String DISCORD_OAUTH_AUTHORIZE = "https://discord.com/oauth2/authorize";
     private static final String DISCORD_OAUTH_TOKEN = DISCORD_API_BASE + "/oauth2/token";
     
-    // State token expiry: 10 minutes
-    private static final long STATE_EXPIRY_MS = 600000;
-    // Token cache expiry: 1 hour
-    private static final long TOKEN_CACHE_EXPIRY_MS = 3600000;
-    // Cleanup interval: 5 minutes
+    private final long stateExpiryMs;
+    private final long tokenCacheExpiryMs;
     private static final long CLEANUP_INTERVAL_TICKS = 6000;
     
-    public DiscordService(Plugin plugin) {
+    public DiscordService(Plugin plugin, UserDao userDao) {
         this.plugin = plugin;
+        this.userDao = userDao;
         this.debug = plugin.getConfig().getBoolean("debug", false);
+        this.stateExpiryMs = plugin.getConfig().getInt("discord.state_expire_seconds", 600) * 1000L;
+        this.tokenCacheExpiryMs = plugin.getConfig().getInt("discord.token_cache_expire_seconds", 3600) * 1000L;
         loadConfig();
         startCleanupTask();
     }
     
-    /**
-     * Set the UserDao for persistent storage
-     * @param userDao UserDao instance
-     */
-    public void setUserDao(UserDao userDao) {
-        this.userDao = userDao;
-        debugLog("UserDao set for Discord service");
-    }
-    
-    /**
-     * Start periodic cleanup task for expired state tokens and token cache
-     */
     private void startCleanupTask() {
         new BukkitRunnable() {
             @Override
@@ -102,7 +87,7 @@ public class DiscordService {
         Iterator<Map.Entry<String, TokenData>> tokenIterator = tokenCache.entrySet().iterator();
         while (tokenIterator.hasNext()) {
             Map.Entry<String, TokenData> entry = tokenIterator.next();
-            if (now - entry.getValue().cacheTime > TOKEN_CACHE_EXPIRY_MS) {
+            if (now - entry.getValue().cacheTime > tokenCacheExpiryMs) {
                 tokenIterator.remove();
                 tokensCleaned++;
             }
@@ -116,6 +101,7 @@ public class DiscordService {
     /**
      * Load Discord configuration from plugin config
      */
+    @Override
     public void loadConfig() {
         clientId = plugin.getConfig().getString("discord.client_id", "");
         clientSecret = plugin.getConfig().getString("discord.client_secret", "");
@@ -156,7 +142,7 @@ public class DiscordService {
         
         // Generate state token
         String state = generateState();
-        stateTokens.put(state, new StateData(username, System.currentTimeMillis()));
+        stateTokens.put(state, new StateData(username, System.currentTimeMillis(), stateExpiryMs));
         
         // Build authorization URL
         StringBuilder url = new StringBuilder(DISCORD_OAUTH_AUTHORIZE);
@@ -177,6 +163,7 @@ public class DiscordService {
      * @param state State token
      * @return DiscordCallbackResult
      */
+    @Override
     public DiscordCallbackResult handleCallback(String code, String state) {
         // Validate state
         StateData stateData = stateTokens.remove(state);
@@ -417,6 +404,7 @@ public class DiscordService {
      * @param username The username to check
      * @return true if linked
      */
+    @Override
     public boolean isLinked(String username) {
         // First check database
         if (userDao != null) {
@@ -481,6 +469,7 @@ public class DiscordService {
      * @param username The username
      * @return true if successful
      */
+    @Override
     public boolean unlinkDiscord(String username) {
         tokenCache.remove(username.toLowerCase());
         
@@ -528,14 +517,16 @@ public class DiscordService {
     private static class StateData {
         final String username;
         final long timestamp;
+        final long expiryMs;
         
-        StateData(String username, long timestamp) {
+        StateData(String username, long timestamp, long expiryMs) {
             this.username = username;
             this.timestamp = timestamp;
+            this.expiryMs = expiryMs;
         }
         
         boolean isExpired() {
-            return System.currentTimeMillis() - timestamp > STATE_EXPIRY_MS;
+            return System.currentTimeMillis() - timestamp > expiryMs;
         }
     }
     
