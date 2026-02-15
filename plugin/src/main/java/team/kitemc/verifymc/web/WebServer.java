@@ -325,24 +325,6 @@ public class WebServer {
     }
 
 
-    private boolean isScoringServiceUnavailable(JSONArray details) {
-        if (details == null) {
-            return false;
-        }
-        for (int i = 0; i < details.length(); i++) {
-            JSONObject detail = details.optJSONObject(i);
-            if (detail == null || !detail.optBoolean("manual_review", false)) {
-                continue;
-            }
-            String reason = detail.optString("reason", "").toLowerCase(java.util.Locale.ROOT);
-            if (reason.contains("llm") || reason.contains("scoring")) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-
     private boolean isSupportedQuestionType(String type) {
         return "single_choice".equals(type) || "multiple_choice".equals(type) || "text".equals(type);
     }
@@ -850,7 +832,6 @@ public class WebServer {
                 JSONObject resultJson = result.toJson();
                 JSONArray details = resultJson.optJSONArray("details");
                 boolean manualReviewRequired = resultJson.optBoolean("manual_review_required", false);
-                boolean scoringServiceUnavailable = isScoringServiceUnavailable(details);
 
                 long submittedAt = System.currentTimeMillis();
                 long expiresAt = submittedAt + 10 * 60 * 1000;
@@ -861,7 +842,6 @@ public class WebServer {
                     result.getPassScore(),
                     details,
                     manualReviewRequired,
-                    scoringServiceUnavailable,
                     answersJson,
                     submittedAt
                 ));
