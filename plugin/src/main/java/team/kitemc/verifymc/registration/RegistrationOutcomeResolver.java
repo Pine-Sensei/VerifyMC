@@ -14,6 +14,7 @@ public class RegistrationOutcomeResolver {
                                        boolean manualReviewRequired,
                                        boolean questionnairePassed,
                                        boolean registerAutoApprove) {
+        boolean autoApprove = shouldAutoApprove(manualReviewRequired, registerAutoApprove);
         if (!ok) {
             return RegistrationOutcome.FAILED;
         }
@@ -21,7 +22,7 @@ public class RegistrationOutcomeResolver {
         if (manualReviewRequired && !questionnairePassed) {
             return RegistrationOutcome.QUESTIONNAIRE_SCORING_ERROR_PENDING_REVIEW;
         }
-        if (registerAutoApprove) {
+        if (autoApprove) {
             return RegistrationOutcome.SUCCESS_WHITELISTED;
         }
         if (questionnairePassed) {
