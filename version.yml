@@ -1,30 +1,15 @@
 release: true
-version: 1.5.0
+version: 1.2.10
 release_notes: |
-  [Chinese](https://github.com/KiteMC/VerifyMC/blob/v1.5.0/release_notes_zh.md) | English | [Official Documentation](https://kitemc.com/docs/verifymc/)
+  [简体中文](https://github.com/KiteMC/VerifyMC/blob/v1.2.10/release_notes_zh.md) | English | [Official Documentation](https://kitemc.com/docs/verifymc/)
 
-  # VerifyMC v1.5.0 Release Notes
+  # VerifyMC v1.2.10 Release Notes
 
-  Starting from this version, VerifyMC adopts proper Semantic Versioning (SemVer). Previous versions v1.2.5, v1.2.8, v1.2.10 introduced major features but only bumped PATCH. Historical tags cannot be changed, so we corrected versioning from this release: v1.2.5 = v1.3.0, v1.2.8 = v1.4.0, current = v1.5.0.
+  ## 🎨 Frontend Redesign & Improvements
 
-  ## Security Fixes
-
-  - Admin login brute force protection (5 attempts per IP / 5 minutes)
-  - WebSocket connections now require admin token authentication
-  - Passwords stored as SHA-256 hashes instead of plaintext
-  - /api/check-whitelist no longer exposes user email addresses
-  - X-Forwarded-For header no longer trusted by default (new trust_proxy config)
-  - IP-based rate limiting on verification code sending (10 per IP / 10 minutes)
-  - Fixed registration race condition allowing duplicate usernames
-  - Fixed registration validation order (format checks before DB queries)
-
-  ## Bug Fixes and Improvements
-
-  - Added api-version to plugin.yml to fix legacy material support warning
-  - Added Leaves server core detection
-  - Fixed Jakarta Mail resource loading in shaded jar
-  - Fixed hot-reload resource initialization failure on Paper
-  - Fixed regex validation crash on invalid config patterns (fallback to defaults)
-  - Daemon cleanup thread for expired tokens, submissions, and rate limit records
-  - Thread-safe language cache
+  - Global fixed background: floating orb effects stay in place during scrolling across all pages
+  - Register page redesigned as two-column split layout: branding on the left, form on the right
+  - Softened glassmorphism effect on register page, removed hard border in favor of gradient transition
+  - Added logout button to the admin panel
+  - Unified background across all pages by removing per-page backgrounds
 

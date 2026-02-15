@@ -75,58 +75,35 @@ public class ResourceManager {
      */
     public void initializeResources() {
         debugLog("Initializing resources...");
-
+        
         // Backup first
         backupPluginDataFolder();
-
+        
         try {
             // Create base directories
             createDirectories();
-        } catch (Exception e) {
-            plugin.getLogger().warning(getMessage("error.resource_init_failed", getConfigLanguage()) + " (directories): " + e.getMessage());
-        }
 
-        // Save help files (may fail during hot-reload due to Paper jar remapping)
-        try {
+            // Save help files
             plugin.saveResource("config_help_en.yml", false);
-        } catch (Exception e) {
-            debugLog("Could not save config_help_en.yml: " + e.getMessage());
-        }
-        try {
             plugin.saveResource("config_help_zh.yml", false);
-        } catch (Exception e) {
-            debugLog("Could not save config_help_zh.yml: " + e.getMessage());
-        }
-
-        try {
+            
             // Update configuration file
             upgradeConfigFile();
-        } catch (Exception e) {
-            plugin.getLogger().warning(getMessage("error.resource_init_failed", getConfigLanguage()) + " (config): " + e.getMessage());
-        }
-
-        try {
+            
             // Update i18n files
             updateI18nFiles();
-        } catch (Exception e) {
-            plugin.getLogger().warning(getMessage("error.resource_init_failed", getConfigLanguage()) + " (i18n): " + e.getMessage());
-        }
-
-        try {
+            
             // Update email templates
             patchEmailTemplates();
-        } catch (Exception e) {
-            plugin.getLogger().warning(getMessage("error.resource_init_failed", getConfigLanguage()) + " (email): " + e.getMessage());
-        }
-
-        try {
+            
             // Update static files
             updateStaticThemes();
+            
+            debugLog("Resource initialization completed");
         } catch (Exception e) {
-            plugin.getLogger().warning(getMessage("error.resource_init_failed", getConfigLanguage()) + " (static): " + e.getMessage());
+            plugin.getLogger().warning(getMessage("error.resource_init_failed", getConfigLanguage()) + ": " + e.getMessage());
+            debugLog("Resource initialization failed: " + e.getMessage());
         }
-
-        debugLog("Resource initialization completed");
     }
 
     /**
@@ -134,16 +111,16 @@ public class ResourceManager {
      */
     private void createDirectories() {
         debugLog("Creating directories...");
-
+        
         String[] dirs = {
             "i18n",
-            "email",
+            "email", 
             "static/default",
             "static/glassx",
             "data",
             "backup" // Added backup directory
         };
-
+        
         for (String dir : dirs) {
             File directory = new File(plugin.getDataFolder(), dir);
             if (!directory.exists()) {
@@ -237,7 +214,7 @@ public class ResourceManager {
         try {
             debugLog("Checking i18n file: " + propFile.getName() + " (language: " + lang + ")");
             String currentContent = new String(Files.readAllBytes(propFile.toPath()), StandardCharsets.UTF_8);
-
+            
             // Check if it contains new version key messages
             String[] requiredKeys = {
                 "admin.unban",
@@ -245,7 +222,7 @@ public class ResourceManager {
                 "admin.unbanFailed",
                 "admin.confirmUnban"
             };
-
+            
             boolean needsUpdate = false;
             debugLog("Checking for missing i18n keys...");
             for (String key : requiredKeys) {
@@ -256,11 +233,11 @@ public class ResourceManager {
                     debugLog("i18n file has key: " + key);
                 }
             }
-
+            
             if (needsUpdate) {
                 debugLog("i18n file needs update, starting update process...");
                 // Individual backup logic for current file has been removed, replaced by global backup at startup.
-
+                
                 // Re-save default file
                 debugLog("Updating i18n file with new keys...");
                 plugin.saveResource("i18n/messages_" + lang + ".properties", false);
@@ -426,19 +403,19 @@ public class ResourceManager {
      */
     public ResourceBundle loadI18nBundle(String lang) {
         debugLog("Loading i18n bundle for language: " + lang);
-
+        
         try {
             File i18nDir = new File(plugin.getDataFolder(), "i18n");
             debugLog("i18n directory: " + i18nDir.getAbsolutePath());
-
+            
             File propFile = new File(i18nDir, "messages_" + lang + ".properties");
-
+            
             // If language file doesn't exist, create it from English template
             if (!propFile.exists()) {
                 debugLog("Language file not found: messages_" + lang + ".properties");
                 createLanguageFile(lang);
             }
-
+            
             // Load language resource bundle
             if (propFile.exists()) {
                 debugLog("Loading external i18n bundle: " + propFile.getAbsolutePath());
@@ -458,17 +435,17 @@ public class ResourceManager {
                     return ResourceBundle.getBundle("i18n.messages", Locale.ENGLISH);
                 }
             }
-
+            
         } catch (Exception e) {
             plugin.getLogger().warning("[VerifyMC] Failed to load i18n bundles: " + e.getMessage());
             debugLog("Failed to load i18n bundle: " + e.getMessage());
-
+            
             // Use internal English resource bundle as fallback
             debugLog("Falling back to internal English i18n bundle");
             return ResourceBundle.getBundle("i18n.messages", Locale.ENGLISH);
         }
     }
-
+    
     /**
      * Create language file from English template
      * @param lang Language code
@@ -479,7 +456,7 @@ public class ResourceManager {
             File i18nDir = new File(plugin.getDataFolder(), "i18n");
             File targetFile = new File(i18nDir, "messages_" + lang + ".properties");
             File enTemplate = new File(i18nDir, "messages_en.properties");
-
+            
             // If English template exists, copy it
             if (enTemplate.exists()) {
                 Files.copy(enTemplate.toPath(), targetFile.toPath());
@@ -524,4 +501,4 @@ public class ResourceManager {
         File themeDir = new File(plugin.getDataFolder(), "static/" + theme);
         return themeDir.exists() && themeDir.isDirectory();
     }
-}
+} 

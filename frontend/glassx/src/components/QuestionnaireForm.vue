@@ -113,6 +113,8 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useNotification } from '@/composables/useNotification'
+import { apiService } from '@/services/api'
+import type { Question, QuestionnaireAnswer, SubmitQuestionnaireResponse } from '@/services/api'
 
 const { t, locale } = useI18n()
 import Card from './ui/Card.vue'
@@ -122,25 +124,23 @@ import CardDescription from './ui/CardDescription.vue'
 import CardContent from './ui/CardContent.vue'
 import Button from './ui/Button.vue'
 
-interface QuestionnaireAnswer {
-  type: string
-  selectedOptionIds: number[]
-  textAnswer: string
-}
-
 const emit = defineEmits(['passed', 'back', 'skip'])
 const notification = useNotification()
+
+const submitSuccessFallback = () => t('questionnaire.passed')
+const submitFailedFallback = () => t('questionnaire.failed')
 
 const loading = ref(true)
 const submitting = ref(false)
 const submitted = ref(false)
 const questionnaireEnabled = ref(false)
-const questions = ref<any[]>([])
+const questions = ref<Question[]>([])
 const answers = reactive<Record<number, QuestionnaireAnswer>>({})
 const result = ref<{
   passed: boolean
   score: number
   pass_score: number
+  manual_review_required?: boolean
   answers: Record<string, QuestionnaireAnswer>
   token: string
   submitted_at: number
@@ -149,41 +149,65 @@ const result = ref<{
   passed: false,
   score: 0,
   pass_score: 60,
+  manual_review_required: false,
   answers: {},
   token: '',
   submitted_at: 0,
   expires_at: 0
 })
 
+const isChoiceQuestion = (question: Question): question is Question & { type: 'single_choice' | 'multiple_choice' } => {
+  return question.type === 'single_choice' || question.type === 'multiple_choice'
+}
+
+const isTextQuestion = (question: Question): question is Question & { type: 'text' } => {
+  return question.type === 'text'
+}
+
+const isSupportedQuestionType = (question: Question) => {
+  return isChoiceQuestion(question) || isTextQuestion(question)
+}
+
+const getErrorMessage = (payload?: { msg?: string; message?: string }) => {
+  return payload?.msg || payload?.message || ''
+}
+
+const initAnswer = (question: Question): QuestionnaireAnswer => ({
+  type: question.type,
+  selectedOptionIds: [],
+  textAnswer: ''
+})
+
 const isFormValid = computed(() => {
-  return questions.value.every(q => {
-    const answer = answers[q.id]
-    if (!answer) return !q.required
-    if (q.type === 'multiple_choice' || q.type === 'single_choice') {
-      const min = q.input?.min_selections ?? (q.required ? 1 : 0)
-      const max = q.input?.max_selections ?? Number.MAX_SAFE_INTEGER
-      return answer.selectedOptionIds.length >= min && answer.selectedOptionIds.length <= max
+  return questions.value.every(question => {
+    if (!isSupportedQuestionType(question)) {
+      return false
     }
-    if (q.type === 'text') {
-      const text = (answer.textAnswer || '').trim()
-      const min = q.input?.min_length ?? 0
-      const max = q.input?.max_length ?? Number.MAX_SAFE_INTEGER
-      if (!q.required && text.length === 0) return true
-      return text.length >= min && text.length <= max
+
+    const answer = answers[question.id] ?? initAnswer(question)
+
+    if (isChoiceQuestion(question)) {
+      const minSelections = question.input?.min_selections ?? (question.required ? 1 : 0)
+      const maxSelections = question.input?.max_selections ?? Number.MAX_SAFE_INTEGER
+      const selectedCount = answer.selectedOptionIds.length
+      return selectedCount >= minSelections && selectedCount <= maxSelections
     }
+
+    if (isTextQuestion(question)) {
+      const trimmedText = answer.textAnswer.trim()
+      const minLength = question.input?.min_length ?? 0
+      const maxLength = question.input?.max_length ?? Number.MAX_SAFE_INTEGER
+      if (!question.required && trimmedText.length === 0) return true
+      return trimmedText.length >= minLength && trimmedText.length <= maxLength
+    }
+
     return false
   })
 })
 
 const isSelected = (questionId: number, optionId: number) => {
-  return answers[questionId]?.selectedOptionIds?.includes(optionId) || false
+  return answers[questionId]?.selectedOptionIds.includes(optionId) ?? false
 }
-
-const initAnswer = (q: any): QuestionnaireAnswer => ({
-  type: q.type,
-  selectedOptionIds: [],
-  textAnswer: ''
-})
 
 onMounted(async () => {
   await loadQuestionnaire()
@@ -192,16 +216,21 @@ onMounted(async () => {
 const loadQuestionnaire = async () => {
   loading.value = true
   try {
-    const response = await fetch(`/api/questionnaire?language=${locale.value}`)
-    const data = await response.json()
+    const data = await apiService.getQuestionnaire(locale.value)
 
     if (data.success && data.data) {
       questionnaireEnabled.value = data.data.enabled
       questions.value = data.data.questions || []
-      questions.value.forEach(q => {
-        answers[q.id] = initAnswer(q)
+      Object.keys(answers).forEach(key => {
+        delete answers[Number(key)]
       })
+      questions.value.forEach(question => {
+        answers[question.id] = initAnswer(question)
+      })
+      return
     }
+
+    notification.error(t('common.error'), getErrorMessage(data) || t('questionnaire.load_error'))
   } catch (error) {
     console.error('Failed to load questionnaire:', error)
     notification.error(t('common.error'), t('questionnaire.load_error'))
@@ -219,31 +248,31 @@ const handleSubmit = async () => {
   submitting.value = true
 
   try {
-    const formattedAnswers: Record<string, QuestionnaireAnswer> = {}
-    for (const [questionId, answer] of Object.entries(answers)) {
-      formattedAnswers[questionId] = {
-        type: answer.type,
-        selectedOptionIds: Array.isArray(answer.selectedOptionIds) ? [...answer.selectedOptionIds] : [],
-        textAnswer: answer.textAnswer || ''
-      }
-    }
-
-    const response = await fetch('/api/submit-questionnaire', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        answers: formattedAnswers,
-        language: locale.value
+    const formattedAnswers: Record<string, QuestionnaireAnswer> = Object.fromEntries(
+      questions.value.map(question => {
+        const answer = answers[question.id] ?? initAnswer(question)
+        return [
+          String(question.id),
+          {
+            type: answer.type,
+            selectedOptionIds: [...answer.selectedOptionIds],
+            textAnswer: answer.textAnswer
+          }
+        ]
       })
-    })
+    )
 
-    const data = await response.json()
+    const data: SubmitQuestionnaireResponse = await apiService.submitQuestionnaire({
+      answers: formattedAnswers,
+      language: locale.value
+    })
 
     if (data.success) {
       const submissionResult = {
         passed: data.passed,
         score: data.score,
         pass_score: data.pass_score,
+        manual_review_required: Boolean(data.manual_review_required),
         answers: formattedAnswers,
         token: data.token || '',
         submitted_at: data.submitted_at || Date.now(),
@@ -251,15 +280,19 @@ const handleSubmit = async () => {
       }
       result.value = submissionResult
 
-      if (data.passed) {
-        notification.success(t('questionnaire.passed'), data.msg)
+      if (data.passed || data.manual_review_required) {
+        if (data.passed) {
+          notification.success(t('questionnaire.passed'), getErrorMessage(data) || submitSuccessFallback())
+        } else {
+          notification.warning(t('questionnaire.failed'), getErrorMessage(data) || submitFailedFallback())
+        }
         emit('passed', submissionResult)
       } else {
         submitted.value = true
-        notification.warning(t('questionnaire.failed'), data.msg)
+        notification.warning(t('questionnaire.failed'), getErrorMessage(data) || submitFailedFallback())
       }
     } else {
-      notification.error(t('common.error'), data.msg || t('questionnaire.submit_error'))
+      notification.error(t('common.error'), getErrorMessage(data) || t('questionnaire.submit_error'))
     }
   } catch (error) {
     console.error('Failed to submit questionnaire:', error)

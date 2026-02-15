@@ -24,8 +24,6 @@ export interface ConfigResponse {
   authme: {
     enabled: boolean
     require_password: boolean
-    auto_register: boolean
-    auto_unregister: boolean
     password_regex: string
   }
   captcha?: {
@@ -55,10 +53,49 @@ export interface QuestionnaireAnswer {
   textAnswer: string
 }
 
+export interface QuestionOption {
+  id: number
+  text: string
+}
+
+export interface QuestionInputMeta {
+  min_selections?: number
+  max_selections?: number
+  min_length?: number
+  max_length?: number
+  multiline?: boolean
+  placeholder?: string
+}
+
+export type QuestionType = 'single_choice' | 'multiple_choice' | 'text'
+
+export interface Question {
+  id: number
+  question: string
+  type: QuestionType
+  required: boolean
+  options?: QuestionOption[]
+  input?: QuestionInputMeta
+}
+
+export interface SubmitQuestionnaireResponse {
+  success: boolean
+  passed: boolean
+  score: number
+  pass_score: number
+  manual_review_required?: boolean
+  token?: string
+  submitted_at?: number
+  expires_at?: number
+  msg?: string
+  message?: string
+}
+
 export interface QuestionnaireSubmission {
   passed: boolean
   score: number
   pass_score: number
+  manual_review_required?: boolean
   answers: Record<string, QuestionnaireAnswer>
   token: string
   submitted_at: number
@@ -91,6 +128,7 @@ export interface RegisterRequest {
   captchaToken?: string
   captchaAnswer?: string
   language: string
+  platform?: 'java' | 'bedrock'
   questionnaire?: QuestionnaireSubmission
 }
 
@@ -159,6 +197,10 @@ class ApiService {
     }
   }
 
+  private getResponseMessage(payload: { msg?: string; message?: string } | null | undefined): string {
+    return payload?.msg || payload?.message || ''
+  }
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE}${endpoint}`
     const response = await fetch(url, {
@@ -172,7 +214,8 @@ class ApiService {
     }
 
     const data = await response.json()
-    if (data && data.success === false && data.message && data.message.includes('Authentication required')) {
+    const responseMessage = this.getResponseMessage(data)
+    if (data && data.success === false && responseMessage.includes('Authentication required')) {
       sessionService.handleUnauthorized()
       throw new Error('Authentication required')
     }
@@ -202,6 +245,30 @@ class ApiService {
     return this.request<RegisterResponse>('/register', {
       method: 'POST',
       body: JSON.stringify(data),
+    })
+  }
+
+  // 获取问卷
+  async getQuestionnaire(language: string): Promise<{
+    success: boolean
+    data?: {
+      enabled: boolean
+      questions: Question[]
+    }
+    msg?: string
+    message?: string
+  }> {
+    return this.request(`/questionnaire?language=${encodeURIComponent(language)}`)
+  }
+
+  // 提交问卷
+  async submitQuestionnaire(payload: {
+    answers: Record<string, QuestionnaireAnswer>
+    language: string
+  }): Promise<SubmitQuestionnaireResponse> {
+    return this.request<SubmitQuestionnaireResponse>('/submit-questionnaire', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     })
   }
 
