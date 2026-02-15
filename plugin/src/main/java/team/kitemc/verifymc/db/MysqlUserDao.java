@@ -3,8 +3,9 @@ package team.kitemc.verifymc.db;
 import java.sql.*;
 import java.util.*;
 import org.bukkit.plugin.Plugin;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class MysqlUserDao extends BaseUserDao {
+public class MysqlUserDao implements UserDao {
     private final Connection conn;
     private final ResourceBundle messages;
     private final boolean debug;
@@ -19,6 +20,7 @@ public class MysqlUserDao extends BaseUserDao {
                 mysqlConfig.getProperty("database") + "?useSSL=false&characterEncoding=utf8";
         conn = DriverManager.getConnection(url, mysqlConfig.getProperty("user"), mysqlConfig.getProperty("password"));
         try (Statement stmt = conn.createStatement()) {
+            // Create users table (if not exists)
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS users (" +
                     "uuid VARCHAR(36) PRIMARY KEY," +
                     "username VARCHAR(32) NOT NULL," +
@@ -31,33 +33,42 @@ public class MysqlUserDao extends BaseUserDao {
                     "questionnaire_review_summary TEXT NULL," +
                     "questionnaire_scored_at BIGINT NULL)");
 
+            // Compatibility handling: Check and add missing fields
             try {
                 stmt.executeQuery("SELECT password FROM users LIMIT 1");
                 debugLog("Password column already exists in users table");
             } catch (SQLException e) {
+                // password field doesn't exist, add it
                 stmt.executeUpdate("ALTER TABLE users ADD COLUMN password VARCHAR(255)");
                 debugLog("Added password column to users table");
             }
 
+            // Check if regTime field exists
             try {
                 stmt.executeQuery("SELECT regTime FROM users LIMIT 1");
                 debugLog("regTime column already exists in users table");
             } catch (SQLException e) {
+                // regTime field doesn't exist, add it
                 stmt.executeUpdate("ALTER TABLE users ADD COLUMN regTime BIGINT");
                 debugLog("Added regTime column to users table");
+
+                // Set default regTime value for existing records
                 stmt.executeUpdate(
                         "UPDATE users SET regTime = " + System.currentTimeMillis() + " WHERE regTime IS NULL");
                 debugLog("Updated existing records with default regTime value");
             }
 
+            // Check if discord_id field exists
             try {
                 stmt.executeQuery("SELECT discord_id FROM users LIMIT 1");
                 debugLog("discord_id column already exists in users table");
             } catch (SQLException e) {
+                // discord_id field doesn't exist, add it
                 stmt.executeUpdate("ALTER TABLE users ADD COLUMN discord_id VARCHAR(64)");
                 debugLog("Added discord_id column to users table");
             }
 
+            // Check questionnaire audit fields
             try {
                 stmt.executeQuery("SELECT questionnaire_score FROM users LIMIT 1");
             } catch (SQLException e) {
@@ -83,9 +94,9 @@ public class MysqlUserDao extends BaseUserDao {
                 debugLog("Added questionnaire_scored_at column to users table");
             }
 
+            // Check and ensure indexes exist
             ensureIndex(stmt, "idx_username", "CREATE INDEX idx_username ON users(username)");
             ensureIndex(stmt, "idx_email", "CREATE INDEX idx_email ON users(email)");
-            ensureIndex(stmt, "idx_status", "CREATE INDEX idx_status ON users(status)");
         }
     }
 
@@ -105,22 +116,6 @@ public class MysqlUserDao extends BaseUserDao {
             plugin.getLogger().info("[DEBUG] MysqlUserDao: " + msg);
     }
 
-    private Map<String, Object> mapFromResultSet(ResultSet rs) throws SQLException {
-        Map<String, Object> user = new HashMap<>();
-        user.put("uuid", rs.getString("uuid"));
-        user.put("username", rs.getString("username"));
-        user.put("email", rs.getString("email"));
-        user.put("status", rs.getString("status"));
-        user.put("password", rs.getString("password"));
-        user.put("regTime", rs.getLong("regTime"));
-        user.put("discord_id", rs.getString("discord_id"));
-        user.put("questionnaire_score", rs.getObject("questionnaire_score"));
-        user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
-        user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
-        user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
-        return user;
-    }
-
     @Override
     public boolean registerUser(String uuid, String username, String email, String status) {
         return registerUser(uuid, username, email, status, null, null, null, null);
@@ -130,6 +125,7 @@ public class MysqlUserDao extends BaseUserDao {
     public boolean registerUser(String uuid, String username, String email, String status,
             Integer questionnaireScore, Boolean questionnairePassed,
             String questionnaireReviewSummary, Long questionnaireScoredAt) {
+        // First check if user already exists
         String checkSql = "SELECT uuid FROM users WHERE uuid = ?";
         try (PreparedStatement checkPs = conn.prepareStatement(checkSql)) {
             checkPs.setString(1, uuid);
@@ -181,6 +177,7 @@ public class MysqlUserDao extends BaseUserDao {
     public boolean registerUser(String uuid, String username, String email, String status, String password,
             Integer questionnaireScore, Boolean questionnairePassed,
             String questionnaireReviewSummary, Long questionnaireScoredAt) {
+        // First check if user already exists
         String checkSql = "SELECT uuid FROM users WHERE uuid = ?";
         try (PreparedStatement checkPs = conn.prepareStatement(checkSql)) {
             checkPs.setString(1, uuid);
@@ -262,7 +259,19 @@ public class MysqlUserDao extends BaseUserDao {
         String sql = "SELECT * FROM users";
         try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                result.add(mapFromResultSet(rs));
+                Map<String, Object> user = new HashMap<>();
+                user.put("uuid", rs.getString("uuid"));
+                user.put("username", rs.getString("username"));
+                user.put("email", rs.getString("email"));
+                user.put("status", rs.getString("status"));
+                user.put("password", rs.getString("password"));
+                user.put("regTime", rs.getLong("regTime"));
+                user.put("discord_id", rs.getString("discord_id"));
+                user.put("questionnaire_score", rs.getObject("questionnaire_score"));
+                user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
+                user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
+                user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
+                result.add(user);
             }
         } catch (SQLException e) {
             debugLog(messages.getString("storage.migrate.fail").replace("{0}", e.getMessage()));
@@ -276,7 +285,19 @@ public class MysqlUserDao extends BaseUserDao {
         String sql = "SELECT * FROM users WHERE status='pending'";
         try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                result.add(mapFromResultSet(rs));
+                Map<String, Object> user = new HashMap<>();
+                user.put("uuid", rs.getString("uuid"));
+                user.put("username", rs.getString("username"));
+                user.put("email", rs.getString("email"));
+                user.put("status", rs.getString("status"));
+                user.put("password", rs.getString("password"));
+                user.put("regTime", rs.getLong("regTime"));
+                user.put("discord_id", rs.getString("discord_id"));
+                user.put("questionnaire_score", rs.getObject("questionnaire_score"));
+                user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
+                user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
+                user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
+                result.add(user);
             }
         } catch (SQLException e) {
             debugLog(messages.getString("storage.migrate.fail").replace("{0}", e.getMessage()));
@@ -291,7 +312,19 @@ public class MysqlUserDao extends BaseUserDao {
             ps.setString(1, uuid);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return mapFromResultSet(rs);
+                    Map<String, Object> user = new HashMap<>();
+                    user.put("uuid", rs.getString("uuid"));
+                    user.put("username", rs.getString("username"));
+                    user.put("email", rs.getString("email"));
+                    user.put("status", rs.getString("status"));
+                    user.put("password", rs.getString("password"));
+                    user.put("regTime", rs.getLong("regTime"));
+                    user.put("discord_id", rs.getString("discord_id"));
+                    user.put("questionnaire_score", rs.getObject("questionnaire_score"));
+                    user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
+                    user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
+                    user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
+                    return user;
                 }
             }
         } catch (SQLException e) {
@@ -307,7 +340,19 @@ public class MysqlUserDao extends BaseUserDao {
             ps.setString(1, username);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return mapFromResultSet(rs);
+                    Map<String, Object> user = new HashMap<>();
+                    user.put("uuid", rs.getString("uuid"));
+                    user.put("username", rs.getString("username"));
+                    user.put("email", rs.getString("email"));
+                    user.put("status", rs.getString("status"));
+                    user.put("password", rs.getString("password"));
+                    user.put("regTime", rs.getLong("regTime"));
+                    user.put("discord_id", rs.getString("discord_id"));
+                    user.put("questionnaire_score", rs.getObject("questionnaire_score"));
+                    user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
+                    user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
+                    user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
+                    return user;
                 }
             }
         } catch (SQLException e) {
@@ -350,17 +395,60 @@ public class MysqlUserDao extends BaseUserDao {
 
     @Override
     public void save() {
+        // MySQL implementation can be empty or just log message
         debugLog("MySQL storage: save() called (no-op)");
     }
 
     @Override
     public List<Map<String, Object>> getUsersWithPagination(int page, int pageSize) {
-        return getUsersWithPaginationAndSearch(page, pageSize, null);
+        debugLog("Getting users with pagination: page=" + page + ", pageSize=" + pageSize);
+        List<Map<String, Object>> result = new ArrayList<>();
+        int offset = (page - 1) * pageSize;
+
+        String sql = "SELECT * FROM users ORDER BY regTime DESC LIMIT ? OFFSET ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, pageSize);
+            ps.setInt(2, offset);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> user = new HashMap<>();
+                    user.put("uuid", rs.getString("uuid"));
+                    user.put("username", rs.getString("username"));
+                    user.put("email", rs.getString("email"));
+                    user.put("status", rs.getString("status"));
+                    user.put("password", rs.getString("password"));
+                    user.put("regTime", rs.getLong("regTime"));
+                    user.put("discord_id", rs.getString("discord_id"));
+                    user.put("questionnaire_score", rs.getObject("questionnaire_score"));
+                    user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
+                    user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
+                    user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
+                    result.add(user);
+                }
+            }
+        } catch (SQLException e) {
+            debugLog("Error getting users with pagination: " + e.getMessage());
+        }
+
+        debugLog("Returning " + result.size() + " users for page " + page);
+        return result;
     }
 
     @Override
     public int getTotalUserCount() {
-        return getTotalUserCountWithSearch(null);
+        debugLog("Getting total user count");
+        int count = 0;
+        String sql = "SELECT COUNT(*) FROM users";
+        try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
+            if (rs.next()) {
+                count = rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            debugLog("Error getting total user count: " + e.getMessage());
+        }
+
+        debugLog("Total user count: " + count);
+        return count;
     }
 
     @Override
@@ -391,7 +479,19 @@ public class MysqlUserDao extends BaseUserDao {
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    result.add(mapFromResultSet(rs));
+                    Map<String, Object> user = new HashMap<>();
+                    user.put("uuid", rs.getString("uuid"));
+                    user.put("username", rs.getString("username"));
+                    user.put("email", rs.getString("email"));
+                    user.put("status", rs.getString("status"));
+                    user.put("password", rs.getString("password"));
+                    user.put("regTime", rs.getLong("regTime"));
+                    user.put("discord_id", rs.getString("discord_id"));
+                    user.put("questionnaire_score", rs.getObject("questionnaire_score"));
+                    user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
+                    user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
+                    user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
+                    result.add(user);
                 }
             }
         } catch (SQLException e) {
@@ -436,7 +536,19 @@ public class MysqlUserDao extends BaseUserDao {
 
     @Override
     public int getApprovedUserCount() {
-        return getApprovedUserCountWithSearch(null);
+        debugLog("Getting approved user count (excluding pending)");
+        int count = 0;
+        String sql = "SELECT COUNT(*) FROM users WHERE status != 'pending'";
+        try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
+            if (rs.next()) {
+                count = rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            debugLog("Error getting approved user count: " + e.getMessage());
+        }
+
+        debugLog("Approved user count: " + count);
+        return count;
     }
 
     @Override
@@ -473,7 +585,37 @@ public class MysqlUserDao extends BaseUserDao {
 
     @Override
     public List<Map<String, Object>> getApprovedUsersWithPagination(int page, int pageSize) {
-        return getApprovedUsersWithPaginationAndSearch(page, pageSize, null);
+        debugLog("Getting approved users with pagination: page=" + page + ", pageSize=" + pageSize);
+        List<Map<String, Object>> result = new ArrayList<>();
+        int offset = (page - 1) * pageSize;
+
+        String sql = "SELECT * FROM users WHERE status != 'pending' ORDER BY regTime DESC LIMIT ? OFFSET ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, pageSize);
+            ps.setInt(2, offset);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> user = new HashMap<>();
+                    user.put("uuid", rs.getString("uuid"));
+                    user.put("username", rs.getString("username"));
+                    user.put("email", rs.getString("email"));
+                    user.put("status", rs.getString("status"));
+                    user.put("password", rs.getString("password"));
+                    user.put("regTime", rs.getLong("regTime"));
+                    user.put("discord_id", rs.getString("discord_id"));
+                    user.put("questionnaire_score", rs.getObject("questionnaire_score"));
+                    user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
+                    user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
+                    user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
+                    result.add(user);
+                }
+            }
+        } catch (SQLException e) {
+            debugLog("Error getting approved users with pagination: " + e.getMessage());
+        }
+
+        debugLog("Returning " + result.size() + " approved users for page " + page);
+        return result;
     }
 
     @Override
@@ -505,7 +647,19 @@ public class MysqlUserDao extends BaseUserDao {
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    result.add(mapFromResultSet(rs));
+                    Map<String, Object> user = new HashMap<>();
+                    user.put("uuid", rs.getString("uuid"));
+                    user.put("username", rs.getString("username"));
+                    user.put("email", rs.getString("email"));
+                    user.put("status", rs.getString("status"));
+                    user.put("password", rs.getString("password"));
+                    user.put("regTime", rs.getLong("regTime"));
+                    user.put("discord_id", rs.getString("discord_id"));
+                    user.put("questionnaire_score", rs.getObject("questionnaire_score"));
+                    user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
+                    user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
+                    user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
+                    result.add(user);
                 }
             }
         } catch (SQLException e) {
@@ -542,7 +696,18 @@ public class MysqlUserDao extends BaseUserDao {
             ps.setString(1, discordId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    Map<String, Object> user = mapFromResultSet(rs);
+                    Map<String, Object> user = new HashMap<>();
+                    user.put("uuid", rs.getString("uuid"));
+                    user.put("username", rs.getString("username"));
+                    user.put("email", rs.getString("email"));
+                    user.put("status", rs.getString("status"));
+                    user.put("password", rs.getString("password"));
+                    user.put("regTime", rs.getLong("regTime"));
+                    user.put("discord_id", rs.getString("discord_id"));
+                    user.put("questionnaire_score", rs.getObject("questionnaire_score"));
+                    user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
+                    user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
+                    user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
                     debugLog("User found with Discord ID: " + user.get("username"));
                     return user;
                 }
@@ -558,100 +723,5 @@ public class MysqlUserDao extends BaseUserDao {
     public boolean isDiscordIdLinked(String discordId) {
         debugLog("Checking if Discord ID is linked: " + discordId);
         return getUserByDiscordId(discordId) != null;
-    }
-
-    @Override
-    public User getUserEntityByUuid(String uuid) {
-        return mapToUser(getUserByUuid(uuid));
-    }
-
-    @Override
-    public User getUserEntityByUsername(String username) {
-        return mapToUser(getUserByUsername(username));
-    }
-
-    @Override
-    public PaginatedResult<User> getUsersWithPaginationEntity(int page, int pageSize) {
-        List<Map<String, Object>> maps = getUsersWithPagination(page, pageSize);
-        List<User> users = new ArrayList<>();
-        for (Map<String, Object> map : maps) {
-            users.add(mapToUser(map));
-        }
-        return PaginatedResult.fromUsers(users, page, pageSize, getTotalUserCount());
-    }
-
-    @Override
-    public PaginatedResult<User> getUsersWithPaginationAndSearchEntity(int page, int pageSize, String searchQuery) {
-        List<Map<String, Object>> maps = getUsersWithPaginationAndSearch(page, pageSize, searchQuery);
-        List<User> users = new ArrayList<>();
-        for (Map<String, Object> map : maps) {
-            users.add(mapToUser(map));
-        }
-        return PaginatedResult.fromUsers(users, page, pageSize, getTotalUserCountWithSearch(searchQuery));
-    }
-
-    public List<User> getUsersByStatus(String status, int limit) {
-        debugLog("Getting users by status: status=" + status + ", limit=" + limit);
-        List<User> result = new ArrayList<>();
-        String sql = "SELECT * FROM users WHERE status = ? ORDER BY regTime DESC LIMIT ?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, status);
-            ps.setInt(2, limit);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    result.add(mapToUser(mapFromResultSet(rs)));
-                }
-            }
-        } catch (SQLException e) {
-            debugLog("Error getting users by status: " + e.getMessage());
-            throw new DaoException("Failed to get users by status", e);
-        }
-        debugLog("Returning " + result.size() + " users with status: " + status);
-        return result;
-    }
-
-    public int updateStatusBatch(List<String> uuids, String status) {
-        if (uuids == null || uuids.isEmpty()) {
-            return 0;
-        }
-        debugLog("Batch updating status for " + uuids.size() + " users to: " + status);
-        
-        String sql = "UPDATE users SET status = ? WHERE uuid = ?";
-        int updatedCount = 0;
-        
-        try {
-            conn.setAutoCommit(false);
-            try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                for (String uuid : uuids) {
-                    ps.setString(1, status);
-                    ps.setString(2, uuid);
-                    ps.addBatch();
-                }
-                int[] results = ps.executeBatch();
-                for (int result : results) {
-                    if (result > 0) {
-                        updatedCount++;
-                    }
-                }
-            }
-            conn.commit();
-            debugLog("Batch update completed, " + updatedCount + " users updated");
-        } catch (SQLException e) {
-            try {
-                conn.rollback();
-            } catch (SQLException rollbackEx) {
-                debugLog("Error during rollback: " + rollbackEx.getMessage());
-            }
-            debugLog("Error in batch status update: " + e.getMessage());
-            throw new DaoException("Failed to batch update user status", e);
-        } finally {
-            try {
-                conn.setAutoCommit(true);
-            } catch (SQLException e) {
-                debugLog("Error resetting autoCommit: " + e.getMessage());
-            }
-        }
-        
-        return updatedCount;
     }
 }

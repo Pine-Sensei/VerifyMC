@@ -4,8 +4,7 @@ import java.util.function.Function;
 import org.json.JSONObject;
 import team.kitemc.verifymc.web.ApiResponseFactory;
 
-public class ReviewApplicationService implements IReviewApplicationService {
-    @Override
+public class ReviewApplicationService {
     public JSONObject buildReviewResponse(boolean reviewSuccess, boolean approve, Function<String, String> messageResolver) {
         if (!reviewSuccess) {
             return ApiResponseFactory.failure(messageResolver.apply("review.failed"));

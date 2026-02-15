@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
-public class MysqlAuditDao extends BaseAuditDao {
+public class MysqlAuditDao implements AuditDao {
     private final Connection conn;
 
     public MysqlAuditDao(Properties mysqlConfig) throws SQLException {
@@ -16,26 +16,23 @@ public class MysqlAuditDao extends BaseAuditDao {
         try (Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS audits (" +
                     "id INT AUTO_INCREMENT PRIMARY KEY," +
-                    "uuid VARCHAR(36)," +
-                    "username VARCHAR(32)," +
                     "action VARCHAR(32)," +
                     "operator VARCHAR(32)," +
-                    "reason TEXT," +
+                    "target VARCHAR(32)," +
+                    "detail TEXT," +
                     "timestamp BIGINT)");
         }
     }
 
     @Override
     public void addAudit(AuditRecord audit) {
-        validateRecord(audit);
-        String sql = "INSERT INTO audits (uuid, username, action, operator, reason, timestamp) VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO audits (action, operator, target, detail, timestamp) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, audit.uuid());
-            ps.setString(2, audit.username());
-            ps.setString(3, audit.action());
-            ps.setString(4, audit.operator());
-            ps.setString(5, audit.reason());
-            ps.setLong(6, audit.timestamp());
+            ps.setString(1, audit.action());
+            ps.setString(2, audit.operator());
+            ps.setString(3, audit.target());
+            ps.setString(4, audit.detail());
+            ps.setLong(5, audit.timestamp());
             ps.executeUpdate();
         } catch (SQLException ignored) {}
     }
@@ -48,11 +45,10 @@ public class MysqlAuditDao extends BaseAuditDao {
             while (rs.next()) {
                 result.add(new AuditRecord(
                         rs.getLong("id"),
-                        rs.getString("uuid"),
-                        rs.getString("username"),
                         rs.getString("action"),
                         rs.getString("operator"),
-                        rs.getString("reason"),
+                        rs.getString("target"),
+                        rs.getString("detail"),
                         rs.getLong("timestamp")
                 ));
             }
@@ -62,5 +58,6 @@ public class MysqlAuditDao extends BaseAuditDao {
 
     @Override
     public void save() {
+        // MySQL storage: save() called (no-op)
     }
 }

@@ -1,7 +1,5 @@
 package team.kitemc.verifymc.web;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import java.io.IOException;
@@ -212,7 +210,7 @@ public class RegistrationProcessingHandler implements HttpHandler {
             return null;
         }
 
-        if (!compareJson(record.answers().toString(), answers.toString()) || record.submittedAt() != submittedAt || record.expiresAt() != expiresAt) {
+        if (!record.answers().similar(answers) || record.submittedAt() != submittedAt || record.expiresAt() != expiresAt) {
             reject(exchange, RegistrationValidationResult.reject("register.questionnaire_invalid"), request.language());
             return null;
         }
@@ -343,17 +341,6 @@ public class RegistrationProcessingHandler implements HttpHandler {
             payload.put("extra", extra);
         }
         debugLogger.accept("registration_stage=" + payload);
-    }
-
-    private boolean compareJson(String json1, String json2) {
-        if (json1 == null || json2 == null) return false;
-        try {
-            JsonElement e1 = JsonParser.parseString(json1);
-            JsonElement e2 = JsonParser.parseString(json2);
-            return e1.equals(e2);
-        } catch (Exception e) {
-            return json1.equals(json2);
-        }
     }
 
     public record QuestionnaireSubmissionRecord(

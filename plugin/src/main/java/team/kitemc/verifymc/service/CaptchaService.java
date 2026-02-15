@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Captcha service for generating and validating image-based captcha
  * Supports both math expressions and text captcha types
  */
-public class CaptchaService implements ICaptchaService {
+public class CaptchaService {
     private final Plugin plugin;
     private final boolean debug;
     private final SecureRandom random = new SecureRandom();
@@ -133,7 +133,6 @@ public class CaptchaService implements ICaptchaService {
      * Check if captcha is enabled
      * @return true if captcha is enabled in auth_methods
      */
-    @Override
     public boolean isCaptchaEnabled() {
         return plugin.getConfig().getStringList("auth_methods").contains("captcha");
     }

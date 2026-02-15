@@ -1,15 +1,14 @@
 package team.kitemc.verifymc.db;
 
-public record AuditRecord(Long id, String uuid, String username, String action, String operator, String reason, long timestamp) {
+public record AuditRecord(Long id, String action, String operator, String target, String detail, long timestamp) {
     public AuditRecord {
-        uuid = uuid == null ? "" : uuid;
-        username = username == null ? "" : username;
         action = action == null ? "" : action;
         operator = operator == null ? "" : operator;
-        reason = reason == null ? "" : reason;
+        target = target == null ? "" : target;
+        detail = detail == null ? "" : detail;
     }
 
-    public AuditRecord(String uuid, String username, String action, String operator, String reason, long timestamp) {
-        this(null, uuid, username, action, operator, reason, timestamp);
+    public AuditRecord(String action, String operator, String target, String detail, long timestamp) {
+        this(null, action, operator, target, detail, timestamp);
     }
 }
