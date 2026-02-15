@@ -47,6 +47,15 @@ class ApplicationServiceTest {
         assertTrue(decision.autoApprove());
     }
 
+
+    @Test
+    void autoApproveShouldBeDisabledWhenManualReviewRequired() {
+        RegistrationApplicationService service = new RegistrationApplicationService();
+        RegistrationApplicationService.RegistrationDecision decision = service.resolveDecision(true, true, false, true);
+
+        assertFalse(decision.autoApprove());
+    }
+
     @Test
     void reviewApprovePathShouldReturnApprovedMessage() {
         ReviewApplicationService service = new ReviewApplicationService();
