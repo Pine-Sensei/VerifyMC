@@ -258,10 +258,11 @@ public class RegistrationProcessingHandler implements HttpHandler {
         logRegistrationStage(requestId, "execute_registration", null);
         boolean manualReviewRequired = submissionRecord != null && submissionRecord.manualReviewRequired();
         boolean questionnairePassed = submissionRecord != null && submissionRecord.passed();
+        boolean scoringServiceUnavailable = submissionRecord != null && submissionRecord.scoringServiceUnavailable();
         boolean registerAutoApprove = plugin.getConfig().getBoolean("register.auto_approve", false);
 
         RegistrationApplicationService.RegistrationDecision preDecision =
-                registrationApplicationService.resolveDecision(true, manualReviewRequired, questionnairePassed, registerAutoApprove);
+                registrationApplicationService.resolveDecision(true, manualReviewRequired, questionnairePassed, registerAutoApprove, scoringServiceUnavailable);
         String status = registrationApplicationService.resolveStatus(preDecision);
 
         Integer questionnaireScore = submissionRecord != null ? submissionRecord.score() : null;
@@ -280,7 +281,7 @@ public class RegistrationProcessingHandler implements HttpHandler {
         }
 
         RegistrationApplicationService.RegistrationDecision decision =
-                registrationApplicationService.resolveDecision(ok, manualReviewRequired, questionnairePassed, registerAutoApprove);
+                registrationApplicationService.resolveDecision(ok, manualReviewRequired, questionnairePassed, registerAutoApprove, scoringServiceUnavailable);
         if (decision.outcome() == RegistrationOutcome.SUCCESS_WHITELISTED) {
             org.bukkit.Bukkit.getScheduler().runTask(plugin, () ->
                     org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + request.normalizedUsername()));
@@ -349,12 +350,13 @@ public class RegistrationProcessingHandler implements HttpHandler {
             int passScore,
             JSONArray details,
             boolean manualReviewRequired,
+            boolean scoringServiceUnavailable,
             JSONObject answers,
             long submittedAt,
             long expiresAt
     ) {
-        public static QuestionnaireSubmissionRecord of(boolean passed, int score, int passScore, JSONArray details, boolean manualReviewRequired, JSONObject answers, long submittedAt) {
-            return new QuestionnaireSubmissionRecord(passed, score, passScore, details, manualReviewRequired, answers, submittedAt, submittedAt + QUESTIONNAIRE_SUBMISSION_TTL_MS);
+        public static QuestionnaireSubmissionRecord of(boolean passed, int score, int passScore, JSONArray details, boolean manualReviewRequired, boolean scoringServiceUnavailable, JSONObject answers, long submittedAt) {
+            return new QuestionnaireSubmissionRecord(passed, score, passScore, details, manualReviewRequired, scoringServiceUnavailable, answers, submittedAt, submittedAt + QUESTIONNAIRE_SUBMISSION_TTL_MS);
         }
 
         public boolean isExpired() {
