@@ -13,13 +13,16 @@ public class RegistrationOutcomeResolver {
     public RegistrationOutcome resolve(boolean ok,
                                        boolean manualReviewRequired,
                                        boolean questionnairePassed,
-                                       boolean registerAutoApprove) {
+                                       boolean registerAutoApprove,
+                                       boolean scoringServiceUnavailable) {
         if (!ok) {
             return RegistrationOutcome.FAILED;
         }
 
         if (manualReviewRequired && !questionnairePassed) {
-            return RegistrationOutcome.QUESTIONNAIRE_SCORING_ERROR_PENDING_REVIEW;
+            return scoringServiceUnavailable
+                    ? RegistrationOutcome.QUESTIONNAIRE_SCORING_ERROR_PENDING_REVIEW
+                    : RegistrationOutcome.QUESTIONNAIRE_PENDING_REVIEW;
         }
         if (registerAutoApprove) {
             return RegistrationOutcome.SUCCESS_WHITELISTED;

@@ -140,6 +140,7 @@ const result = ref<{
   passed: boolean
   score: number
   pass_score: number
+  manual_review_required?: boolean
   answers: Record<string, QuestionnaireAnswer>
   token: string
   submitted_at: number
@@ -148,6 +149,7 @@ const result = ref<{
   passed: false,
   score: 0,
   pass_score: 60,
+  manual_review_required: false,
   answers: {},
   token: '',
   submitted_at: 0,
@@ -270,6 +272,7 @@ const handleSubmit = async () => {
         passed: data.passed,
         score: data.score,
         pass_score: data.pass_score,
+        manual_review_required: Boolean(data.manual_review_required),
         answers: formattedAnswers,
         token: data.token || '',
         submitted_at: data.submitted_at || Date.now(),
@@ -277,8 +280,12 @@ const handleSubmit = async () => {
       }
       result.value = submissionResult
 
-      if (data.passed) {
-        notification.success(t('questionnaire.passed'), getErrorMessage(data) || submitSuccessFallback())
+      if (data.passed || data.manual_review_required) {
+        if (data.passed) {
+          notification.success(t('questionnaire.passed'), getErrorMessage(data) || submitSuccessFallback())
+        } else {
+          notification.warning(t('questionnaire.failed'), getErrorMessage(data) || submitFailedFallback())
+        }
         emit('passed', submissionResult)
       } else {
         submitted.value = true
