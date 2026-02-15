@@ -10,10 +10,11 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -88,9 +89,8 @@ public class AuthmeService {
 
     /**
      * Synchronize approved users between VerifyMC and AuthMe.
-     * Rules:
-     * - Only approved local users are allowed to sync from local to AuthMe.
-     * - If AuthMe has user while local missing or pending, create/update local to approved.
+     * - Local approved users are synced to AuthMe by filling missing shared fields.
+     * - AuthMe users are synced to local storage and marked as approved.
      */
     public void syncApprovedUsers() {
         if (!isAuthmeEnabled() || userDao == null) {
@@ -106,70 +106,80 @@ public class AuthmeService {
                 }
             }
 
-            Map<String, String> authmePasswordsByName = listAuthmePasswords();
-            Map<String, String> authmeByLowerName = new HashMap<>();
-            for (String name : authmePasswordsByName.keySet()) {
-                authmeByLowerName.put(name.toLowerCase(), name);
-            }
+            Map<String, AuthmeUserRow> authmeByLowerName = listAuthmeUsersByLowerName();
 
-            // local approved -> authme
-            for (Map<String, Object> local : localUsers) {
-                String status = (String) local.get("status");
-                String username = (String) local.get("username");
-                String password = (String) local.get("password");
-                if (username == null || !"approved".equals(status)) {
-                    continue;
-                }
-                String authName = authmeByLowerName.get(username.toLowerCase());
-                if (authName == null && password != null && !password.trim().isEmpty()) {
-                    upsertAuthmeUser(username, password);
+            for (Map.Entry<String, Map<String, Object>> entry : localByLowerName.entrySet()) {
+                AuthmeUserRow authme = authmeByLowerName.get(entry.getKey());
+                if (authme == null) {
                     continue;
                 }
 
-                // if local has password but AuthMe row exists with empty password, repair it
-                if (authName != null && password != null && !password.trim().isEmpty()) {
-                    String authPassword = authmePasswordsByName.get(authName);
-                    if (authPassword == null || authPassword.trim().isEmpty()) {
-                        updateAuthmePassword(authName, password);
+                Map<String, Object> local = entry.getValue();
+                String identity = localIdentity(local, authme.username());
+                String status = asTrimmedString(local.get("status"));
+                if (!"approved".equalsIgnoreCase(status)) {
+                    userDao.updateUserStatus(identity, "approved");
+                }
+
+                String localPassword = asTrimmedString(local.get("password"));
+                String authPassword = asTrimmedString(authme.password());
+                if (isBlank(localPassword) && !isBlank(authPassword)) {
+                    userDao.updateUserPassword(identity, authPassword);
+                } else if (!isBlank(localPassword) && isBlank(authPassword)) {
+                    updateAuthmePassword(authme.username(), localPassword);
+                }
+
+                if (authme.hasEmailColumn()) {
+                    String localEmail = asTrimmedString(local.get("email"));
+                    String authEmail = asTrimmedString(authme.email());
+                    if (isBlank(localEmail) && !isBlank(authEmail)) {
+                        userDao.updateUserEmail(identity, authEmail);
+                    } else if (!isBlank(localEmail) && isBlank(authEmail)) {
+                        updateAuthmeEmail(authme.username(), localEmail);
                     }
                 }
             }
 
-            // authme -> local approved
-            for (Map.Entry<String, String> entry : authmePasswordsByName.entrySet()) {
-                String authName = entry.getKey();
-                String authPassword = entry.getValue();
-                Map<String, Object> local = localByLowerName.get(authName.toLowerCase());
+            for (AuthmeUserRow authme : authmeByLowerName.values()) {
+                Map<String, Object> local = localByLowerName.get(authme.username().toLowerCase());
+                String authPassword = asTrimmedString(authme.password());
+                String authEmail = asTrimmedString(authme.email());
+
                 if (local == null) {
-                    OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(authName);
+                    OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(authme.username());
                     UUID id = offlinePlayer.getUniqueId();
-                    if (authPassword != null && !authPassword.trim().isEmpty()) {
-                        userDao.registerUser(id.toString(), authName, "", "approved", authPassword);
+                    boolean created;
+                    if (!isBlank(authPassword)) {
+                        created = userDao.registerUser(id.toString(), authme.username(), isBlank(authEmail) ? "" : authEmail, "approved", authPassword);
                     } else {
-                        userDao.registerUser(id.toString(), authName, "", "approved");
+                        created = userDao.registerUser(id.toString(), authme.username(), isBlank(authEmail) ? "" : authEmail, "approved");
                     }
-                    continue;
-                }
-                String status = (String) local.get("status");
-                if (!"approved".equals(status)) {
-                    String uuid = (String) local.get("uuid");
-                    if (uuid != null && !uuid.trim().isEmpty()) {
-                        userDao.updateUserStatus(uuid, "approved");
-                    } else {
-                        userDao.updateUserStatus(authName, "approved");
+                    if (created) {
+                        continue;
                     }
+
+                    Map<String, Object> fallbackLocal = userDao.getUserByUsername(authme.username());
+                    if (fallbackLocal == null) {
+                        continue;
+                    }
+                    local = fallbackLocal;
                 }
 
-                // keep local password in sync with AuthMe hash
-                if (authPassword != null && !authPassword.trim().isEmpty()) {
-                    String localPassword = (String) local.get("password");
-                    if (localPassword == null || localPassword.trim().isEmpty() || !authPassword.equals(localPassword)) {
-                        String uuid = (String) local.get("uuid");
-                        if (uuid != null) {
-                            userDao.updateUserPassword(uuid, authPassword);
-                        } else {
-                            userDao.updateUserPassword(authName, authPassword);
-                        }
+                String identity = localIdentity(local, authme.username());
+                String localStatus = asTrimmedString(local.get("status"));
+                if (!"approved".equalsIgnoreCase(localStatus)) {
+                    userDao.updateUserStatus(identity, "approved");
+                }
+
+                String localPassword = asTrimmedString(local.get("password"));
+                if (isBlank(localPassword) && !isBlank(authPassword)) {
+                    userDao.updateUserPassword(identity, authPassword);
+                }
+
+                if (authme.hasEmailColumn()) {
+                    String localEmail = asTrimmedString(local.get("email"));
+                    if (isBlank(localEmail) && !isBlank(authEmail)) {
+                        userDao.updateUserEmail(identity, authEmail);
                     }
                 }
             }
@@ -222,25 +232,70 @@ public class AuthmeService {
         return saltCol != null && !saltCol.trim().isEmpty();
     }
 
-    private Map<String, String> listAuthmePasswords() throws Exception {
-        Map<String, String> result = new HashMap<>();
-        String sql = "SELECT " + nameColumn() + ", " + passwordColumn() + " FROM " + tableName();
+    private Map<String, AuthmeUserRow> listAuthmeUsersByLowerName() throws Exception {
+        Map<String, AuthmeUserRow> result = new HashMap<>();
+        Set<String> existingColumns = getAuthmeColumns();
+        String nameCol = nameColumn();
+        String passCol = passwordColumn();
+        String emailCol = column("mySQLColumnEmail", "email");
+        boolean hasPassword = existingColumns.contains(passCol.toLowerCase());
+        boolean hasEmail = existingColumns.contains(emailCol.toLowerCase());
+
+        StringBuilder sql = new StringBuilder("SELECT ").append(nameCol);
+        if (hasPassword) {
+            sql.append(", ").append(passCol);
+        }
+        if (hasEmail) {
+            sql.append(", ").append(emailCol);
+        }
+        sql.append(" FROM ").append(tableName());
+
         try (Connection conn = getAuthmeConnection();
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+             ResultSet rs = stmt.executeQuery(sql.toString())) {
             while (rs.next()) {
                 String username = rs.getString(1);
                 if (username != null) {
-                    result.put(username, rs.getString(2));
+                    int idx = 2;
+                    String password = hasPassword ? rs.getString(idx++) : null;
+                    String email = hasEmail ? rs.getString(idx) : null;
+                    result.put(username.toLowerCase(), new AuthmeUserRow(username, password, email, hasEmail));
                 }
             }
         }
         return result;
     }
 
+    private Set<String> getAuthmeColumns() throws Exception {
+        Set<String> columns = new HashSet<>();
+        String sql = "SELECT * FROM " + tableName() + " LIMIT 1";
+        try (Connection conn = getAuthmeConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            int count = rs.getMetaData().getColumnCount();
+            for (int i = 1; i <= count; i++) {
+                columns.add(rs.getMetaData().getColumnName(i).toLowerCase());
+            }
+        }
+        return columns;
+    }
+
     private boolean upsertAuthmeUser(String username, String password) {
+        Set<String> existingColumns;
+        try {
+            existingColumns = getAuthmeColumns();
+        } catch (Exception e) {
+            debugLog("Failed to inspect AuthMe columns: " + e.getMessage());
+            return false;
+        }
+
         String nameCol = nameColumn();
         String passCol = passwordColumn();
+        if (!existingColumns.contains(nameCol.toLowerCase()) || !existingColumns.contains(passCol.toLowerCase())) {
+            debugLog("Skip AuthMe sync: missing username/password column in AuthMe table");
+            return false;
+        }
+
         String realNameCol = column("mySQLRealName", "realname");
         String regDateCol = column("mySQLColumnRegisterDate", "regdate");
         String lastLoginCol = column("mySQLColumnLastLogin", "lastlogin");
@@ -259,24 +314,18 @@ public class AuthmeService {
 
         String selectSql = "SELECT " + nameCol + " FROM " + tableName() + " WHERE " + nameCol + " = ?";
 
-        StringBuilder updateSql = new StringBuilder("UPDATE " + tableName() + " SET " + passCol + " = ?, "
-            + realNameCol + " = ?, " + regDateCol + " = ?, " + lastLoginCol + " = ?, "
-            + ipCol + " = ?, " + regIpCol + " = ?, " + loggedCol + " = 0, " + hasSessionCol + " = 0");
-        if (hasSaltColumn()) {
+        StringBuilder updateSql = new StringBuilder("UPDATE " + tableName() + " SET " + passCol + " = ?");
+        if (existingColumns.contains(realNameCol.toLowerCase())) updateSql.append(", ").append(realNameCol).append(" = ?");
+        if (existingColumns.contains(regDateCol.toLowerCase())) updateSql.append(", ").append(regDateCol).append(" = ?");
+        if (existingColumns.contains(lastLoginCol.toLowerCase())) updateSql.append(", ").append(lastLoginCol).append(" = ?");
+        if (existingColumns.contains(ipCol.toLowerCase())) updateSql.append(", ").append(ipCol).append(" = ?");
+        if (existingColumns.contains(regIpCol.toLowerCase())) updateSql.append(", ").append(regIpCol).append(" = ?");
+        if (existingColumns.contains(loggedCol.toLowerCase())) updateSql.append(", ").append(loggedCol).append(" = 0");
+        if (existingColumns.contains(hasSessionCol.toLowerCase())) updateSql.append(", ").append(hasSessionCol).append(" = 0");
+        if (hasSaltColumn() && existingColumns.contains(saltCol.toLowerCase())) {
             updateSql.append(", ").append(saltCol).append(" = ?");
         }
         updateSql.append(" WHERE ").append(nameCol).append(" = ?");
-
-        StringBuilder insertColumns = new StringBuilder(nameCol + ", " + realNameCol + ", " + passCol + ", "
-            + regDateCol + ", " + lastLoginCol + ", " + ipCol + ", " + regIpCol + ", " + loggedCol
-            + ", " + hasSessionCol + ", " + xCol + ", " + yCol + ", " + zCol + ", " + worldCol
-            + ", " + yawCol + ", " + pitchCol + ", " + emailCol);
-        StringBuilder insertValues = new StringBuilder("?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 0, ?, 0, 0, ?");
-        if (hasSaltColumn()) {
-            insertColumns.append(", ").append(saltCol);
-            insertValues.append(", ?");
-        }
-        String insertSql = "INSERT INTO " + tableName() + " (" + insertColumns + ") VALUES (" + insertValues + ")";
 
         long now = System.currentTimeMillis() / 1000;
         String loopback = "127.0.0.1";
@@ -290,38 +339,24 @@ public class AuthmeService {
                 exists = rs.next();
             }
 
-            if (exists) {
-                try (PreparedStatement update = conn.prepareStatement(updateSql.toString())) {
-                    int idx = 1;
-                    update.setString(idx++, storedPassword);
-                    update.setString(idx++, username);
-                    update.setLong(idx++, now);
-                    update.setLong(idx++, now);
-                    update.setString(idx++, loopback);
-                    update.setString(idx++, loopback);
-                    if (hasSaltColumn()) {
-                        update.setString(idx++, "");
-                    }
-                    update.setString(idx, username);
-                    return update.executeUpdate() > 0;
+            if (!exists) {
+                debugLog("Skip AuthMe create for non-existing user: " + username);
+                return false;
+            }
+
+            try (PreparedStatement update = conn.prepareStatement(updateSql.toString())) {
+                int idx = 1;
+                update.setString(idx++, storedPassword);
+                if (existingColumns.contains(realNameCol.toLowerCase())) update.setString(idx++, username);
+                if (existingColumns.contains(regDateCol.toLowerCase())) update.setLong(idx++, now);
+                if (existingColumns.contains(lastLoginCol.toLowerCase())) update.setLong(idx++, now);
+                if (existingColumns.contains(ipCol.toLowerCase())) update.setString(idx++, loopback);
+                if (existingColumns.contains(regIpCol.toLowerCase())) update.setString(idx++, loopback);
+                if (hasSaltColumn() && existingColumns.contains(saltCol.toLowerCase())) {
+                    update.setString(idx++, "");
                 }
-            } else {
-                try (PreparedStatement insert = conn.prepareStatement(insertSql)) {
-                    int idx = 1;
-                    insert.setString(idx++, username);
-                    insert.setString(idx++, username);
-                    insert.setString(idx++, storedPassword);
-                    insert.setLong(idx++, now);
-                    insert.setLong(idx++, now);
-                    insert.setString(idx++, loopback);
-                    insert.setString(idx++, loopback);
-                    insert.setString(idx++, "world");
-                    insert.setString(idx++, "");
-                    if (hasSaltColumn()) {
-                        insert.setString(idx++, "");
-                    }
-                    return insert.executeUpdate() > 0;
-                }
+                update.setString(idx, username);
+                return update.executeUpdate() > 0;
             }
         } catch (Exception e) {
             debugLog("Failed to upsert AuthMe user " + username + ": " + e.getMessage());
@@ -345,8 +380,18 @@ public class AuthmeService {
     private boolean updateAuthmePassword(String username, String newPassword) {
         String passCol = passwordColumn();
         String nameCol = nameColumn();
+        Set<String> existingColumns;
+        try {
+            existingColumns = getAuthmeColumns();
+        } catch (Exception e) {
+            debugLog("Failed to inspect AuthMe columns for password update: " + e.getMessage());
+            return false;
+        }
+        if (!existingColumns.contains(nameCol.toLowerCase()) || !existingColumns.contains(passCol.toLowerCase())) {
+            return false;
+        }
         String sql;
-        if (hasSaltColumn()) {
+        if (hasSaltColumn() && existingColumns.contains(saltColumn().toLowerCase())) {
             sql = "UPDATE " + tableName() + " SET " + passCol + " = ?, " + saltColumn() + " = ? WHERE " + nameCol + " = ?";
         } else {
             sql = "UPDATE " + tableName() + " SET " + passCol + " = ? WHERE " + nameCol + " = ?";
@@ -366,6 +411,47 @@ public class AuthmeService {
             return false;
         }
     }
+
+    private boolean updateAuthmeEmail(String username, String email) {
+        String nameCol = nameColumn();
+        String emailCol = column("mySQLColumnEmail", "email");
+        Set<String> existingColumns;
+        try {
+            existingColumns = getAuthmeColumns();
+        } catch (Exception e) {
+            debugLog("Failed to inspect AuthMe columns for email update: " + e.getMessage());
+            return false;
+        }
+        if (!existingColumns.contains(nameCol.toLowerCase()) || !existingColumns.contains(emailCol.toLowerCase())) {
+            return false;
+        }
+
+        String sql = "UPDATE " + tableName() + " SET " + emailCol + " = ? WHERE " + nameCol + " = ?";
+        try (Connection conn = getAuthmeConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, email);
+            ps.setString(2, username);
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            debugLog("Failed to update AuthMe email " + username + ": " + e.getMessage());
+            return false;
+        }
+    }
+
+    private String localIdentity(Map<String, Object> local, String fallbackUsername) {
+        String uuid = asTrimmedString(local.get("uuid"));
+        return isBlank(uuid) ? fallbackUsername : uuid;
+    }
+
+    private String asTrimmedString(Object value) {
+        return value == null ? null : String.valueOf(value).trim();
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
+    }
+
+    private record AuthmeUserRow(String username, String password, String email, boolean hasEmailColumn) {}
 
     private String buildStoredPassword(String plainPassword) {
         if (plainPassword == null) {
