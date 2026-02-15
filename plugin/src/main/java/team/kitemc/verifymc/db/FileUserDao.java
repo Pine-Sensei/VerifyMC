@@ -288,6 +288,34 @@ public class FileUserDao implements UserDao {
     }
 
     @Override
+    public boolean updateUserEmail(String uuidOrName, String email) {
+        debugLog("updateUserEmail called: uuidOrName=" + uuidOrName);
+        Map<String, Object> user = null;
+
+        user = users.get(uuidOrName);
+
+        if (user == null) {
+            for (Map<String, Object> u : users.values()) {
+                if (u.get("username") != null && u.get("username").toString().equalsIgnoreCase(uuidOrName)) {
+                    user = u;
+                    break;
+                }
+            }
+        }
+
+        if (user == null) {
+            debugLog("User not found: " + uuidOrName);
+            return false;
+        }
+
+        user.put("email", email);
+        save();
+        debugLog("User email updated: " + user.get("username"));
+        return true;
+    }
+
+
+    @Override
     public Map<String, Object> getUserByUuid(String uuid) {
         debugLog("Getting user by UUID: " + uuid);
         Map<String, Object> user = users.get(uuid);
