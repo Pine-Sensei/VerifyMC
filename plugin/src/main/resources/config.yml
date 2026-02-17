@@ -1,6 +1,5 @@
 language: en
 debug: false
-trust_proxy: false
 web_port: 8080
 web_server_prefix: '[ Name ]'
 auth_methods:
@@ -64,9 +63,41 @@ storage:
 authme:
   enabled: true
   require_password: true
-  auto_register: false
-  auto_unregister: false
-  password_regex: "^[!-~]{5,30}$"
+  password_regex: "^[a-zA-Z0-9_]{8,26}$"
+  database:
+    type: sqlite
+    table: authme
+    # 直写密码格式仅支持 sha256
+    sync_interval_seconds: 30
+    salt_length: 16
+    mysql:
+      host: 127.0.0.1
+      port: 3306
+      database: authme
+      user: root
+      password: yourpassword
+    sqlite:
+      path: plugins/AuthMe/authme.db
+    columns:
+      mySQLColumnId: id
+      mySQLColumnName: username
+      mySQLRealName: realname
+      mySQLColumnPassword: password
+      mySQLColumnSalt: ''
+      mySQLColumnEmail: email
+      mySQLColumnLogged: isLogged
+      mySQLColumnHasSession: hasSession
+      mySQLColumnIp: ip
+      mySQLColumnLastLogin: lastlogin
+      mySQLColumnRegisterDate: regdate
+      mySQLColumnRegisterIp: regip
+      mySQLlastlocX: x
+      mySQLlastlocY: y
+      mySQLlastlocZ: z
+      mySQLlastlocWorld: world
+      mySQLlastlocYaw: yaw
+      mySQLlastlocPitch: pitch
+      mySQLPlayerUUID: ''
 captcha:
   type: math
   length: 4
@@ -74,7 +105,7 @@ captcha:
 bedrock:
   enabled: false
   prefix: "."
-  username_regex: "^\\.[a-zA-Z0-9_\\s]{3,16}$"
+  username_regex: "^[a-zA-Z0-9._-]{3,15}$"
 questionnaire:
   enabled: false
   pass_score: 60

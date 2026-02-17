@@ -2,11 +2,9 @@
 # General Settings
 # ----------------------------------------
 # Global language setting. Affects plugin messages and web UI. (e.g., 'zh', 'en')
-language: zh
+language: en
 # Enable detailed console logs for troubleshooting.
 debug: false
-# Whether to trust the X-Forwarded-For header from a reverse proxy. Only enable when behind Nginx/Apache, otherwise attackers can spoof IPs to bypass rate limiting.
-trust_proxy: false
 
 # ----------------------------------------
 # Web Server
@@ -21,7 +19,7 @@ web_server_prefix: '[ Name ]'
 # ----------------------------------------
 # Supported authentication methods. Options: 'email' (email verification), 'captcha' (graphical captcha).
 # You can use multiple methods, e.g.: [email, captcha]
-#
+# 
 # [IMPORTANT] Configuring the captcha: section below does NOT enable captcha!
 # To enable captcha, you MUST add 'captcha' to this list:
 #   Captcha only: auth_methods: [captcha]
@@ -114,7 +112,7 @@ auto_update_email: true
 # If true, automatically updates theme files.
 auto_update_static: true
 # If true, creates a full backup of the plugin data folder before any auto-updates.
-backup_on_update: true
+backup_on_update: true 
 
 # ----------------------------------------
 # Email Registration Restrictions
@@ -133,7 +131,7 @@ email_domain_whitelist:
   - hotmail.com
   - icloud.com
   - yahoo.com
-  - foxmail.com
+  - foxmail.com 
 
 # ----------------------------------------
 # Storage & Data Migration
@@ -148,7 +146,7 @@ storage:
     port: 3306
     database: verifymc
     user: root
-    password: yourpassword
+    password: yourpassword 
 
 # ----------------------------------------
 # Authme Integration Configuration
@@ -158,12 +156,64 @@ authme:
   enabled: true
   # Whether to require password input during web registration
   require_password: true
-  # Whether to automatically register to Authme when approval is granted
-  auto_register: false
-  # Whether to automatically unregister from Authme when user is deleted
-  auto_unregister: false
-  # Password regex pattern, aligned with AuthMe's allowedPasswordCharacters: all visible ASCII, length 5-30
-  password_regex: "^[!-~]{5,30}$"
+  # Password regex pattern
+  password_regex: "^[a-zA-Z0-9_]{8,26}$"
+  database:
+    # DB type in database mode: mysql / sqlite
+    type: sqlite
+    table: authme
+    # Password format only supports SHA-256. If it was not previously using this format, please switch it in AuthMe (AuthMe supports lazy fallback).
+    # After switching in AuthMe, please log into the game once to trigger lazy fallback to SHA-256, or you can reset the password directly in the backend.
+    # VerifyMC ↔ AuthMe bidirectional sync interval (seconds)
+    sync_interval_seconds: 30
+    # AuthMe SHA256 salt length (default 16)
+    salt_length: 16
+    mysql:
+      host: 127.0.0.1
+      port: 3306
+      database: authme
+      user: root
+      password: yourpassword
+    sqlite:
+      path: plugins/AuthMe/authme.db
+    columns:
+      mySQLColumnId: id
+      # Column for storing or checking players nickname
+      mySQLColumnName: username
+      # Column for storing or checking players RealName
+      mySQLRealName: realname
+      # Column for storing players passwords
+      mySQLColumnPassword: password
+      # Column for storing players passwords salts
+      mySQLColumnSalt: ''
+      # Column for storing players emails
+      mySQLColumnEmail: email
+      # Column for storing if a player is logged in or not
+      mySQLColumnLogged: isLogged
+      # Column for storing if a player has a valid session or not
+      mySQLColumnHasSession: hasSession
+      # Column for storing the player's last IP
+      mySQLColumnIp: ip
+      # Column for storing players lastlogins
+      mySQLColumnLastLogin: lastlogin
+      # Column storing the registration date
+      mySQLColumnRegisterDate: regdate
+      # Column for storing the IP address at the time of registration
+      mySQLColumnRegisterIp: regip
+      # Column for storing player LastLocation - X
+      mySQLlastlocX: x
+      # Column for storing player LastLocation - Y
+      mySQLlastlocY: y
+      # Column for storing player LastLocation - Z
+      mySQLlastlocZ: z
+      # Column for storing player LastLocation - World Name
+      mySQLlastlocWorld: world
+      # Column for storing player LastLocation - Yaw
+      mySQLlastlocYaw: yaw
+      # Column for storing player LastLocation - Pitch
+      mySQLlastlocPitch: pitch
+      # Column for storing players uuids (optional)
+      mySQLPlayerUUID: ''
 
 # ----------------------------------------
 # Captcha Configuration
@@ -189,7 +239,7 @@ bedrock:
   # Prefix for bedrock players (commonly "." for Floodgate)
   prefix: "."
   # Regex for bedrock usernames
-  username_regex: "^\\.[a-zA-Z0-9_\\s]{3,16}$"
+  username_regex: "^[a-zA-Z0-9._-]{3,15}$"
 
 # ----------------------------------------
 # Questionnaire Configuration

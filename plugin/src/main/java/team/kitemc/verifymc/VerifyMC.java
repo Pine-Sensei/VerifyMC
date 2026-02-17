@@ -68,7 +68,7 @@ public class VerifyMC extends JavaPlugin implements Listener {
     public void debugLog(String msg) {
         if (debug) getLogger().info("[DEBUG] " + msg);
     }
-
+    
     /**
      * Check if server is running Folia
      * @return true if Folia is detected
@@ -161,9 +161,16 @@ public class VerifyMC extends JavaPlugin implements Listener {
         }
         autoMigrateIfNeeded(messages);
 
+        // Set UserDao for AuthMe synchronization
+        authmeService.setUserDao(userDao);
+        migratePlaintextPasswords();
+        if (authmeService.isAuthmeEnabled()) {
+            authmeService.syncApprovedUsers();
+        }
+        
         // Set UserDao for Discord service (for persistent storage)
         discordService.setUserDao(userDao);
-
+        
         // Start WebSocket server (must be before webServer)
         int port = config.getInt("web_port", 8080);
         int wsPort = config.getInt("ws_port", port + 1);
@@ -181,8 +188,6 @@ public class VerifyMC extends JavaPlugin implements Listener {
         try {
             webServer.start();
             getLogger().info(getMessage("web.start_success") + ": " + port);
-            // Share admin tokens with WebSocket server for authentication
-            wsServer.setValidTokens(webServer.getValidTokens());
         } catch (Exception e) {
             getLogger().warning(getMessage("web.start_failed") + ": " + e.getMessage());
         }
@@ -199,6 +204,18 @@ public class VerifyMC extends JavaPlugin implements Listener {
         // Always register event listener for player login interception
         getServer().getPluginManager().registerEvents(this, this);
 
+        // Periodic AuthMe synchronization
+        if (authmeService.isAuthmeEnabled()) {
+            long syncTicks = Math.max(20L, getConfig().getLong("authme.database.sync_interval_seconds", 30L) * 20L);
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    authmeService.syncApprovedUsers();
+                    syncWhitelistToServer();
+                }
+            }.runTaskTimerAsynchronously(this, syncTicks, syncTicks);
+        }
+        
         // Only start whitelist.json watcher in bukkit mode
         if ("bukkit".equalsIgnoreCase(whitelistMode) && whitelistJsonSync) {
             // Folia doesn't support async repeating tasks, disable whitelist.json watcher on Folia
@@ -219,8 +236,6 @@ public class VerifyMC extends JavaPlugin implements Listener {
             getLogger().info("§e  - Version update reminders disabled");
         } else if (serverName.contains("purpur")) {
             getLogger().info(getMessage("server.detected.purpur"));
-        } else if (serverName.contains("leaves")) {
-            getLogger().info(getMessage("server.detected.leaves"));
         } else if (serverName.contains("paper")) {
             getLogger().info(getMessage("server.detected.paper"));
         } else if (serverName.contains("spigot")) {
@@ -237,10 +252,10 @@ public class VerifyMC extends JavaPlugin implements Listener {
             getLogger().info(getMessage("server.detected.unknown"));
         }
         getLogger().info(getMessage("plugin.enabled"));
-
+        
         // Start version check (async)
         startVersionCheck();
-
+        
         int pluginId = 26637;
         Metrics metrics = new Metrics(this, pluginId);
     }
@@ -368,39 +383,30 @@ public class VerifyMC extends JavaPlugin implements Listener {
      */
     private void reloadPlugin(CommandSender sender, String language) {
         try {
+            // Check if theme has changed
             String oldTheme = getConfig().getString("frontend.theme", "default");
-
-            // Reload config from disk
-            reloadConfig();
-            FileConfiguration config = getConfig();
-
-            // Refresh cached config values
-            whitelistMode = config.getString("whitelist_mode", "bukkit");
-            whitelistJsonSync = config.getBoolean("whitelist_json_sync", true);
-            webRegisterUrl = config.getString("web_register_url", "https://yourdomain.com/");
-            webServerPrefix = config.getString("web_server_prefix", "[VerifyMC]");
-            debug = config.getBoolean("debug", false);
-
-            // Reload i18n messages
-            String configLang = getConfigLanguage();
-            messages = resourceManager.loadI18nBundle(configLang);
-
-            // Reload questionnaire config
-            if (questionnaireService != null) {
-                questionnaireService.reloadConfig();
-            }
-
-            // Check theme change (requires server restart)
-            String newTheme = config.getString("frontend.theme", "default");
+            File configFile = new File(getDataFolder(), "config.yml");
+            String configContent = new String(java.nio.file.Files.readAllBytes(configFile.toPath()), java.nio.charset.StandardCharsets.UTF_8);
+            String newTheme = oldTheme;
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("frontend.theme\\s*:\\s*(\\w+)").matcher(configContent);
+            if (m.find()) newTheme = m.group(1);
             boolean themeChanged = !oldTheme.equals(newTheme);
-
-            sender.sendMessage("§a" + getMessage("command.reload_success", language));
-            if (themeChanged) {
-                sender.sendMessage("§e" + getMessage("command.reload_theme_changed", language));
-            }
-            sender.sendMessage("§7" + getMessage("command.reload_note", language));
+            sender.sendMessage("§aRestarting plugin...");
+            Bukkit.getScheduler().runTask(this, () -> {
+                try {
+                    Bukkit.getPluginManager().disablePlugin(this);
+                    Bukkit.getPluginManager().enablePlugin(this);
+                    sender.sendMessage("§aPlugin restart successful");
+                    sender.sendMessage("§7Note: /vmc reload can only reload partial plugin configurations. For a complete reload, please restart the server.");
+                    if (themeChanged) {
+                        sender.sendMessage("§ePlease restart server to switch frontend theme");
+                    }
+                } catch (Exception e) {
+                    sender.sendMessage("§cPlugin restart failed: " + e.getMessage());
+                }
+            });
         } catch (Exception e) {
-            sender.sendMessage("§c" + getMessage("command.reload_failed", language) + ": " + e.getMessage());
+            sender.sendMessage("§cPlugin restart failed: " + e.getMessage());
         }
     }
 
@@ -414,7 +420,7 @@ public class VerifyMC extends JavaPlugin implements Listener {
     private void addWhitelist(CommandSender sender, String targetName, String email, String language) {
         addWhitelist(sender, targetName, email, null, language);
     }
-
+    
     /**
      * Add user to whitelist with password support
      * @param sender Command sender
@@ -428,12 +434,12 @@ public class VerifyMC extends JavaPlugin implements Listener {
             // Validate password format (if password is provided)
             if (password != null && !password.isEmpty() && authmeService.isAuthmeEnabled()) {
                 if (!authmeService.isValidPassword(password)) {
-                    String passwordRegex = getConfig().getString("authme.password_regex", "^[!-~]{5,30}$");
+                    String passwordRegex = getConfig().getString("authme.password_regex", "^[a-zA-Z0-9_]{8,26}$");
                     sender.sendMessage("§c" + getMessage("command.invalid_password", language).replace("{regex}", passwordRegex));
                     return;
                 }
             }
-
+            
             // Set player to whitelist with error handling
             try {
                 Bukkit.getOfflinePlayer(targetName).setWhitelisted(true);
@@ -444,7 +450,7 @@ public class VerifyMC extends JavaPlugin implements Listener {
             String uuid = Bukkit.getOfflinePlayer(targetName).getUniqueId().toString();
             Map<String, Object> user = userDao.getUserByUuid(uuid);
             boolean ok;
-
+            
             if (user != null) {
                 // User exists, update status to approved
                 ok = userDao.updateUserStatus(uuid, "approved");
@@ -470,22 +476,22 @@ public class VerifyMC extends JavaPlugin implements Listener {
                     ok = userDao.registerUser(uuid, targetName, email, "approved");
                 }
             }
-
+            
             userDao.save();
-
+            
             // Immediately sync to whitelist.json (if enabled)
             if ("bukkit".equalsIgnoreCase(whitelistMode) && whitelistJsonSync) {
                 syncPluginToWhitelistJson();
             }
-
+            
             // Sync to server whitelist
             syncWhitelistToServer();
-
+            
             // WebSocket notification
             if (wsServer != null) {
                 wsServer.broadcastMessage("{\"type\":\"user_update\"}");
             }
-
+            
             if (ok) {
                 sender.sendMessage("§a" + getMessage("command.add_success", language).replace("{player}", targetName));
             } else {
@@ -495,7 +501,7 @@ public class VerifyMC extends JavaPlugin implements Listener {
             sender.sendMessage("§c" + getMessage("command.add_failed", language) + ": " + e.getMessage());
         }
     }
-
+    
     /**
      * Remove user from whitelist and synchronize with userDao
      * @param sender Command sender
@@ -514,12 +520,12 @@ public class VerifyMC extends JavaPlugin implements Listener {
                 // Compatible with old data or UUID algorithm differences
                 uuid = Bukkit.getOfflinePlayer(targetName).getUniqueId().toString();
             }
-
-            // If Authme integration is enabled and auto unregister is configured, unregister user from Authme
-            if (authmeService.isAuthmeEnabled() && authmeService.isAutoUnregisterEnabled()) {
+            
+            // If Authme integration is enabled, unregister user from Authme
+            if (authmeService.isAuthmeEnabled()) {
                 authmeService.unregisterFromAuthme(targetName);
             }
-
+            
             boolean ok = userDao.deleteUser(uuid);
             userDao.save();
             if (ok) {
@@ -558,17 +564,17 @@ public class VerifyMC extends JavaPlugin implements Listener {
             debugLog("Bypassed whitelist check for IP: " + ip);
             return; // Skip verification for whitelisted IPs
         }
-
+        
         // Check player name (id) in plugin database
         Map<String, Object> user = userDao != null ? userDao.getAllUsers().stream()
             .filter(u -> player.getName().equalsIgnoreCase((String)u.get("username")) && "approved".equals(u.get("status")))
             .findFirst().orElse(null) : null;
-
+        
         if (user == null) {
             // Player is not in approved list
             String url = webRegisterUrl;
             String msg = "§c[ VerifyMC ]\n§7Please visit §a" + url + " §7to register";
-
+            
             // Disallow login directly - no need for delayed scheduling
             // This works on all server types including Folia
             event.disallow(Result.KICK_WHITELIST, msg);
@@ -665,32 +671,22 @@ public class VerifyMC extends JavaPlugin implements Listener {
      */
     public boolean isValidUsername(String username) {
         if (username == null) return false;
-
+        
         // Check if bedrock support is enabled and username has bedrock prefix
         boolean bedrockEnabled = getConfig().getBoolean("bedrock.enabled", false);
         String bedrockPrefix = getConfig().getString("bedrock.prefix", ".");
-
+        
         if (bedrockEnabled && username.startsWith(bedrockPrefix)) {
             // Use bedrock-specific regex
             String bedrockRegex = getConfig().getString("bedrock.username_regex", "^\\.[a-zA-Z0-9_\\s]{3,16}$");
-            try {
-                return username.matches(bedrockRegex);
-            } catch (java.util.regex.PatternSyntaxException e) {
-                getLogger().warning("[VerifyMC] Invalid bedrock.username_regex in config: " + bedrockRegex + " — " + e.getMessage());
-                return username.matches("^\\.[a-zA-Z0-9_\\s]{3,16}$");
-            }
+            return username.matches(bedrockRegex);
         }
-
+        
         // Use standard regex for Java players
         String regex = getConfig().getString(USERNAME_REGEX_KEY, "^[a-zA-Z0-9_-]{3,16}$");
-        try {
-            return username.matches(regex);
-        } catch (java.util.regex.PatternSyntaxException e) {
-            getLogger().warning("[VerifyMC] Invalid username_regex in config: " + regex + " — " + e.getMessage());
-            return username.matches("^[a-zA-Z0-9_-]{3,16}$");
-        }
+        return username.matches(regex);
     }
-
+    
     /**
      * Check if a username is a bedrock player
      * @param username Username to check
@@ -700,11 +696,11 @@ public class VerifyMC extends JavaPlugin implements Listener {
         if (username == null) return false;
         boolean bedrockEnabled = getConfig().getBoolean("bedrock.enabled", false);
         if (!bedrockEnabled) return false;
-
+        
         String bedrockPrefix = getConfig().getString("bedrock.prefix", ".");
         return username.startsWith(bedrockPrefix);
     }
-
+    
     /**
      * Check for username case conflicts
      * @param username Username to check
@@ -734,7 +730,7 @@ public class VerifyMC extends JavaPlugin implements Listener {
             }
         }
     }
-
+    
     /**
      * Clean up server whitelist
      */
@@ -795,7 +791,7 @@ public class VerifyMC extends JavaPlugin implements Listener {
             }
         }
     }
-
+    
     /**
      * Get MySQL configuration properties
      * @return MySQL configuration properties
@@ -810,6 +806,24 @@ public class VerifyMC extends JavaPlugin implements Listener {
         return mysqlConfig;
     }
 
+    private void migratePlaintextPasswords() {
+        int migrated = 0;
+        for (Map<String, Object> user : userDao.getAllUsers()) {
+            String uuid = (String) user.get("uuid");
+            String password = (String) user.get("password");
+            if (uuid == null || password == null || password.trim().isEmpty()) {
+                continue;
+            }
+            String encoded = authmeService.encodePasswordForStorage(password);
+            if (!password.equals(encoded) && userDao.updateUserPassword(uuid, encoded)) {
+                migrated++;
+            }
+        }
+        if (migrated > 0) {
+            getLogger().info("[VerifyMC] Migrated " + migrated + " stored passwords to AuthMe-compatible hash format.");
+        }
+    }
+    
     /**
      * Start version check process
      */
@@ -822,27 +836,27 @@ public class VerifyMC extends JavaPlugin implements Listener {
                 getLogger().info("§e[VerifyMC] " + getMessage("version.current_version") + ": " + result.getCurrentVersion());
                 getLogger().info("§e[VerifyMC] " + getMessage("version.latest_version") + ": " + result.getLatestVersion());
                 getLogger().info("§e[VerifyMC] " + getMessage("version.download_url") + ": " + versionCheckService.getReleasesUrl());
-
+                
                 // Schedule periodic reminders (every 30 minutes) - Folia doesn't support async repeating tasks
                 if (!isFoliaServer()) {
                     new BukkitRunnable() {
                         private int reminderCount = 0;
                         private final int maxReminders = 3; // Maximum 3 reminders per session
-
+                        
                         @Override
                         public void run() {
                             if (reminderCount >= maxReminders) {
                                 this.cancel();
                                 return;
                             }
-
+                            
                             reminderCount++;
                             getLogger().info("§e[VerifyMC] " + getMessage("version.update_reminder") + " (" + reminderCount + "/" + maxReminders + ")");
                             getLogger().info("§e[VerifyMC] " + getMessage("version.download_url") + ": " + versionCheckService.getReleasesUrl());
                         }
                     }.runTaskTimerAsynchronously(this, 36000L, 36000L); // 30 minutes = 36000 ticks
                 }
-
+                
             } else if (result.isSuccess()) {
                 debugLog("Version check completed. Plugin is up to date.");
             } else {

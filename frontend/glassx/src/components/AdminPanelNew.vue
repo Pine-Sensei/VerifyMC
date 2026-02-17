@@ -116,7 +116,7 @@
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow v-for="user in filteredUsers" :key="user.uuid">
+                <TableRow v-for="user in allUsers" :key="user.uuid">
                   <TableCell class="font-medium text-white break-all">{{ user.username }}</TableCell>
                   <TableCell class="break-all">{{ user.email }}</TableCell>
                   <TableCell>
@@ -175,7 +175,7 @@
                     </div>
                   </TableCell>
                 </TableRow>
-                <TableRow v-if="filteredUsers.length === 0">
+                <TableRow v-if="allUsers.length === 0">
                   <TableCell colspan="5" class="text-center py-8 text-white/60">
                     {{ searchQuery ? $t('admin.users.no_search_results') : $t('admin.users.no_users') }}
                   </TableCell>
@@ -343,10 +343,11 @@
 </style>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useNotification } from '@/composables/useNotification'
+import { useAdminUsers } from '@/composables/useAdminUsers'
 import { apiService } from '@/services/api'
 import { sessionService } from '@/services/session'
 import Tabs from './ui/Tabs.vue'
@@ -378,9 +379,8 @@ if (!sessionService.isAuthenticated()) {
   sessionService.redirectToLogin()
 }
 
-const loading = ref(false)
+const actionLoading = ref(false)
 const pendingUsers = ref<any[]>([])
-const allUsers = ref<any[]>([])
 const questionnaireEnabled = ref(false)
 const questionnaireHasTextQuestions = ref(false)
 
@@ -388,22 +388,23 @@ const showQuestionnaireScoreColumn = computed(() => questionnaireEnabled.value)
 const showQuestionnaireReasonColumn = computed(() => questionnaireEnabled.value && questionnaireHasTextQuestions.value)
 const reviewTableColspan = computed(() => 4 + (showQuestionnaireScoreColumn.value ? 1 : 0) + (showQuestionnaireReasonColumn.value ? 1 : 0))
 
-// Pagination state
-const currentPage = ref(1)
-const pageSize = ref(10)
-const totalCount = ref(0)
-const totalPages = ref(0)
-const hasNext = ref(false)
-const hasPrev = ref(false)
+const {
+  loading: usersLoading,
+  allUsers,
+  searchQuery,
+  currentPage,
+  pageSize,
+  totalCount,
+  totalPages,
+  hasNext,
+  hasPrev,
+  loadAllUsers,
+  handlePageChange,
+  handlePageSizeChange,
+  resetUsersPagination,
+} = useAdminUsers({ locale, t, notification })
+const loading = computed(() => usersLoading.value || actionLoading.value)
 
-// 搜索功能
-const searchQuery = ref('')
-const searchDebounceTimer = ref<NodeJS.Timeout | null>(null)
-
-// Use paginated data instead of filtered data
-const filteredUsers = computed(() => {
-  return allUsers.value
-})
 
 // 确认对话框状态
 const showDeleteDialog = ref(false)
@@ -484,144 +485,6 @@ const loadPendingUsers = async () => {
   }
 }
 
-/**
- * Load users with pagination - with fallback to all-users endpoint
- */
-const loadAllUsers = async () => {
-  try {
-    loading.value = true
-    console.log('Loading users with params:', {
-      page: currentPage.value,
-      pageSize: pageSize.value,
-      search: searchQuery.value
-    })
-
-    // Try paginated endpoint first
-    let response = await apiService.getUsersPaginated(
-      currentPage.value,
-      pageSize.value,
-      searchQuery.value
-    )
-
-    console.log('Paginated API Response:', response)
-
-    // If paginated endpoint returns empty users, try to get pending users and combine
-    if (response.success && (!response.users || response.users.length === 0)) {
-      console.log('No approved/rejected users found, trying to get pending users...')
-
-      try {
-        const pendingResponse = await apiService.getPendingList(locale.value)
-        console.log('Pending users response:', pendingResponse)
-
-        if (pendingResponse.success && pendingResponse.users && pendingResponse.users.length > 0) {
-          // Use pending users as the data source
-          const pendingUsers = pendingResponse.users
-          const filteredData = searchQuery.value
-            ? pendingUsers.filter(user =>
-                user.username?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                user.email?.toLowerCase().includes(searchQuery.value.toLowerCase())
-              )
-            : pendingUsers
-
-          const startIndex = (currentPage.value - 1) * pageSize.value
-          const endIndex = startIndex + pageSize.value
-          const paginatedData = filteredData.slice(startIndex, endIndex)
-
-          allUsers.value = paginatedData
-          totalCount.value = filteredData.length
-          totalPages.value = Math.ceil(filteredData.length / pageSize.value)
-          hasNext.value = currentPage.value < totalPages.value
-          hasPrev.value = currentPage.value > 1
-
-          console.log('Pending users loaded as fallback:', {
-            total: filteredData.length,
-            currentPage: paginatedData,
-            pagination: {
-              currentPage: currentPage.value,
-              totalPages: totalPages.value,
-              hasNext: hasNext.value,
-              hasPrev: hasPrev.value
-            }
-          })
-          return
-        }
-      } catch (error) {
-        console.error('Error loading pending users:', error)
-      }
-
-      // If still no data, try all-users endpoint
-      console.log('Trying fallback all-users endpoint...')
-      try {
-        const fallbackResponse = await apiService.getAllUsers()
-        console.log('All-users API Response:', fallbackResponse)
-
-        if (fallbackResponse.success && fallbackResponse.users) {
-          // Manually implement pagination for fallback data
-          const allUsersData = fallbackResponse.users
-          const filteredData = searchQuery.value
-            ? allUsersData.filter(user =>
-                user.username?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                user.email?.toLowerCase().includes(searchQuery.value.toLowerCase())
-              )
-            : allUsersData
-
-          const startIndex = (currentPage.value - 1) * pageSize.value
-          const endIndex = startIndex + pageSize.value
-          const paginatedData = filteredData.slice(startIndex, endIndex)
-
-          allUsers.value = paginatedData
-          totalCount.value = filteredData.length
-          totalPages.value = Math.ceil(filteredData.length / pageSize.value)
-          hasNext.value = currentPage.value < totalPages.value
-          hasPrev.value = currentPage.value > 1
-
-          console.log('All-users fallback data loaded:', {
-            total: filteredData.length,
-            currentPage: paginatedData,
-            pagination: {
-              currentPage: currentPage.value,
-              totalPages: totalPages.value,
-              hasNext: hasNext.value,
-              hasPrev: hasPrev.value
-            }
-          })
-          return
-        }
-      } catch (error) {
-        console.error('Error loading all users:', error)
-      }
-    }
-
-    if (response.success) {
-      allUsers.value = response.users || []
-      console.log('Loaded users:', allUsers.value)
-
-      // Update pagination info
-      if (response.pagination) {
-        currentPage.value = response.pagination.currentPage
-        totalCount.value = response.pagination.totalCount
-        totalPages.value = response.pagination.totalPages
-        hasNext.value = response.pagination.hasNext
-        hasPrev.value = response.pagination.hasPrev
-      }
-    } else {
-      console.error('API Error:', response.message)
-      allUsers.value = [] // 确保清空数据
-      if (response.message && response.message.includes('Authentication')) {
-        notification.error(t('common.error'), response.message)
-      } else {
-        notification.error(t('common.error'), response.message || t('admin.users.messages.load_error'))
-      }
-    }
-  } catch (error) {
-    console.error('Exception loading users:', error)
-    allUsers.value = [] // 确保清空数据
-    notification.error(t('common.error'), t('errors.network'))
-  } finally {
-    loading.value = false
-  }
-}
-
 const notifyResult = (success: boolean, key: string, backendMessage?: string) => {
   if (success) {
     notification.success(t(key), backendMessage && backendMessage !== t(key) ? backendMessage : '')
@@ -650,7 +513,7 @@ const closeRejectDialog = () => {
 
 const approveUser = async (user: any) => {
   processingUsers.value.add(user.uuid)
-  loading.value = true
+  actionLoading.value = true
 
   try {
     const response = await apiService.reviewUser({
@@ -670,7 +533,7 @@ const approveUser = async (user: any) => {
     notification.error(t('admin.review.messages.error'), t('admin.review.messages.error'))
   } finally {
     processingUsers.value.delete(user.uuid)
-    loading.value = false
+    actionLoading.value = false
   }
 }
 
@@ -679,7 +542,7 @@ const confirmReject = async () => {
 
   rejectDialog.value.processing = true
   processingUsers.value.add(rejectDialog.value.user.uuid)
-  loading.value = true
+  actionLoading.value = true
 
   try {
     const response = await apiService.reviewUser({
@@ -704,7 +567,7 @@ const confirmReject = async () => {
     if (rejectDialog.value.user?.uuid) {
       processingUsers.value.delete(rejectDialog.value.user.uuid)
     }
-    loading.value = false
+    actionLoading.value = false
   }
 }
 
@@ -726,7 +589,7 @@ const showUnbanConfirm = (user: any) => {
 const confirmDelete = async () => {
   if (!selectedUser.value) return
 
-  loading.value = true
+  actionLoading.value = true
   showDeleteDialog.value = false
 
   try {
@@ -741,7 +604,7 @@ const confirmDelete = async () => {
   } catch (error) {
     notification.error(t('admin.users.messages.error'), t('admin.users.messages.error'))
   } finally {
-    loading.value = false
+    actionLoading.value = false
     selectedUser.value = null
   }
 }
@@ -749,7 +612,7 @@ const confirmDelete = async () => {
 const confirmBan = async () => {
   if (!selectedUser.value) return
 
-  loading.value = true
+  actionLoading.value = true
   showBanDialog.value = false
 
   try {
@@ -764,7 +627,7 @@ const confirmBan = async () => {
   } catch (error) {
     notification.error(t('admin.users.messages.error'), t('admin.users.messages.error'))
   } finally {
-    loading.value = false
+    actionLoading.value = false
     selectedUser.value = null
   }
 }
@@ -772,7 +635,7 @@ const confirmBan = async () => {
 const confirmUnban = async () => {
   if (!selectedUser.value) return
 
-  loading.value = true
+  actionLoading.value = true
   showUnbanDialog.value = false
 
   try {
@@ -787,7 +650,7 @@ const confirmUnban = async () => {
   } catch (error) {
     notification.error(t('admin.users.messages.error'), t('admin.users.messages.error'))
   } finally {
-    loading.value = false
+    actionLoading.value = false
     selectedUser.value = null
   }
 }
@@ -795,7 +658,7 @@ const confirmUnban = async () => {
 const confirmChangePassword = async () => {
   if (!selectedUser.value || !newPassword.value) return
 
-  loading.value = true
+  actionLoading.value = true
 
   try {
     const response = await apiService.changePassword({
@@ -815,7 +678,7 @@ const confirmChangePassword = async () => {
   } catch (error) {
     notification.error(t('admin.users.messages.error'), t('admin.users.messages.error'))
   } finally {
-    loading.value = false
+    actionLoading.value = false
   }
 }
 
@@ -823,47 +686,12 @@ const confirmChangePassword = async () => {
  * Handle pagination page change
  * @param page New page number
  */
-const handlePageChange = (page: number) => {
-  currentPage.value = page
-  loadAllUsers()
-}
-
-/**
- * Handle pagination page size change
- * @param newPageSize New page size
- */
-const handlePageSizeChange = (newPageSize: number) => {
-  pageSize.value = newPageSize
-  currentPage.value = 1 // Reset to first page when changing page size
-  loadAllUsers()
-}
-
-/**
- * Handle search with debounce
- */
-const handleSearch = () => {
-  if (searchDebounceTimer.value) {
-    clearTimeout(searchDebounceTimer.value)
-  }
-
-  searchDebounceTimer.value = setTimeout(() => {
-    currentPage.value = 1 // Reset to first page when searching
-    loadAllUsers()
-  }, 500) // 500ms debounce
-}
-
-// Watch for search query changes
-watch(searchQuery, () => {
-  handleSearch()
-})
-
 const onTabChange = async (tab: string) => {
   if (tab === 'review') {
     await loadQuestionnaireConfig()
     loadPendingUsers();
   } else if (tab === 'users') {
-    // Reset pagination when switching to users tab
-    currentPage.value = 1
+    resetUsersPagination()
     loadAllUsers();
   }
 };
@@ -880,8 +708,7 @@ onMounted(async () => {
     const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const wsHost = window.location.hostname;
     const wsPort = window.location.port ? (parseInt(window.location.port) + 1) : 8081;
-    const wsToken = sessionService.getToken() || '';
-    const wsUrl = `${wsProtocol}://${wsHost}:${wsPort}?token=${encodeURIComponent(wsToken)}`;
+    const wsUrl = `${wsProtocol}://${wsHost}:${wsPort}`;
     try {
       const ws = new WebSocket(wsUrl);
       ws.onmessage = (event) => {

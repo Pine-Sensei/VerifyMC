@@ -268,6 +268,23 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
+    public boolean updateUserEmail(String uuidOrName, String email) {
+        String sql = "UPDATE users SET email=? WHERE uuid=? OR username=?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, email);
+            ps.setString(2, uuidOrName);
+            ps.setString(3, uuidOrName);
+            int rows = ps.executeUpdate();
+            debugLog("User email updated: " + uuidOrName);
+            return rows > 0;
+        } catch (SQLException e) {
+            debugLog(messages.getString("storage.migrate.fail").replace("{0}", e.getMessage()));
+            return false;
+        }
+    }
+
+
+    @Override
     public List<Map<String, Object>> getAllUsers() {
         List<Map<String, Object>> result = new ArrayList<>();
         String sql = "SELECT * FROM users";

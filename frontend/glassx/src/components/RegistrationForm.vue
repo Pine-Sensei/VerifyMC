@@ -39,6 +39,9 @@
                 {{ $t('register.form.platform_bedrock') }}
               </button>
             </div>
+            <p v-if="selectedPlatform === 'bedrock'" class="mt-2 text-xs text-white/60">
+              {{ $t('register.form.platform_bedrock_prefix_hint', { prefix: bedrockPrefix }) }}
+            </p>
           </div>
 
           <div>
@@ -86,7 +89,7 @@
 
           <div v-if="discordEnabled" class="pt-2">
             <label class="block text-sm font-medium text-white mb-2">Discord {{ discordRequired ? '*' : '' }}</label>
-            <DiscordLink :username="form.username" :required="discordRequired" @linked="onDiscordLinked" @unlinked="onDiscordUnlinked" />
+            <DiscordLink :username="getNormalizedUsername()" :required="discordRequired" @linked="onDiscordLinked" @unlinked="onDiscordUnlinked" />
             <p v-if="errors.discord" class="mt-1 text-sm text-red-400">{{ errors.discord }}</p>
           </div>
         </div>
@@ -103,7 +106,7 @@
 
       <div v-else class="space-y-4 relative z-10">
         <div class="rounded-lg border border-white/15 bg-white/5 p-4 text-sm text-white/80">
-          <p class="mb-1"><strong>{{ $t('register.summary.username') }}:</strong> {{ form.username }}</p>
+          <p class="mb-1"><strong>{{ $t('register.summary.username') }}:</strong> {{ getNormalizedUsername() }}</p>
           <p class="mb-1"><strong>{{ $t('register.summary.email') }}:</strong> {{ form.email }}</p>
           <p v-if="questionnaireResult"><strong>{{ $t('register.summary.questionnaire') }}:</strong> {{ questionnaireResult.passed ? $t('questionnaire.passed') : $t('questionnaire.failed') }} ({{ questionnaireResult.score }}/{{ questionnaireResult.pass_score }})</p>
         </div>
@@ -122,7 +125,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiService } from '@/services/api'
 import { useNotification } from '@/composables/useNotification'
@@ -144,7 +147,7 @@ const config = ref<ConfigResponse>({
   login: { enable_email: false, email_smtp: '' },
   admin: {},
   frontend: { theme: '', logo_url: '', announcement: '', web_server_prefix: '', username_regex: '' },
-  authme: { enabled: false, require_password: false, auto_register: false, auto_unregister: false, password_regex: '' },
+  authme: { enabled: false, require_password: false, password_regex: '' },
   captcha: { enabled: false, email_enabled: true, type: 'math' },
   questionnaire: { enabled: false, pass_score: 60 }
 })
@@ -218,28 +221,44 @@ const validateUsername = () => {
   }
 
   const regex = getEffectiveUsernameRegex()
-  try {
-    if (regex && !new RegExp(regex).test(getNormalizedUsername())) {
-      errors.username = t('register.validation.username_format', { regex })
-    } else if (!regex && !/^[a-zA-Z0-9_]+$/.test(username)) {
-      errors.username = t('register.validation.username_format', { regex: '^[a-zA-Z0-9_]+$' })
-    }
-  } catch (e) {
-    console.warn('Invalid username_regex from config:', regex, e)
-    if (!/^[a-zA-Z0-9_-]{3,16}$/.test(getNormalizedUsername())) {
-      errors.username = t('register.validation.username_format', { regex: '^[a-zA-Z0-9_-]{3,16}$' })
-    }
+  if (regex && !new RegExp(regex).test(getNormalizedUsername())) {
+    errors.username = t('register.validation.username_format', { regex })
+  } else if (!regex && !/^[a-zA-Z0-9_]+$/.test(username)) {
+    errors.username = t('register.validation.username_format', { regex: '^[a-zA-Z0-9_]+$' })
   }
 }
 
 const selectPlatform = (platform: 'java' | 'bedrock') => {
   selectedPlatform.value = platform
+  normalizeUsernameForPlatform()
   validateUsername()
+}
+
+const normalizeUsernameForPlatform = () => {
+  const trimmedUsername = form.username.trim()
+  if (!trimmedUsername) {
+    form.username = ''
+    return
+  }
+
+  if (selectedPlatform.value === 'bedrock' && bedrockEnabled.value) {
+    form.username = trimmedUsername.startsWith(bedrockPrefix.value)
+      ? trimmedUsername
+      : `${bedrockPrefix.value}${trimmedUsername}`
+    return
+  }
+
+  if (bedrockEnabled.value && trimmedUsername.startsWith(bedrockPrefix.value)) {
+    form.username = trimmedUsername.slice(bedrockPrefix.value.length)
+    return
+  }
+
+  form.username = trimmedUsername
 }
 
 const getEffectiveUsernameRegex = () => {
   if (selectedPlatform.value === 'bedrock' && bedrockEnabled.value) {
-    return config.value.bedrock?.username_regex || '^\\.[a-zA-Z0-9_\\s]{3,16}$'
+    return config.value.bedrock?.username_regex || '^[a-zA-Z0-9._-]{3,16}$'
   }
   return config.value.frontend?.username_regex
 }
@@ -253,6 +272,12 @@ const getNormalizedUsername = () => {
   }
   return trimmedUsername
 }
+
+watch(() => form.username, () => {
+  if (selectedPlatform.value === 'bedrock' && bedrockEnabled.value && form.username.trim()) {
+    normalizeUsernameForPlatform()
+  }
+})
 const validateEmail = () => {
   errors.email = ''
   if (!form.email) {
@@ -266,17 +291,8 @@ const validatePassword = () => {
   if (shouldShowPassword.value) {
     if (!form.password) {
       errors.password = t('register.validation.password_required')
-    } else if (authmeConfig.value?.password_regex) {
-      try {
-        if (!new RegExp(authmeConfig.value.password_regex).test(form.password)) {
-          errors.password = t('register.validation.password_format', { regex: authmeConfig.value.password_regex })
-        }
-      } catch (e) {
-        console.warn('Invalid password_regex from config:', authmeConfig.value.password_regex, e)
-        if (!/^[!-~]{5,30}$/.test(form.password)) {
-          errors.password = t('register.validation.password_format', { regex: '^[!-~]{5,30}$' })
-        }
-      }
+    } else if (authmeConfig.value?.password_regex && !new RegExp(authmeConfig.value.password_regex).test(form.password)) {
+      errors.password = t('register.validation.password_format', { regex: authmeConfig.value.password_regex })
     }
   }
 }
@@ -315,7 +331,7 @@ const isFinalStepValid = computed(() => {
   if (!isBasicStepValid.value) return false
   if (!questionnaireEnabled.value) return true
   if (!questionnaireResult.value) return false
-  return questionnaireResult.value.passed === true
+  return questionnaireResult.value.passed === true || questionnaireResult.value.manual_review_required === true
 })
 
 const goToQuestionnaire = () => {
@@ -395,7 +411,8 @@ const handleSubmit = async () => {
       username: getNormalizedUsername(),
       email: form.email.trim().toLowerCase(),
       uuid: generateUUID(),
-      language: locale.value
+      language: locale.value,
+      platform: selectedPlatform.value
     }
 
     if (emailEnabled.value) registerData.code = form.code

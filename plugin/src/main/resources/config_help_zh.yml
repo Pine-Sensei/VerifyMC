@@ -5,8 +5,6 @@
 language: zh
 # 开启后，控制台会输出详细的日志，用于故障排查。
 debug: false
-# 是否信任反向代理的 X-Forwarded-For 头。仅在使用 Nginx/Apache 等反代时开启，否则攻击者可伪造 IP 绕过限流。
-trust_proxy: false
 
 # ----------------------------------------
 # 网页服务器
@@ -21,7 +19,7 @@ web_server_prefix: '[ Name ]'
 # ----------------------------------------
 # 支持的验证方式。可选: 'email'（邮箱验证码）, 'captcha'（图形验证码）。
 # 可以同时使用多种方式，例如: [email, captcha]
-#
+# 
 # 【重要】仅配置下方的 captcha: 部分不会启用图形验证码！
 # 要启用图形验证码，必须在此列表中添加 'captcha'：
 #   仅使用图形验证码: auth_methods: [captcha]
@@ -114,7 +112,7 @@ auto_update_email: true
 # 如果为 true，将自动更新主题文件。
 auto_update_static: true
 # 如果为 true，将在自动更新前完整备份插件数据文件夹。
-backup_on_update: true
+backup_on_update: true 
 
 # ----------------------------------------
 # 邮箱注册限制
@@ -133,7 +131,7 @@ email_domain_whitelist:
   - hotmail.com
   - icloud.com
   - yahoo.com
-  - foxmail.com
+  - foxmail.com 
 
 # ----------------------------------------
 # 存储与数据迁移
@@ -148,7 +146,7 @@ storage:
     port: 3306
     database: verifymc
     user: root
-    password: yourpassword
+    password: yourpassword 
 
 # ----------------------------------------
 # Authme集成配置
@@ -158,12 +156,65 @@ authme:
   enabled: true
   # 是否强制在Web注册时要求输入密码
   require_password: true
-  # 是否在通过审核时自动注册至Authme
-  auto_register: false
-  # 是否在删除用户时自动从Authme注销
-  auto_unregister: false
-  # 密码正则表达式，默认与 AuthMe 的 allowedPasswordCharacters 对齐：所有可见 ASCII 字符，长度 5-30
-  password_regex: "^[!-~]{5,30}$"
+  # 密码正则表达式
+  password_regex: "^[a-zA-Z0-9_]{8,26}$"
+  database:
+    # database 模式下数据库类型: mysql / sqlite
+    type: sqlite
+    # AuthMe 表名
+    table: authme
+    # 密码格式仅支持 sha256，如原先不是，请在 AuthMe 中切换（ AuthMe 支持惰性回退）。
+    # 在 Authme 中切换完之后请先直接上游戏登录一次使加密格式惰性回退成 sha265 或者也可以直接在后台重置密码。
+    # VerifyMC 与 AuthMe 双向同步间隔（秒）
+    sync_interval_seconds: 30
+    # AuthMe SHA256 默认盐长度（默认 16）
+    salt_length: 16
+    mysql:
+      host: 127.0.0.1
+      port: 3306
+      database: authme
+      user: root
+      password: yourpassword
+    sqlite:
+      path: plugins/AuthMe/authme.db
+    columns:
+      mySQLColumnId: id
+      # 用于存储或查询玩家昵称的列
+      mySQLColumnName: username
+      # 用于存储或查询玩家真实名称（RealName）的列
+      mySQLRealName: realname
+      # 用于存储玩家密码的列
+      mySQLColumnPassword: password
+      # 用于存储玩家密码盐值的列
+      mySQLColumnSalt: ''
+      # 用于存储玩家邮箱的列
+      mySQLColumnEmail: email
+      # 用于存储玩家是否已登录状态的列
+      mySQLColumnLogged: isLogged
+      # 用于存储玩家是否拥有有效会话状态的列
+      mySQLColumnHasSession: hasSession
+      # 用于存储玩家最后登录 IP 的列
+      mySQLColumnIp: ip
+      # 用于存储玩家最后登录时间的列
+      mySQLColumnLastLogin: lastlogin
+      # 用于存储注册日期的列
+      mySQLColumnRegisterDate: regdate
+      # 用于存储注册时 IP 地址的列
+      mySQLColumnRegisterIp: regip
+      # 用于存储玩家最后位置 X 坐标的列
+      mySQLlastlocX: x
+      # 用于存储玩家最后位置 Y 坐标的列
+      mySQLlastlocY: y
+      # 用于存储玩家最后位置 Z 坐标的列
+      mySQLlastlocZ: z
+      # 用于存储玩家最后位置所在世界名称的列
+      mySQLlastlocWorld: world
+      # 用于存储玩家最后位置朝向 Yaw 的列
+      mySQLlastlocYaw: yaw
+      # 用于存储玩家最后位置俯仰 Pitch 的列
+      mySQLlastlocPitch: pitch
+      # 用于存储玩家 UUID（可选）的列
+      mySQLPlayerUUID: ''
 
 # ----------------------------------------
 # 图形验证码配置
@@ -189,7 +240,7 @@ bedrock:
   # 基岩版玩家用户名前缀（Floodgate 常用 "."）
   prefix: "."
   # 基岩版用户名正则表达式
-  username_regex: "^\\.[a-zA-Z0-9_\\s]{3,16}$"
+  username_regex: "^[a-zA-Z0-9._-]{3,15}$"
 
 # ----------------------------------------
 # 问卷调查配置

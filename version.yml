@@ -1,26 +1,39 @@
 release: true
 version: 1.5.1
 release_notes: |
-  [Chinese](https://github.com/KiteMC/VerifyMC/blob/v1.5.1/release_notes_zh.md) | English | [Official Documentation](https://kitemc.com/docs/verifymc/)
+  [简体中文](https://github.com/KiteMC/VerifyMC/blob/v1.5.1/release_notes_zh.md) | English | [Official Documentation](https://kitemc.com/docs/verifymc/)
 
   # VerifyMC v1.5.1 Release Notes
 
-  ## Bug Fixes
+  ## Architecture: Registration Flow Refactoring
 
-  - Aligned password regex default with AuthMe (changed from ^[a-zA-Z0-9_]{3,16}$ to ^[!-~]{5,30}$), fixing registration failures when passwords contain special characters or exceed 16 chars
-  - Fixed hashed password being passed to AuthMe during manual approval (now skipped, admin uses /api/change-password instead)
-  - Fixed MysqlUserDao not hashing passwords (now consistent with FileUserDao)
-  - Fixed plugin reload (/vmc reload) causing other plugins ClassLoader to close by replacing disable/enable with safe config-only hot reload
+  - Extracted registration processing into dedicated `RegistrationProcessingHandler` with clear validation pipeline
+  - Introduced `RegistrationOutcome` enum and `RegistrationOutcomeResolver` for deterministic outcome logic
+  - Added `RegistrationApplicationService`, `QuestionnaireApplicationService`, `ReviewApplicationService` for business orchestration
+  - Created `ApiResponseFactory`, `WebResponseHelper`, `WebAuthHelper` utility classes to reduce code duplication
+  - Introduced `RegistrationRequest` and `RegistrationValidationResult` records for type-safe request/response handling
+  - Added delegate handler classes (`RegistrationHandler`, `QuestionnaireHandler`, `ReviewHandler`, `UserAdminHandler`) as extension points
 
   ## Security Improvements
 
-  - Token generation now uses SecureRandom instead of Math.random()
-  - Admin password comparison uses constant-time method to prevent timing attacks
-  - Email notification thread set to daemon to prevent blocking server shutdown
+  - Token generation now uses `SecureRandom` instead of `Math.random()` for cryptographically secure tokens
+  - Token cleanup thread set to daemon mode with proper interrupt handling to prevent blocking server shutdown
+  - Password storage unified through `AuthmeService.encodePasswordForStorage()`, removed duplicate hashing in `MysqlUserDao`
+  - Added automatic plaintext password migration on startup
 
-  ## i18n and UX
+  ## Frontend Improvements
 
-  - Hardcoded 'Username already exists' message replaced with i18n support
-  - Added reload success/failure/theme-changed messages in both Chinese and English
-  - QuestionnaireService now supports config hot reload via /vmc reload
+  - New `useAdminUsers` composable with pagination, search, and multi-layer fallback (with unit tests)
+  - Added typed API interfaces for questionnaire (`Question`, `QuestionType`, `SubmitQuestionnaireResponse`)
+  - Registration form now supports platform field and bedrock username auto-normalization
+  - Questionnaire `manual_review_required` support in registration flow
+  - Global fixed background with unified visual experience across all pages
+
+  ## Bug Fixes
+
+  - Fixed `shouldAutoApprove` now correctly respects `manualReviewRequired` flag
+  - Fixed `RegistrationOutcomeResolver` logic for questionnaire-passed-but-manual-review-required scenario
+  - Removed duplicate `buildQuestionnaireReviewSummary` from `WebServer`
+  - `AuditDao`/`AuditRecord` migrated from `Map<String,Object>` to type-safe record class
+  - Added `updateUserEmail` to `MysqlUserDao` for AuthMe sync
 

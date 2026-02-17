@@ -2,21 +2,34 @@
 
 # VerifyMC v1.5.1 更新日志
 
-## 🐛 Bug 修复
+## Architecture / 架构：注册流程重构
 
-- 密码正则表达式默认值与 AuthMe 对齐（从 `^[a-zA-Z0-9_]{3,16}$` 改为 `^[!-~]{5,30}$`），修复包含特殊字符或超过 16 位的密码注册失败问题
-- 修复手动审批时将哈希密码传给 AuthMe 的问题（改为跳过，管理员通过 `/api/change-password` 设置密码）
-- 修复 MysqlUserDao 未对密码哈希的问题（现与 FileUserDao 一致）
-- 修复 `/vmc reload` 导致其他插件类加载器关闭的问题，改为安全的配置热重载（不再 disable/enable 插件）
+- 将注册处理逻辑提取到独立的 `RegistrationProcessingHandler`，建立清晰的校验流水线
+- 引入 `RegistrationOutcome` 枚举和 `RegistrationOutcomeResolver`，实现确定性的注册结果判定
+- 新增 `RegistrationApplicationService`、`QuestionnaireApplicationService`、`ReviewApplicationService` 业务编排服务
+- 创建 `ApiResponseFactory`、`WebResponseHelper`、`WebAuthHelper` 工具类，减少代码重复
+- 引入 `RegistrationRequest` 和 `RegistrationValidationResult` 记录类，实现类型安全的请求/响应处理
+- 新增委托 Handler 类（`RegistrationHandler`、`QuestionnaireHandler`、`ReviewHandler`、`UserAdminHandler`）作为扩展点
 
-## � 安全改进
+## Security / 安全改进
 
-- Token 生成改用 `SecureRandom` 替代 `Math.random()`
-- 管理员密码比较改用常量时间方法，防止时序攻击
-- 邮件通知线程设为守护线程，防止阻止服务器关闭
+- Token 生成改用 `SecureRandom` 替代 `Math.random()`，确保密码学安全
+- Token 清理线程设为守护线程，支持正确的中断处理，防止阻塞服务器关闭
+- 密码存储统一通过 `AuthmeService.encodePasswordForStorage()` 处理，移除 `MysqlUserDao` 中的重复哈希
+- 启动时自动迁移明文密码
 
-## 🌐 国际化与体验优化
+## Frontend / 前端改进
 
-- 硬编码的"Username already exists"消息改为 i18n 支持
-- 新增 `/vmc reload` 成功/失败/主题变更提示消息（中英文）
-- 问卷服务（QuestionnaireService）支持通过 `/vmc reload` 热重载配置
+- 新增 `useAdminUsers` composable，支持分页、搜索和多层降级（含单元测试）
+- 新增问卷相关类型接口（`Question`、`QuestionType`、`SubmitQuestionnaireResponse`）
+- 注册表单支持平台字段和基岩版用户名自动规范化
+- 注册流程支持问卷 `manual_review_required`
+- 全局固定背景，所有页面统一视觉体验
+
+## Bug Fixes / 缺陷修复
+
+- 修复 `shouldAutoApprove` 现在正确尊重 `manualReviewRequired` 标志
+- 修复 `RegistrationOutcomeResolver` 在问卷通过但仍需人工审核场景下的逻辑
+- 移除 `WebServer` 中重复的 `buildQuestionnaireReviewSummary`
+- `AuditDao`/`AuditRecord` 从 `Map<String,Object>` 迁移到类型安全的 record 类
+- `MysqlUserDao` 新增 `updateUserEmail` 以支持 AuthMe 同步

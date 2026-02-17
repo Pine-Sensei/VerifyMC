@@ -1,7 +1,9 @@
 package team.kitemc.verifymc.db;
 
 import java.sql.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
 
 public class MysqlAuditDao implements AuditDao {
     private final Connection conn;
@@ -23,32 +25,32 @@ public class MysqlAuditDao implements AuditDao {
     }
 
     @Override
-    public void addAudit(Map<String, Object> audit) {
+    public void addAudit(AuditRecord audit) {
         String sql = "INSERT INTO audits (action, operator, target, detail, timestamp) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, (String)audit.get("action"));
-            ps.setString(2, (String)audit.get("operator"));
-            ps.setString(3, (String)audit.get("target"));
-            ps.setString(4, (String)audit.get("detail"));
-            ps.setLong(5, (Long)audit.get("timestamp"));
+            ps.setString(1, audit.action());
+            ps.setString(2, audit.operator());
+            ps.setString(3, audit.target());
+            ps.setString(4, audit.detail());
+            ps.setLong(5, audit.timestamp());
             ps.executeUpdate();
         } catch (SQLException ignored) {}
     }
 
     @Override
-    public List<Map<String, Object>> getAllAudits() {
-        List<Map<String, Object>> result = new ArrayList<>();
+    public List<AuditRecord> getAllAudits() {
+        List<AuditRecord> result = new ArrayList<>();
         String sql = "SELECT * FROM audits";
         try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                Map<String, Object> audit = new HashMap<>();
-                audit.put("id", rs.getInt("id"));
-                audit.put("action", rs.getString("action"));
-                audit.put("operator", rs.getString("operator"));
-                audit.put("target", rs.getString("target"));
-                audit.put("detail", rs.getString("detail"));
-                audit.put("timestamp", rs.getLong("timestamp"));
-                result.add(audit);
+                result.add(new AuditRecord(
+                        rs.getLong("id"),
+                        rs.getString("action"),
+                        rs.getString("operator"),
+                        rs.getString("target"),
+                        rs.getString("detail"),
+                        rs.getLong("timestamp")
+                ));
             }
         } catch (SQLException ignored) {}
         return result;
@@ -58,4 +60,4 @@ public class MysqlAuditDao implements AuditDao {
     public void save() {
         // MySQL storage: save() called (no-op)
     }
-} 
+}

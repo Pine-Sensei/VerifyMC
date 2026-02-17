@@ -14,7 +14,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    
     steps:
       # ========== Initialization ==========
       - name: Checkout code
@@ -23,13 +23,11 @@ jobs:
       - name: Read version config
         id: version
         run: |
-          echo "RELEASE=$(awk '/^release:/ {print $2}' version.yml)" >> $GITHUB_ENV
-          echo "VERSION=$(awk '/^version:/ {print $2}' version.yml)" >> $GITHUB_ENV
-          {
-            echo 'RELEASE_NOTES<<EOF'
-            awk '/release_notes:/,0' version.yml | sed '1d'
-            echo 'EOF'
-          } >> $GITHUB_ENV
+          echo "RELEASE=$(awk '/release:/ {print $2}' version.yml)" >> $GITHUB_ENV
+          echo "VERSION=$(awk '/version:/ {print $2}' version.yml)" >> $GITHUB_ENV
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
+          awk '/release_notes:/,0' version.yml | sed '1d' >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       # ========== Frontend Build ==========
       - name: Cache Node modules

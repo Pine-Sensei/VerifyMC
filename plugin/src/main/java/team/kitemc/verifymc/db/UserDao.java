@@ -54,6 +54,14 @@ public interface UserDao {
      * @return true if update successful
      */
     boolean updateUserPassword(String uuidOrName, String password);
+
+    /**
+     * Update user email
+     * @param uuidOrName User UUID or username
+     * @param email New email
+     * @return true if update successful
+     */
+    boolean updateUserEmail(String uuidOrName, String email);
     
     /**
      * Get all users

@@ -1,7 +1,6 @@
 name: VerifyMC
 main: team.kitemc.verifymc.VerifyMC
 version: 1.5.1
-api-version: '1.13'
 author: KiteMC
 folia-supported: true
 commands:
