@@ -55,9 +55,21 @@ public class ResourceManager implements BiFunction<String, String, String> {
      */
     public void init() {
         plugin.saveDefaultConfig();
+        saveResourceIfNotExists("config_help_zh.yml");
+        saveResourceIfNotExists("config_help_en.yml");
         extractDirectoryFromJar("i18n");
         extractDirectoryFromJar("email");
         extractStaticAssets();
+    }
+
+    /**
+     * Save a resource file from the JAR to the data folder if it doesn't already exist.
+     */
+    private void saveResourceIfNotExists(String resourceName) {
+        File outFile = new File(plugin.getDataFolder(), resourceName);
+        if (!outFile.exists()) {
+            plugin.saveResource(resourceName, false);
+        }
     }
 
     /**
