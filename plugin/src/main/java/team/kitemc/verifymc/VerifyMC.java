@@ -154,7 +154,24 @@ public class VerifyMC extends JavaPlugin {
         context.setVerifyCodeService(new VerifyCodeService(this));
 
         // AuthMe service
-        context.setAuthmeService(new AuthmeService(this));
+        AuthmeService authmeService = new AuthmeService(this);
+        authmeService.setUserDao(context.getUserDao());
+        context.setAuthmeService(authmeService);
+
+        // Sync AuthMe data on startup if enabled
+        if (authmeService.isAuthmeEnabled()) {
+            authmeService.syncApprovedUsers();
+            log.info("[VerifyMC] AuthMe sync completed on startup.");
+            
+            // Schedule periodic sync
+            int syncInterval = config.getAuthmeSyncInterval();
+            if (syncInterval > 0) {
+                Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
+                    authmeService.syncApprovedUsers();
+                }, syncInterval * 20L, syncInterval * 20L);
+                log.info("[VerifyMC] AuthMe periodic sync scheduled every " + syncInterval + " seconds.");
+            }
+        }
 
         // Captcha service
         context.setCaptchaService(new CaptchaService(this));

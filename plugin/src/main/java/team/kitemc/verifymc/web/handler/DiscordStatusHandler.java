@@ -8,9 +8,6 @@ import team.kitemc.verifymc.web.WebResponseHelper;
 
 import java.io.IOException;
 
-/**
- * Checks the Discord link status for a given username.
- */
 public class DiscordStatusHandler implements HttpHandler {
     private final PluginContext ctx;
 
@@ -24,11 +21,16 @@ public class DiscordStatusHandler implements HttpHandler {
 
         String query = exchange.getRequestURI().getQuery();
         String username = null;
+        String language = "en";
         if (query != null) {
             for (String param : query.split("&")) {
                 String[] kv = param.split("=", 2);
-                if (kv.length == 2 && "username".equals(kv[0])) {
-                    username = kv[1];
+                if (kv.length == 2) {
+                    if ("username".equals(kv[0])) {
+                        username = kv[1];
+                    } else if ("language".equals(kv[0])) {
+                        language = kv[1];
+                    }
                 }
             }
         }
@@ -46,7 +48,7 @@ public class DiscordStatusHandler implements HttpHandler {
             }
         } else {
             resp.put("success", false);
-            resp.put("msg", "Missing username");
+            resp.put("msg", ctx.getMessage("error.missing_username", language));
         }
         WebResponseHelper.sendJson(exchange, resp);
     }

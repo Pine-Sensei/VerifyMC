@@ -22,11 +22,16 @@ public class UserStatusHandler implements HttpHandler {
 
         String query = exchange.getRequestURI().getQuery();
         String username = null;
+        String language = "en";
         if (query != null) {
             for (String param : query.split("&")) {
                 String[] kv = param.split("=", 2);
-                if (kv.length == 2 && "username".equals(kv[0])) {
-                    username = java.net.URLDecoder.decode(kv[1], java.nio.charset.StandardCharsets.UTF_8);
+                if (kv.length == 2) {
+                    if ("username".equals(kv[0])) {
+                        username = java.net.URLDecoder.decode(kv[1], java.nio.charset.StandardCharsets.UTF_8);
+                    } else if ("language".equals(kv[0])) {
+                        language = kv[1];
+                    }
                 }
             }
         }
@@ -45,7 +50,7 @@ public class UserStatusHandler implements HttpHandler {
             }
         } else {
             resp.put("success", false);
-            resp.put("msg", "Missing username");
+            resp.put("msg", ctx.getMessage("error.missing_username", language));
         }
         WebResponseHelper.sendJson(exchange, resp);
     }

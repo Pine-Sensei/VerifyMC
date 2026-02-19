@@ -9,9 +9,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 
-/**
- * Handles Discord OAuth2 callback — exchanges code for token, links the account.
- */
 public class DiscordCallbackHandler implements HttpHandler {
     private final PluginContext ctx;
 
@@ -24,23 +21,25 @@ public class DiscordCallbackHandler implements HttpHandler {
         String query = exchange.getRequestURI().getQuery();
         String code = null;
         String state = null;
+        String language = "en";
         if (query != null) {
             for (String param : query.split("&")) {
                 String[] kv = param.split("=", 2);
                 if (kv.length == 2) {
                     if ("code".equals(kv[0])) code = kv[1];
                     if ("state".equals(kv[0])) state = kv[1];
+                    if ("language".equals(kv[0])) language = kv[1];
                 }
             }
         }
 
         String html;
         if (code == null || state == null) {
-            html = buildCallbackHtml(false, "Missing code or state parameter");
+            html = buildCallbackHtml(false, ctx.getMessage("discord.missing_code_state", language));
         } else {
             DiscordService.DiscordCallbackResult result = ctx.getDiscordService().handleCallback(code, state);
             boolean success = result.success;
-            html = buildCallbackHtml(success, success ? "Discord linked successfully!" : result.message);
+            html = buildCallbackHtml(success, success ? ctx.getMessage("discord.linked_successfully", language) : result.message);
         }
 
         byte[] bytes = html.getBytes(StandardCharsets.UTF_8);

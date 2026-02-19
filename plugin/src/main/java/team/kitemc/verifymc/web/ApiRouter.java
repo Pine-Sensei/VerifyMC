@@ -78,6 +78,7 @@ public class ApiRouter {
         server.createContext("/api/admin/user/unban", new AdminUserUnbanHandler(ctx));
         server.createContext("/api/admin/user/password", new AdminUserPasswordHandler(ctx));
         server.createContext("/api/admin/audits", new AdminAuditHandler(ctx));
+        server.createContext("/api/admin/sync", new AdminSyncHandler(ctx));
 
         // --- Discord endpoints ---
         server.createContext("/api/discord/auth", new DiscordAuthHandler(ctx));

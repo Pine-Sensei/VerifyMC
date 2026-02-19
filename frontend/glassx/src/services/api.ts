@@ -432,6 +432,14 @@ class ApiService {
   }> {
     return this.request(`/discord/status?username=${encodeURIComponent(username)}`)
   }
+
+  // AuthMe 同步
+  async syncAuthme(language: string = 'en'): Promise<{ success: boolean; message?: string; msg?: string }> {
+    return this.request<{ success: boolean; message?: string; msg?: string }>('/admin/sync', {
+      method: 'POST',
+      body: JSON.stringify({ language }),
+    })
+  }
 }
 
 export const apiService = new ApiService()

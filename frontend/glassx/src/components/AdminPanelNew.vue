@@ -465,6 +465,7 @@ const loadQuestionnaireConfig = async () => {
 const loadPendingUsers = async () => {
   try {
     console.log('Loading pending users...')
+    await apiService.syncAuthme(locale.value)
     const response = await apiService.getPendingList(locale.value)
     console.log('Pending users response:', response)
 

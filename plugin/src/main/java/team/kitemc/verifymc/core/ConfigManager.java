@@ -141,6 +141,10 @@ public class ConfigManager {
         return getConfig().getString("authme.password_regex", "^[a-zA-Z0-9_]{8,26}$");
     }
 
+    public int getAuthmeSyncInterval() {
+        return getConfig().getInt("authme.database.sync_interval_seconds", 30);
+    }
+
     // --- Captcha ---
     public String getCaptchaType() {
         return getConfig().getString("captcha.type", "math");

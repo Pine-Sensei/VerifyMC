@@ -14,11 +14,6 @@ import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Handles questionnaire submission, scores answers, and stores the result
- * for later retrieval during registration.
- * Extracted from WebServer.start() — the "/api/questionnaire/submit" context.
- */
 public class QuestionnaireSubmitHandler implements HttpHandler {
     private final PluginContext ctx;
     private final ConcurrentHashMap<String, RegistrationProcessingHandler.QuestionnaireSubmissionRecord> store;
@@ -37,7 +32,8 @@ public class QuestionnaireSubmitHandler implements HttpHandler {
         String language = req.optString("language", "en");
 
         if (!ctx.getQuestionnaireService().isEnabled()) {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure("Questionnaire is not enabled"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("questionnaire.not_enabled", language)));
             return;
         }
 
@@ -48,7 +44,6 @@ public class QuestionnaireSubmitHandler implements HttpHandler {
             return;
         }
 
-        // Score the answers
         QuestionnaireService.QuestionnaireResult result = ctx.getQuestionnaireService().scoreAnswers(answers, language);
         int score = result.getScore();
         int passScore = result.getPassScore();
@@ -60,7 +55,6 @@ public class QuestionnaireSubmitHandler implements HttpHandler {
             details.put(detail.toJson());
         }
 
-        // Generate token and store submission
         String token = UUID.randomUUID().toString();
         long submittedAt = System.currentTimeMillis();
 
@@ -70,7 +64,6 @@ public class QuestionnaireSubmitHandler implements HttpHandler {
                         scoringServiceUnavailable, answers, submittedAt);
         store.put(token, record);
 
-        // Build response
         JSONObject resp = new JSONObject();
         resp.put("success", true);
         resp.put("token", token);

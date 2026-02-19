@@ -8,9 +8,6 @@ import team.kitemc.verifymc.web.WebResponseHelper;
 
 import java.io.IOException;
 
-/**
- * Initiates Discord OAuth2 authorization — returns the auth URL.
- */
 public class DiscordAuthHandler implements HttpHandler {
     private final PluginContext ctx;
 
@@ -24,17 +21,24 @@ public class DiscordAuthHandler implements HttpHandler {
 
         String query = exchange.getRequestURI().getQuery();
         String username = null;
+        String language = "en";
         if (query != null) {
             for (String param : query.split("&")) {
                 String[] kv = param.split("=", 2);
-                if (kv.length == 2 && "username".equals(kv[0])) {
-                    username = kv[1];
+                if (kv.length == 2) {
+                    if ("username".equals(kv[0])) {
+                        username = kv[1];
+                    } else if ("language".equals(kv[0])) {
+                        language = kv[1];
+                    }
                 }
             }
         }
 
         if (username == null || username.isBlank()) {
-            JSONObject resp = new JSONObject().put("success", false).put("msg", "Missing username");
+            JSONObject resp = new JSONObject()
+                    .put("success", false)
+                    .put("msg", ctx.getMessage("error.missing_username", language));
             WebResponseHelper.sendJson(exchange, resp);
             return;
         }
