@@ -38,6 +38,12 @@ public class DiscordStatusHandler implements HttpHandler {
             boolean linked = ctx.getDiscordService().isLinked(username);
             resp.put("success", true);
             resp.put("linked", linked);
+            if (linked) {
+                var discordUser = ctx.getDiscordService().getLinkedUser(username);
+                if (discordUser != null) {
+                    resp.put("user", discordUser.toJson());
+                }
+            }
         } else {
             resp.put("success", false);
             resp.put("msg", "Missing username");

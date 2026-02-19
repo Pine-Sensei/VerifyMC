@@ -42,7 +42,7 @@ public class DiscordAuthHandler implements HttpHandler {
         String authUrl = ctx.getDiscordService().getAuthorizationUrl(username);
         JSONObject resp = new JSONObject();
         resp.put("success", true);
-        resp.put("url", authUrl);
+        resp.put("auth_url", authUrl);
         WebResponseHelper.sendJson(exchange, resp);
     }
 }

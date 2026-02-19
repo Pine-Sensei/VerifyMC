@@ -663,7 +663,7 @@ const confirmChangePassword = async () => {
   try {
     const response = await apiService.changePassword({
       username: selectedUser.value.username,
-      newPassword: newPassword.value,
+      password: newPassword.value,
       language: locale.value
     })
 

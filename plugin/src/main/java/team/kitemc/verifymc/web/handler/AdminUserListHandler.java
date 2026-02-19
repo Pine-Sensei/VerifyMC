@@ -55,18 +55,25 @@ public class AdminUserListHandler implements HttpHandler {
 
         List<Map<String, Object>> users = ctx.getUserDao().getUsers(page, size, search, status);
         int total = ctx.getUserDao().getTotalUsers(search, status);
+        int totalPages = (int) Math.ceil((double) total / size);
 
         JSONArray usersArray = new JSONArray();
         for (Map<String, Object> user : users) {
             usersArray.put(new JSONObject(user));
         }
 
+        JSONObject pagination = new JSONObject();
+        pagination.put("currentPage", page);
+        pagination.put("pageSize", size);
+        pagination.put("totalCount", total);
+        pagination.put("totalPages", totalPages);
+        pagination.put("hasNext", page < totalPages);
+        pagination.put("hasPrev", page > 1);
+
         JSONObject resp = new JSONObject();
         resp.put("success", true);
         resp.put("users", usersArray);
-        resp.put("total", total);
-        resp.put("page", page);
-        resp.put("size", size);
+        resp.put("pagination", pagination);
         WebResponseHelper.sendJson(exchange, resp);
     }
 }

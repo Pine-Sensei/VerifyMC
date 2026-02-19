@@ -176,7 +176,7 @@ export interface ReviewResponse {
 
 export interface ChangePasswordRequest {
   username: string
-  newPassword: string
+  password: string
   language: string
 }
 
@@ -414,10 +414,7 @@ class ApiService {
     auth_url?: string;
     msg?: string;
   }> {
-    return this.request('/discord/auth', {
-      method: 'POST',
-      body: JSON.stringify({ username }),
-    })
+    return this.request(`/discord/auth?username=${encodeURIComponent(username)}`)
   }
 
   // Discord OAuth - 检查绑定状态
