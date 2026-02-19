@@ -40,6 +40,7 @@ public class RegistrationProcessingHandler implements HttpHandler {
     private final BiFunction<String, String, String> usernameRegexResolver;
     private final BiPredicate<String, String> usernameValidator;
     private final Function<String, Boolean> usernameCaseConflictChecker;
+    private final Supplier<Boolean> usernameCaseSensitiveProvider;
     private final BiFunction<String, String, String> usernameNormalizer;
     private final Function<String, Boolean> emailValidator;
     private final Function<String, Boolean> uuidValidator;
@@ -60,6 +61,7 @@ public class RegistrationProcessingHandler implements HttpHandler {
             BiFunction<String, String, String> usernameRegexResolver,
             BiPredicate<String, String> usernameValidator,
             Function<String, Boolean> usernameCaseConflictChecker,
+            Supplier<Boolean> usernameCaseSensitiveProvider,
             BiFunction<String, String, String> usernameNormalizer,
             Function<String, Boolean> emailValidator,
             Function<String, Boolean> uuidValidator,
@@ -79,6 +81,7 @@ public class RegistrationProcessingHandler implements HttpHandler {
         this.usernameRegexResolver = usernameRegexResolver;
         this.usernameValidator = usernameValidator;
         this.usernameCaseConflictChecker = usernameCaseConflictChecker;
+        this.usernameCaseSensitiveProvider = usernameCaseSensitiveProvider;
         this.usernameNormalizer = usernameNormalizer;
         this.emailValidator = emailValidator;
         this.uuidValidator = uuidValidator;
@@ -149,7 +152,12 @@ public class RegistrationProcessingHandler implements HttpHandler {
                 return RegistrationValidationResult.reject("register.domain_not_allowed");
             }
         }
-        if (userDao.getUserByUsername(request.normalizedUsername()) != null) {
+        // Check username existence based on case sensitivity setting
+        boolean caseSensitive = usernameCaseSensitiveProvider.get();
+        var existingUser = caseSensitive 
+            ? userDao.getUserByUsernameExact(request.normalizedUsername())
+            : userDao.getUserByUsername(request.normalizedUsername());
+        if (existingUser != null) {
             return RegistrationValidationResult.reject("register.username_exists");
         }
         if (!usernameValidator.test(request.normalizedUsername(), request.platform())) {

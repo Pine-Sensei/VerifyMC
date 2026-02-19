@@ -78,6 +78,13 @@ public class AuthmeService {
     }
 
     /**
+     * Change password (alias for changePasswordInAuthme)
+     */
+    public boolean changePassword(String username, String newPassword) {
+        return changePasswordInAuthme(username, newPassword);
+    }
+
+    /**
      * Encode password in AuthMe-compatible format for VerifyMC local storage.
      * Accepts plain text and returns encoded value; already-encoded AuthMe values are returned as-is.
      */

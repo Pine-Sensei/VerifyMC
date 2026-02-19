@@ -1,0 +1,87 @@
+package team.kitemc.verifymc.web.handler;
+
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import team.kitemc.verifymc.core.PluginContext;
+import team.kitemc.verifymc.service.QuestionnaireService;
+import team.kitemc.verifymc.web.ApiResponseFactory;
+import team.kitemc.verifymc.web.RegistrationProcessingHandler;
+import team.kitemc.verifymc.web.WebResponseHelper;
+
+import java.io.IOException;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * Handles questionnaire submission, scores answers, and stores the result
+ * for later retrieval during registration.
+ * Extracted from WebServer.start() — the "/api/questionnaire/submit" context.
+ */
+public class QuestionnaireSubmitHandler implements HttpHandler {
+    private final PluginContext ctx;
+    private final ConcurrentHashMap<String, RegistrationProcessingHandler.QuestionnaireSubmissionRecord> store;
+
+    public QuestionnaireSubmitHandler(PluginContext ctx,
+                                      ConcurrentHashMap<String, RegistrationProcessingHandler.QuestionnaireSubmissionRecord> store) {
+        this.ctx = ctx;
+        this.store = store;
+    }
+
+    @Override
+    public void handle(HttpExchange exchange) throws IOException {
+        if (!WebResponseHelper.requireMethod(exchange, "POST")) return;
+
+        JSONObject req = WebResponseHelper.readJson(exchange);
+        String language = req.optString("language", "en");
+
+        if (!ctx.getQuestionnaireService().isEnabled()) {
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure("Questionnaire is not enabled"));
+            return;
+        }
+
+        JSONObject answers = req.optJSONObject("answers");
+        if (answers == null || answers.isEmpty()) {
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("register.questionnaire_required", language)));
+            return;
+        }
+
+        // Score the answers
+        QuestionnaireService.QuestionnaireResult result = ctx.getQuestionnaireService().scoreAnswers(answers, language);
+        int score = result.getScore();
+        int passScore = result.getPassScore();
+        boolean passed = result.isPassed();
+        boolean manualReviewRequired = result.isManualReviewRequired();
+        boolean scoringServiceUnavailable = false;
+        JSONArray details = new JSONArray();
+        for (QuestionnaireService.QuestionScoreDetail detail : result.getDetails()) {
+            details.put(detail.toJson());
+        }
+
+        // Generate token and store submission
+        String token = UUID.randomUUID().toString();
+        long submittedAt = System.currentTimeMillis();
+
+        RegistrationProcessingHandler.QuestionnaireSubmissionRecord record =
+                RegistrationProcessingHandler.QuestionnaireSubmissionRecord.of(
+                        passed, score, passScore, details, manualReviewRequired,
+                        scoringServiceUnavailable, answers, submittedAt);
+        store.put(token, record);
+
+        // Build response
+        JSONObject resp = new JSONObject();
+        resp.put("success", true);
+        resp.put("token", token);
+        resp.put("score", score);
+        resp.put("pass_score", passScore);
+        resp.put("passed", passed);
+        resp.put("submitted_at", submittedAt);
+        resp.put("expires_at", record.expiresAt());
+        if (details != null && !details.isEmpty()) {
+            resp.put("details", details);
+        }
+        WebResponseHelper.sendJson(exchange, resp);
+    }
+}

@@ -210,6 +210,48 @@ public class QuestionnaireService {
         result.put("questions", questionsArray);
         return result;
     }
+    
+    /**
+     * Get questionnaire configuration (alias for getQuestionnaire)
+     * @param language Language code
+     * @return JSON object with questionnaire configuration
+     */
+    public JSONObject getQuestionnaireConfig(String language) {
+        return getQuestionnaire(language);
+    }
+    
+    /**
+     * Score questionnaire answers
+     * @param answers JSON object containing answers
+     * @param language Language code
+     * @return QuestionnaireResult with scoring details
+     */
+    public QuestionnaireResult scoreAnswers(JSONObject answers, String language) {
+        if (answers == null) {
+            return new QuestionnaireResult(false, 0, getPassScore(), Collections.emptyList());
+        }
+        
+        Map<Integer, QuestionAnswer> answerMap = new HashMap<>();
+        JSONArray answersArray = answers.optJSONArray("answers");
+        if (answersArray != null) {
+            for (int i = 0; i < answersArray.length(); i++) {
+                JSONObject answerObj = answersArray.getJSONObject(i);
+                int questionId = answerObj.getInt("question_id");
+                String type = answerObj.optString("type", "single_choice");
+                List<Integer> selectedOptionIds = new ArrayList<>();
+                JSONArray optionsArray = answerObj.optJSONArray("selected_option_ids");
+                if (optionsArray != null) {
+                    for (int j = 0; j < optionsArray.length(); j++) {
+                        selectedOptionIds.add(optionsArray.getInt(j));
+                    }
+                }
+                String textAnswer = answerObj.optString("text_answer", "");
+                answerMap.put(questionId, new QuestionAnswer(type, selectedOptionIds, textAnswer));
+            }
+        }
+        
+        return evaluateAnswers(answerMap);
+    }
 
     public QuestionnaireResult evaluateAnswers(Map<Integer, QuestionAnswer> answers) {
         if (!isEnabled() || questionnaireConfig == null) {

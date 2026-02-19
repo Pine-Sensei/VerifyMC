@@ -1,0 +1,58 @@
+package team.kitemc.verifymc.web.handler;
+
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import org.json.JSONObject;
+import team.kitemc.verifymc.core.PluginContext;
+import team.kitemc.verifymc.web.WebResponseHelper;
+
+import java.io.IOException;
+import java.util.Map;
+
+/**
+ * Checks the review status for a given user (by UUID or username).
+ * Extracted from WebServer.start() — the "/api/review/status" context.
+ */
+public class ReviewStatusHandler implements HttpHandler {
+    private final PluginContext ctx;
+
+    public ReviewStatusHandler(PluginContext ctx) {
+        this.ctx = ctx;
+    }
+
+    @Override
+    public void handle(HttpExchange exchange) throws IOException {
+        if (!WebResponseHelper.requireMethod(exchange, "GET")) return;
+
+        String query = exchange.getRequestURI().getQuery();
+        String uuid = null;
+        String username = null;
+        if (query != null) {
+            for (String param : query.split("&")) {
+                String[] kv = param.split("=", 2);
+                if (kv.length == 2) {
+                    if ("uuid".equals(kv[0])) uuid = kv[1];
+                    if ("username".equals(kv[0])) username = kv[1];
+                }
+            }
+        }
+
+        Map<String, Object> user = null;
+        if (uuid != null && !uuid.isBlank()) {
+            user = ctx.getUserDao().getUserByUuid(uuid);
+        } else if (username != null && !username.isBlank()) {
+            user = ctx.getUserDao().getUserByUsername(username);
+        }
+
+        JSONObject resp = new JSONObject();
+        if (user != null) {
+            resp.put("success", true);
+            resp.put("status", user.getOrDefault("status", "unknown"));
+            resp.put("username", user.getOrDefault("username", ""));
+        } else {
+            resp.put("success", false);
+            resp.put("msg", "User not found");
+        }
+        WebResponseHelper.sendJson(exchange, resp);
+    }
+}

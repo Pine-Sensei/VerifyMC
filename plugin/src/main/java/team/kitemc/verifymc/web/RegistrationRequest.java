@@ -3,6 +3,10 @@ package team.kitemc.verifymc.web;
 import org.json.JSONObject;
 import java.util.function.BiFunction;
 
+/**
+ * Registration request data transfer object.
+ * (Preserved from original.)
+ */
 public record RegistrationRequest(
         String email,
         String code,

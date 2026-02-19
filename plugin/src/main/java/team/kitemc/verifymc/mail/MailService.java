@@ -118,6 +118,20 @@ public class MailService {
     }
 
     /**
+     * Send verification code email (alias for sendCode)
+     */
+    public boolean sendVerifyCode(String to, String subject, String code) {
+        return sendCode(to, subject, code, null);
+    }
+
+    /**
+     * Send verification code email (alias for sendCode with language)
+     */
+    public boolean sendVerifyCode(String to, String subject, String code, String language) {
+        return sendCode(to, subject, code, language);
+    }
+
+    /**
      * Get default verify code template
      */
     private String getDefaultVerifyCodeTemplate(String lang, String code) {
@@ -240,6 +254,20 @@ public class MailService {
             plugin.getLogger().warning("Failed to send review result notification: " + e.getMessage());
             return false;
         }
+    }
+    
+    /**
+     * Send review result notification (alias without language parameter)
+     */
+    public boolean sendReviewResult(String email, String username, boolean approved, String reason) {
+        return sendReviewResultNotification(email, username, approved, reason, null);
+    }
+    
+    /**
+     * Send review result notification (alias for sendReviewResultNotification)
+     */
+    public boolean sendReviewResult(String email, String username, boolean approved, String reason, String language) {
+        return sendReviewResultNotification(email, username, approved, reason, language);
     }
     
     /**

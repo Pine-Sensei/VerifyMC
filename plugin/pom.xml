@@ -2,11 +2,11 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>team.kitemc</groupId>
-    <artifactId>verifymc</artifactId>
+    <artifactId>verifymc-refactored</artifactId>
     <version>1.5.1</version>
     <packaging>jar</packaging>
     <name>VerifyMC</name>
-    <description>Web-based MC whitelist authentication plugin</description>
+    <description>Web-based MC whitelist authentication plugin (refactored)</description>
     <properties>
         <java.version>17</java.version>
     </properties>
@@ -48,7 +48,7 @@
             <artifactId>jakarta.mail-api</artifactId>
             <version>2.0.1</version>
         </dependency>
-        <!-- Lombok (可选) -->
+        <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -71,7 +71,6 @@
             <artifactId>commons-io</artifactId>
             <version>2.15.1</version>
         </dependency>
-        <!-- 移除 bStats 依赖 -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>

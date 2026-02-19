@@ -1,20 +1,61 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VerifyMC</title>
-    <meta name="description" content="Modern whitelist registration and management system" />
-    <meta name="keywords" content="minecraft, whitelist, registration, glassmorphism" />
-    <script type="module" crossorigin src="/js/index-yB6AL2v9.js"></script>
-    <link rel="modulepreload" crossorigin href="/js/vendor-BO43GK77.js">
-    <link rel="modulepreload" crossorigin href="/js/utils-DQBIFArD.js">
-    <link rel="modulepreload" crossorigin href="/js/components-zEl3_n0j.js">
-    <link rel="stylesheet" crossorigin href="/css/components-X4Nxb6OF.css">
-    <link rel="stylesheet" crossorigin href="/css/index-D5StCHNE.css">
-  </head>
-  <body>
-    <div id="app"></div>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VerifyMC</title>
+  <meta name="description" content="Modern whitelist registration and management system" />
+  <meta name="keywords" content="minecraft, whitelist, registration, glassmorphism" />
+  <script type="module" crossorigin src="/js/index-BtDphqAn.js"></script>
+  <link rel="modulepreload" crossorigin href="/js/vendor-e2rx4Ocg.js">
+  <link rel="modulepreload" crossorigin href="/js/utils-DbzKcUtM.js">
+  <link rel="modulepreload" crossorigin href="/js/components-T5KkwDWu.js">
+  <link rel="stylesheet" crossorigin href="/css/components-C52nHUjX.css">
+  <link rel="stylesheet" crossorigin href="/css/index-Dey6jfD-.css">
+</head>
+
+<body>
+  <!-- Fixed Background (outside #app to guarantee position:fixed works) -->
+  <div id="fixed-bg" style="position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden">
+    <div style="position:absolute;inset:0;background:linear-gradient(to bottom right,rgba(17,24,39,.4),rgba(0,0,0,.3))">
+    </div>
+    <div
+      style="position:absolute;width:450px;height:450px;border-radius:50%;filter:blur(100px);opacity:0.35;background:linear-gradient(135deg,#3b82f6,#8b5cf6);top:-8%;left:-5%;animation:orb-float 20s ease-in-out infinite">
+    </div>
+    <div
+      style="position:absolute;width:350px;height:350px;border-radius:50%;filter:blur(100px);opacity:0.3;background:linear-gradient(135deg,#8b5cf6,#ec4899);bottom:8%;right:-3%;animation:orb-float 20s ease-in-out -7s infinite">
+    </div>
+    <div
+      style="position:absolute;width:300px;height:300px;border-radius:50%;filter:blur(100px);opacity:0.25;background:linear-gradient(135deg,#06b6d4,#3b82f6);top:45%;left:50%;animation:orb-float 20s ease-in-out -14s infinite">
+    </div>
+    <div
+      style="position:absolute;inset:0;opacity:0.02;background-image:linear-gradient(rgba(255,255,255,.1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.1) 1px,transparent 1px);background-size:50px 50px">
+    </div>
+  </div>
+  <style>
+    @keyframes orb-float {
+
+      0%,
+      100% {
+        transform: translate(0, 0) scale(1)
+      }
+
+      25% {
+        transform: translate(30px, -30px) scale(1.05)
+      }
+
+      50% {
+        transform: translate(-20px, 20px) scale(0.95)
+      }
+
+      75% {
+        transform: translate(20px, 30px) scale(1.02)
+      }
+    }
+  </style>
+  <div id="app"></div>
+</body>
+
 </html>

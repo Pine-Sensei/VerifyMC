@@ -2,6 +2,10 @@ package team.kitemc.verifymc.web;
 
 import org.json.JSONObject;
 
+/**
+ * Validation result for registration requests.
+ * (Preserved from original.)
+ */
 public record RegistrationValidationResult(boolean passed, String messageKey, JSONObject responseFields) {
 
     public static RegistrationValidationResult pass() {

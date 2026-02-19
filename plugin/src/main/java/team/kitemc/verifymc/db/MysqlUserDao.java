@@ -19,8 +19,22 @@ public class MysqlUserDao implements UserDao {
                 mysqlConfig.getProperty("port") + "/" +
                 mysqlConfig.getProperty("database") + "?useSSL=false&characterEncoding=utf8";
         conn = DriverManager.getConnection(url, mysqlConfig.getProperty("user"), mysqlConfig.getProperty("password"));
+        initDatabase();
+    }
+
+    public MysqlUserDao(Properties mysqlConfig) throws SQLException {
+        this.messages = null;
+        this.plugin = null;
+        this.debug = false;
+        String url = "jdbc:mysql://" + mysqlConfig.getProperty("host") + ":" +
+                mysqlConfig.getProperty("port") + "/" +
+                mysqlConfig.getProperty("database") + "?useSSL=false&characterEncoding=utf8";
+        conn = DriverManager.getConnection(url, mysqlConfig.getProperty("user"), mysqlConfig.getProperty("password"));
+        initDatabase();
+    }
+
+    private void initDatabase() throws SQLException {
         try (Statement stmt = conn.createStatement()) {
-            // Create users table (if not exists)
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS users (" +
                     "uuid VARCHAR(36) PRIMARY KEY," +
                     "username VARCHAR(32) NOT NULL," +
@@ -28,73 +42,52 @@ public class MysqlUserDao implements UserDao {
                     "status VARCHAR(16)," +
                     "password VARCHAR(255)," +
                     "regTime BIGINT," +
+                    "discord_id VARCHAR(64)," +
                     "questionnaire_score INT NULL," +
                     "questionnaire_passed BOOLEAN NULL," +
                     "questionnaire_review_summary TEXT NULL," +
                     "questionnaire_scored_at BIGINT NULL)");
 
-            // Compatibility handling: Check and add missing fields
             try {
                 stmt.executeQuery("SELECT password FROM users LIMIT 1");
-                debugLog("Password column already exists in users table");
             } catch (SQLException e) {
-                // password field doesn't exist, add it
                 stmt.executeUpdate("ALTER TABLE users ADD COLUMN password VARCHAR(255)");
-                debugLog("Added password column to users table");
             }
 
-            // Check if regTime field exists
             try {
                 stmt.executeQuery("SELECT regTime FROM users LIMIT 1");
-                debugLog("regTime column already exists in users table");
             } catch (SQLException e) {
-                // regTime field doesn't exist, add it
                 stmt.executeUpdate("ALTER TABLE users ADD COLUMN regTime BIGINT");
-                debugLog("Added regTime column to users table");
-
-                // Set default regTime value for existing records
-                stmt.executeUpdate(
-                        "UPDATE users SET regTime = " + System.currentTimeMillis() + " WHERE regTime IS NULL");
-                debugLog("Updated existing records with default regTime value");
+                stmt.executeUpdate("UPDATE users SET regTime = " + System.currentTimeMillis() + " WHERE regTime IS NULL");
             }
 
-            // Check if discord_id field exists
             try {
                 stmt.executeQuery("SELECT discord_id FROM users LIMIT 1");
-                debugLog("discord_id column already exists in users table");
             } catch (SQLException e) {
-                // discord_id field doesn't exist, add it
                 stmt.executeUpdate("ALTER TABLE users ADD COLUMN discord_id VARCHAR(64)");
-                debugLog("Added discord_id column to users table");
             }
 
-            // Check questionnaire audit fields
             try {
                 stmt.executeQuery("SELECT questionnaire_score FROM users LIMIT 1");
             } catch (SQLException e) {
                 stmt.executeUpdate("ALTER TABLE users ADD COLUMN questionnaire_score INT NULL");
-                debugLog("Added questionnaire_score column to users table");
             }
             try {
                 stmt.executeQuery("SELECT questionnaire_passed FROM users LIMIT 1");
             } catch (SQLException e) {
                 stmt.executeUpdate("ALTER TABLE users ADD COLUMN questionnaire_passed BOOLEAN NULL");
-                debugLog("Added questionnaire_passed column to users table");
             }
             try {
                 stmt.executeQuery("SELECT questionnaire_review_summary FROM users LIMIT 1");
             } catch (SQLException e) {
                 stmt.executeUpdate("ALTER TABLE users ADD COLUMN questionnaire_review_summary TEXT NULL");
-                debugLog("Added questionnaire_review_summary column to users table");
             }
             try {
                 stmt.executeQuery("SELECT questionnaire_scored_at FROM users LIMIT 1");
             } catch (SQLException e) {
                 stmt.executeUpdate("ALTER TABLE users ADD COLUMN questionnaire_scored_at BIGINT NULL");
-                debugLog("Added questionnaire_scored_at column to users table");
             }
 
-            // Check and ensure indexes exist
             ensureIndex(stmt, "idx_username", "CREATE INDEX idx_username ON users(username)");
             ensureIndex(stmt, "idx_email", "CREATE INDEX idx_email ON users(email)");
         }
@@ -104,15 +97,12 @@ public class MysqlUserDao implements UserDao {
         try (ResultSet rs = stmt.executeQuery("SHOW INDEX FROM users WHERE Key_name = '" + indexName + "'")) {
             if (!rs.next()) {
                 stmt.executeUpdate(createIndexSql);
-                debugLog("Added " + indexName + " index to users table");
-            } else {
-                debugLog(indexName + " index already exists");
             }
         }
     }
 
     private void debugLog(String msg) {
-        if (debug)
+        if (debug && plugin != null)
             plugin.getLogger().info("[DEBUG] MysqlUserDao: " + msg);
     }
 
@@ -125,7 +115,6 @@ public class MysqlUserDao implements UserDao {
     public boolean registerUser(String uuid, String username, String email, String status,
             Integer questionnaireScore, Boolean questionnairePassed,
             String questionnaireReviewSummary, Long questionnaireScoredAt) {
-        // First check if user already exists
         String checkSql = "SELECT uuid FROM users WHERE uuid = ?";
         try (PreparedStatement checkPs = conn.prepareStatement(checkSql)) {
             checkPs.setString(1, uuid);
@@ -163,7 +152,7 @@ public class MysqlUserDao implements UserDao {
             debugLog("User registered: " + username);
             return true;
         } catch (SQLException e) {
-            debugLog(messages.getString("storage.migrate.fail").replace("{0}", e.getMessage()));
+            debugLog("Error registering user: " + e.getMessage());
             return false;
         }
     }
@@ -177,7 +166,6 @@ public class MysqlUserDao implements UserDao {
     public boolean registerUser(String uuid, String username, String email, String status, String password,
             Integer questionnaireScore, Boolean questionnairePassed,
             String questionnaireReviewSummary, Long questionnaireScoredAt) {
-        // First check if user already exists
         String checkSql = "SELECT uuid FROM users WHERE uuid = ?";
         try (PreparedStatement checkPs = conn.prepareStatement(checkSql)) {
             checkPs.setString(1, uuid);
@@ -216,7 +204,7 @@ public class MysqlUserDao implements UserDao {
             debugLog("User registered with password: " + username);
             return true;
         } catch (SQLException e) {
-            debugLog(messages.getString("storage.migrate.fail").replace("{0}", e.getMessage()));
+            debugLog("Error registering user: " + e.getMessage());
             return false;
         }
     }
@@ -232,7 +220,7 @@ public class MysqlUserDao implements UserDao {
             debugLog("User status updated: " + uuidOrName + " to " + status);
             return rows > 0;
         } catch (SQLException e) {
-            debugLog(messages.getString("storage.migrate.fail").replace("{0}", e.getMessage()));
+            debugLog("Error updating user status: " + e.getMessage());
             return false;
         }
     }
@@ -262,7 +250,7 @@ public class MysqlUserDao implements UserDao {
             debugLog("User password updated: " + uuidOrName);
             return rows > 0;
         } catch (SQLException e) {
-            debugLog(messages.getString("storage.migrate.fail").replace("{0}", e.getMessage()));
+            debugLog("Error updating user password: " + e.getMessage());
             return false;
         }
     }
@@ -278,11 +266,10 @@ public class MysqlUserDao implements UserDao {
             debugLog("User email updated: " + uuidOrName);
             return rows > 0;
         } catch (SQLException e) {
-            debugLog(messages.getString("storage.migrate.fail").replace("{0}", e.getMessage()));
+            debugLog("Error updating user email: " + e.getMessage());
             return false;
         }
     }
-
 
     @Override
     public List<Map<String, Object>> getAllUsers() {
@@ -290,22 +277,10 @@ public class MysqlUserDao implements UserDao {
         String sql = "SELECT * FROM users";
         try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                Map<String, Object> user = new HashMap<>();
-                user.put("uuid", rs.getString("uuid"));
-                user.put("username", rs.getString("username"));
-                user.put("email", rs.getString("email"));
-                user.put("status", rs.getString("status"));
-                user.put("password", rs.getString("password"));
-                user.put("regTime", rs.getLong("regTime"));
-                user.put("discord_id", rs.getString("discord_id"));
-                user.put("questionnaire_score", rs.getObject("questionnaire_score"));
-                user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
-                user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
-                user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
-                result.add(user);
+                result.add(mapUserFromResultSet(rs));
             }
         } catch (SQLException e) {
-            debugLog(messages.getString("storage.migrate.fail").replace("{0}", e.getMessage()));
+            debugLog("Error getting all users: " + e.getMessage());
         }
         return result;
     }
@@ -316,24 +291,28 @@ public class MysqlUserDao implements UserDao {
         String sql = "SELECT * FROM users WHERE status='pending'";
         try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                Map<String, Object> user = new HashMap<>();
-                user.put("uuid", rs.getString("uuid"));
-                user.put("username", rs.getString("username"));
-                user.put("email", rs.getString("email"));
-                user.put("status", rs.getString("status"));
-                user.put("password", rs.getString("password"));
-                user.put("regTime", rs.getLong("regTime"));
-                user.put("discord_id", rs.getString("discord_id"));
-                user.put("questionnaire_score", rs.getObject("questionnaire_score"));
-                user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
-                user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
-                user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
-                result.add(user);
+                result.add(mapUserFromResultSet(rs));
             }
         } catch (SQLException e) {
-            debugLog(messages.getString("storage.migrate.fail").replace("{0}", e.getMessage()));
+            debugLog("Error getting pending users: " + e.getMessage());
         }
         return result;
+    }
+
+    private Map<String, Object> mapUserFromResultSet(ResultSet rs) throws SQLException {
+        Map<String, Object> user = new HashMap<>();
+        user.put("uuid", rs.getString("uuid"));
+        user.put("username", rs.getString("username"));
+        user.put("email", rs.getString("email"));
+        user.put("status", rs.getString("status"));
+        user.put("password", rs.getString("password"));
+        user.put("regTime", rs.getLong("regTime"));
+        user.put("discord_id", rs.getString("discord_id"));
+        user.put("questionnaire_score", rs.getObject("questionnaire_score"));
+        user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
+        user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
+        user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
+        return user;
     }
 
     @Override
@@ -343,23 +322,11 @@ public class MysqlUserDao implements UserDao {
             ps.setString(1, uuid);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    Map<String, Object> user = new HashMap<>();
-                    user.put("uuid", rs.getString("uuid"));
-                    user.put("username", rs.getString("username"));
-                    user.put("email", rs.getString("email"));
-                    user.put("status", rs.getString("status"));
-                    user.put("password", rs.getString("password"));
-                    user.put("regTime", rs.getLong("regTime"));
-                    user.put("discord_id", rs.getString("discord_id"));
-                    user.put("questionnaire_score", rs.getObject("questionnaire_score"));
-                    user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
-                    user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
-                    user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
-                    return user;
+                    return mapUserFromResultSet(rs);
                 }
             }
         } catch (SQLException e) {
-            debugLog(messages.getString("storage.migrate.fail").replace("{0}", e.getMessage()));
+            debugLog("Error getting user by UUID: " + e.getMessage());
         }
         return null;
     }
@@ -371,23 +338,27 @@ public class MysqlUserDao implements UserDao {
             ps.setString(1, username);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    Map<String, Object> user = new HashMap<>();
-                    user.put("uuid", rs.getString("uuid"));
-                    user.put("username", rs.getString("username"));
-                    user.put("email", rs.getString("email"));
-                    user.put("status", rs.getString("status"));
-                    user.put("password", rs.getString("password"));
-                    user.put("regTime", rs.getLong("regTime"));
-                    user.put("discord_id", rs.getString("discord_id"));
-                    user.put("questionnaire_score", rs.getObject("questionnaire_score"));
-                    user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
-                    user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
-                    user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
-                    return user;
+                    return mapUserFromResultSet(rs);
                 }
             }
         } catch (SQLException e) {
-            debugLog(messages.getString("storage.migrate.fail").replace("{0}", e.getMessage()));
+            debugLog("Error getting user by username: " + e.getMessage());
+        }
+        return null;
+    }
+
+    @Override
+    public Map<String, Object> getUserByUsernameExact(String username) {
+        String sql = "SELECT * FROM users WHERE username=?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, username);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapUserFromResultSet(rs);
+                }
+            }
+        } catch (SQLException e) {
+            debugLog("Error getting user by username (exact): " + e.getMessage());
         }
         return null;
     }
@@ -402,7 +373,7 @@ public class MysqlUserDao implements UserDao {
             debugLog("User deleted: " + uuidOrName);
             return rows > 0;
         } catch (SQLException e) {
-            debugLog(messages.getString("storage.migrate.fail").replace("{0}", e.getMessage()));
+            debugLog("Error deleting user: " + e.getMessage());
             return false;
         }
     }
@@ -419,14 +390,13 @@ public class MysqlUserDao implements UserDao {
                 }
             }
         } catch (SQLException e) {
-            debugLog(messages.getString("storage.migrate.fail").replace("{0}", e.getMessage()));
+            debugLog("Error counting users by email: " + e.getMessage());
         }
         return count;
     }
 
     @Override
     public void save() {
-        // MySQL implementation can be empty or just log message
         debugLog("MySQL storage: save() called (no-op)");
     }
 
@@ -442,19 +412,7 @@ public class MysqlUserDao implements UserDao {
             ps.setInt(2, offset);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    Map<String, Object> user = new HashMap<>();
-                    user.put("uuid", rs.getString("uuid"));
-                    user.put("username", rs.getString("username"));
-                    user.put("email", rs.getString("email"));
-                    user.put("status", rs.getString("status"));
-                    user.put("password", rs.getString("password"));
-                    user.put("regTime", rs.getLong("regTime"));
-                    user.put("discord_id", rs.getString("discord_id"));
-                    user.put("questionnaire_score", rs.getObject("questionnaire_score"));
-                    user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
-                    user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
-                    user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
-                    result.add(user);
+                    result.add(mapUserFromResultSet(rs));
                 }
             }
         } catch (SQLException e) {
@@ -484,8 +442,7 @@ public class MysqlUserDao implements UserDao {
 
     @Override
     public List<Map<String, Object>> getUsersWithPaginationAndSearch(int page, int pageSize, String searchQuery) {
-        debugLog("Getting users with pagination and search: page=" + page + ", pageSize=" + pageSize + ", query="
-                + searchQuery);
+        debugLog("Getting users with pagination and search: page=" + page + ", pageSize=" + pageSize + ", query=" + searchQuery);
         List<Map<String, Object>> result = new ArrayList<>();
         int offset = (page - 1) * pageSize;
 
@@ -510,19 +467,7 @@ public class MysqlUserDao implements UserDao {
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    Map<String, Object> user = new HashMap<>();
-                    user.put("uuid", rs.getString("uuid"));
-                    user.put("username", rs.getString("username"));
-                    user.put("email", rs.getString("email"));
-                    user.put("status", rs.getString("status"));
-                    user.put("password", rs.getString("password"));
-                    user.put("regTime", rs.getLong("regTime"));
-                    user.put("discord_id", rs.getString("discord_id"));
-                    user.put("questionnaire_score", rs.getObject("questionnaire_score"));
-                    user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
-                    user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
-                    user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
-                    result.add(user);
+                    result.add(mapUserFromResultSet(rs));
                 }
             }
         } catch (SQLException e) {
@@ -626,19 +571,7 @@ public class MysqlUserDao implements UserDao {
             ps.setInt(2, offset);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    Map<String, Object> user = new HashMap<>();
-                    user.put("uuid", rs.getString("uuid"));
-                    user.put("username", rs.getString("username"));
-                    user.put("email", rs.getString("email"));
-                    user.put("status", rs.getString("status"));
-                    user.put("password", rs.getString("password"));
-                    user.put("regTime", rs.getLong("regTime"));
-                    user.put("discord_id", rs.getString("discord_id"));
-                    user.put("questionnaire_score", rs.getObject("questionnaire_score"));
-                    user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
-                    user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
-                    user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
-                    result.add(user);
+                    result.add(mapUserFromResultSet(rs));
                 }
             }
         } catch (SQLException e) {
@@ -650,10 +583,8 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public List<Map<String, Object>> getApprovedUsersWithPaginationAndSearch(int page, int pageSize,
-            String searchQuery) {
-        debugLog("Getting approved users with pagination and search: page=" + page + ", pageSize=" + pageSize
-                + ", query=" + searchQuery);
+    public List<Map<String, Object>> getApprovedUsersWithPaginationAndSearch(int page, int pageSize, String searchQuery) {
+        debugLog("Getting approved users with pagination and search: page=" + page + ", pageSize=" + pageSize + ", query=" + searchQuery);
         List<Map<String, Object>> result = new ArrayList<>();
         int offset = (page - 1) * pageSize;
 
@@ -678,27 +609,14 @@ public class MysqlUserDao implements UserDao {
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    Map<String, Object> user = new HashMap<>();
-                    user.put("uuid", rs.getString("uuid"));
-                    user.put("username", rs.getString("username"));
-                    user.put("email", rs.getString("email"));
-                    user.put("status", rs.getString("status"));
-                    user.put("password", rs.getString("password"));
-                    user.put("regTime", rs.getLong("regTime"));
-                    user.put("discord_id", rs.getString("discord_id"));
-                    user.put("questionnaire_score", rs.getObject("questionnaire_score"));
-                    user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
-                    user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
-                    user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
-                    result.add(user);
+                    result.add(mapUserFromResultSet(rs));
                 }
             }
         } catch (SQLException e) {
             debugLog("Error getting approved users with pagination and search: " + e.getMessage());
         }
 
-        debugLog("Returning " + result.size() + " approved users for page " + page + " with search query: "
-                + searchQuery);
+        debugLog("Returning " + result.size() + " approved users for page " + page + " with search query: " + searchQuery);
         return result;
     }
 
@@ -727,20 +645,8 @@ public class MysqlUserDao implements UserDao {
             ps.setString(1, discordId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    Map<String, Object> user = new HashMap<>();
-                    user.put("uuid", rs.getString("uuid"));
-                    user.put("username", rs.getString("username"));
-                    user.put("email", rs.getString("email"));
-                    user.put("status", rs.getString("status"));
-                    user.put("password", rs.getString("password"));
-                    user.put("regTime", rs.getLong("regTime"));
-                    user.put("discord_id", rs.getString("discord_id"));
-                    user.put("questionnaire_score", rs.getObject("questionnaire_score"));
-                    user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
-                    user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
-                    user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
-                    debugLog("User found with Discord ID: " + user.get("username"));
-                    return user;
+                    debugLog("User found with Discord ID: " + rs.getString("username"));
+                    return mapUserFromResultSet(rs);
                 }
             }
         } catch (SQLException e) {

@@ -47,6 +47,14 @@ public class WebAuthHelper {
         }
     }
 
+    /**
+     * Generate a new authentication token (alias for generateSecureToken)
+     * @return New token string
+     */
+    public String generateToken() {
+        return generateSecureToken();
+    }
+
     public void startTokenCleanupTask() {
         Thread t = new Thread(() -> {
             while (!Thread.currentThread().isInterrupted()) {
@@ -73,7 +81,7 @@ public class WebAuthHelper {
         }
     }
 
-    private boolean validateToken(String token) {
+    public boolean validateToken(String token) {
         Long expiryTime = validTokens.get(token);
         if (expiryTime == null) {
             return false;
@@ -83,5 +91,14 @@ public class WebAuthHelper {
             return false;
         }
         return true;
+    }
+
+    /**
+     * Check if a token is valid (alias for validateToken)
+     * @param token Token string to validate
+     * @return true if token is valid
+     */
+    public boolean isValidToken(String token) {
+        return validateToken(token);
     }
 }

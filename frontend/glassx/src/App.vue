@@ -52,7 +52,7 @@ onMounted(() => {
 })
 
 // 监听配置变化，动态设置页面标题
-watch(() => config.value?.frontend?.web_server_prefix, (newPrefix: string | undefined) => {
+watch(() => config.value?.config?.web_server_prefix, (newPrefix: string | undefined) => {
   if (newPrefix) {
     document.title = newPrefix
     console.log('Page title updated:', newPrefix)

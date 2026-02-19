@@ -224,7 +224,8 @@ class ApiService {
 
   // 获取配置
   async getConfig(): Promise<ConfigResponse> {
-    return this.request<ConfigResponse>('/config')
+    const response = await this.request<{ success: boolean; config: ConfigResponse }>('/config')
+    return response.config || response as unknown as ConfigResponse
   }
 
   // 获取验证码
