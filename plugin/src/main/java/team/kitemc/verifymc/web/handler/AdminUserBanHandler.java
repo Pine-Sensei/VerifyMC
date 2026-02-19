@@ -41,6 +41,11 @@ public class AdminUserBanHandler implements HttpHandler {
         if (ok) {
             org.bukkit.Bukkit.getScheduler().runTask(ctx.getPlugin(), () ->
                     org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist remove " + target));
+
+            if (ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {
+                ctx.getAuthmeService().unregisterFromAuthme(target);
+            }
+
             ctx.getAuditDao().addAudit(new AuditRecord("ban", operator, target, reason, System.currentTimeMillis()));
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.success(
                     ctx.getMessage("admin.ban_success", language)));

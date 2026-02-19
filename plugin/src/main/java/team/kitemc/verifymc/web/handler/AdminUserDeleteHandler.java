@@ -41,6 +41,10 @@ public class AdminUserDeleteHandler implements HttpHandler {
             org.bukkit.Bukkit.getScheduler().runTask(ctx.getPlugin(), () ->
                     org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist remove " + target));
 
+            if (ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {
+                ctx.getAuthmeService().unregisterFromAuthme(target);
+            }
+
             ctx.getAuditDao().addAudit(new AuditRecord("delete", operator, target, "", System.currentTimeMillis()));
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.success(
                     ctx.getMessage("admin.delete_success", language)));

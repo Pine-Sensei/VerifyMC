@@ -40,6 +40,17 @@ public class AdminUserUnbanHandler implements HttpHandler {
         if (ok) {
             org.bukkit.Bukkit.getScheduler().runTask(ctx.getPlugin(), () ->
                     org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + target));
+
+            if (ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {
+                var user = ctx.getUserDao().getUserByUsername(target);
+                if (user != null) {
+                    String storedPassword = (String) user.get("password");
+                    if (storedPassword != null && !storedPassword.isEmpty()) {
+                        ctx.getAuthmeService().registerToAuthme(target, storedPassword);
+                    }
+                }
+            }
+
             ctx.getAuditDao().addAudit(new AuditRecord("unban", operator, target, "", System.currentTimeMillis()));
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.success(
                     ctx.getMessage("admin.unban_success", language)));

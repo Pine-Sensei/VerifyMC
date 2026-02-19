@@ -102,7 +102,6 @@ export const useAdminUsers = ({ locale, t, notification }: UseAdminUsersOptions)
     loading.value = true
 
     try {
-      await apiService.syncAuthme(locale.value)
       const response: UsersPaginatedResponse = await apiService.getUsersPaginated(
         currentPage.value,
         pageSize.value,

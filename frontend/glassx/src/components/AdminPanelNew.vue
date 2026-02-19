@@ -465,7 +465,6 @@ const loadQuestionnaireConfig = async () => {
 const loadPendingUsers = async () => {
   try {
     console.log('Loading pending users...')
-    await apiService.syncAuthme(locale.value)
     const response = await apiService.getPendingList(locale.value)
     console.log('Pending users response:', response)
 
@@ -526,6 +525,7 @@ const approveUser = async (user: any) => {
 
     if (response.success) {
       notifyResult(true, 'admin.review.messages.approve_success', response.msg)
+      await apiService.syncAuthme(locale.value)
       await loadPendingUsers()
       await loadAllUsers()
     } else {
