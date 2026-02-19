@@ -26,20 +26,23 @@ public class AdminLoginHandler implements HttpHandler {
 
         JSONObject req = WebResponseHelper.readJson(exchange);
         String password = req.optString("password", "");
+        String language = req.optString("language", "en");
 
         String adminPassword = ctx.getConfigManager().getAdminPassword();
         if (adminPassword.isEmpty()) {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure("Admin password not configured"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("error.resource_init_failed", language)));
             return;
         }
 
         if (!adminPassword.equals(password)) {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure("Invalid password"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("admin.login_failed", language)));
             return;
         }
 
         String token = ctx.getWebAuthHelper().generateToken();
-        JSONObject resp = ApiResponseFactory.success("Login successful");
+        JSONObject resp = ApiResponseFactory.success(ctx.getMessage("admin.login_success", language));
         resp.put("token", token);
         WebResponseHelper.sendJson(exchange, resp);
     }

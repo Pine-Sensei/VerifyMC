@@ -78,11 +78,10 @@ const validateEmail = () => {
 
 
 const handleSubmit = async () => {
-  // 验证表单
   const emailValid = validateEmail()
   
   if (!emailValid) {
-    notification.error(t('common.error'), errors.email)
+    notification.error(errors.email)
     return
   }
 
@@ -90,13 +89,13 @@ const handleSubmit = async () => {
 
   try {
     const response = await apiService.adminLogin({
-      password: form.email, // 使用邮箱字段作为密码
+      password: form.email,
       language: locale.value
     })
     
     if (response.success) {
       sessionService.setToken(response.token)
-      notification.success(t('admin.login_success'), response.message && response.message !== t('admin.login_success') ? response.message : '')
+      notification.success(response.message || t('admin.login_success'))
       const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/')
         ? route.query.redirect
         : '/admin'
@@ -105,11 +104,11 @@ const handleSubmit = async () => {
         router.push(redirect)
       }, 1000)
     } else {
-      notification.error(t('login.messages.error'), response.message && response.message !== t('login.messages.error') ? response.message : '')
+      notification.error(response.message || t('login.messages.error'))
     }
     
   } catch (error) {
-    notification.error(t('login.messages.error'), t('login.messages.invalid_credentials'))
+    notification.error(t('login.messages.invalid_credentials'))
   } finally {
     loading.value = false
   }

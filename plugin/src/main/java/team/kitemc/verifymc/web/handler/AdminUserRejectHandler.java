@@ -30,15 +30,16 @@ public class AdminUserRejectHandler implements HttpHandler {
         String target = req.optString("username", req.optString("uuid", ""));
         String operator = req.optString("operator", "admin");
         String reason = req.optString("reason", "");
+        String language = req.optString("language", "en");
 
         if (target.isBlank()) {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure("Missing username or uuid"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("admin.missing_user_identifier", language)));
             return;
         }
 
         boolean ok = ctx.getUserDao().updateUserStatus(target, "rejected", operator);
         if (ok) {
-            // Send rejection email
             var user = ctx.getUserDao().getUserByUsername(target);
             if (user != null) {
                 String email = (String) user.get("email");
@@ -48,19 +49,19 @@ public class AdminUserRejectHandler implements HttpHandler {
                 }
             }
 
-            // Audit
             ctx.getAuditDao().addAudit(new AuditRecord("reject", operator, target, reason, System.currentTimeMillis()));
 
-            // Broadcast via WebSocket
             if (ctx.getWsServer() != null) {
                 ctx.getWsServer().broadcast(new JSONObject()
                         .put("type", "user_rejected")
                         .put("username", target).toString());
             }
 
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.success("User rejected"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.success(
+                    ctx.getMessage("review.reject_success", language)));
         } else {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure("Failed to reject user"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("review.failed", language)));
         }
     }
 

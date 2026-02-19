@@ -29,26 +29,28 @@ public class AdminUserPasswordHandler implements HttpHandler {
         String target = req.optString("username", req.optString("uuid", ""));
         String password = req.optString("password", "");
         String operator = req.optString("operator", "admin");
+        String language = req.optString("language", "en");
 
         if (target.isBlank() || password.isBlank()) {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure("Missing username or password"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("admin.missing_user_identifier", language)));
             return;
         }
 
-        // Update password in DAO
         String storedPassword = ctx.getAuthmeService().encodePasswordForStorage(password);
         boolean ok = ctx.getUserDao().updatePassword(target, storedPassword);
 
-        // Update AuthMe if enabled
         if (ok && ctx.getAuthmeService().isAuthmeEnabled()) {
             ctx.getAuthmeService().changePassword(target, password);
         }
 
         if (ok) {
             ctx.getAuditDao().addAudit(new AuditRecord("password_change", operator, target, "", System.currentTimeMillis()));
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.success("Password updated"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.success(
+                    ctx.getMessage("admin.password_change_success", language)));
         } else {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure("Failed to update password"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("admin.password_change_failed", language)));
         }
     }
 }

@@ -28,9 +28,11 @@ public class AdminUserUnbanHandler implements HttpHandler {
         JSONObject req = WebResponseHelper.readJson(exchange);
         String target = req.optString("username", req.optString("uuid", ""));
         String operator = req.optString("operator", "admin");
+        String language = req.optString("language", "en");
 
         if (target.isBlank()) {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure("Missing username or uuid"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("admin.missing_user_identifier", language)));
             return;
         }
 
@@ -39,9 +41,11 @@ public class AdminUserUnbanHandler implements HttpHandler {
             org.bukkit.Bukkit.getScheduler().runTask(ctx.getPlugin(), () ->
                     org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + target));
             ctx.getAuditDao().addAudit(new AuditRecord("unban", operator, target, "", System.currentTimeMillis()));
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.success("User unbanned"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.success(
+                    ctx.getMessage("admin.unban_success", language)));
         } else {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure("Failed to unban user"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("admin.unban_failed", language)));
         }
     }
 }

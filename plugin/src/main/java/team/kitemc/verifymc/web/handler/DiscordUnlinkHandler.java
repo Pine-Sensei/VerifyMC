@@ -25,17 +25,21 @@ public class DiscordUnlinkHandler implements HttpHandler {
 
         JSONObject req = WebResponseHelper.readJson(exchange);
         String username = req.optString("username", "");
+        String language = req.optString("language", "en");
 
         if (username.isBlank()) {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure("Missing username"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("admin.missing_user_identifier", language)));
             return;
         }
 
         boolean ok = ctx.getDiscordService().unlinkUser(username);
         if (ok) {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.success("Discord unlinked"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.success(
+                    ctx.getMessage("discord.link_success", language)));
         } else {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure("Failed to unlink"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("discord.link_failed", language)));
         }
     }
 }

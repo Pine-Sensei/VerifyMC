@@ -29,19 +29,19 @@ public class AdminUserApproveHandler implements HttpHandler {
         JSONObject req = WebResponseHelper.readJson(exchange);
         String target = req.optString("username", req.optString("uuid", ""));
         String operator = req.optString("operator", "admin");
+        String language = req.optString("language", "en");
 
         if (target.isBlank()) {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure("Missing username or uuid"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("admin.missing_user_identifier", language)));
             return;
         }
 
         boolean ok = ctx.getUserDao().updateUserStatus(target, "approved", operator);
         if (ok) {
-            // Whitelist the user in-game
             org.bukkit.Bukkit.getScheduler().runTask(ctx.getPlugin(), () ->
                     org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + target));
 
-            // AuthMe registration if applicable
             if (ctx.getAuthmeService().isAuthmeEnabled()) {
                 var user = ctx.getUserDao().getUserByUsername(target);
                 if (user != null) {
@@ -52,7 +52,6 @@ public class AdminUserApproveHandler implements HttpHandler {
                 }
             }
 
-            // Send approval email
             var user = ctx.getUserDao().getUserByUsername(target);
             if (user != null) {
                 String email = (String) user.get("email");
@@ -62,19 +61,19 @@ public class AdminUserApproveHandler implements HttpHandler {
                 }
             }
 
-            // Audit
             ctx.getAuditDao().addAudit(new AuditRecord("approve", operator, target, "", System.currentTimeMillis()));
 
-            // Broadcast via WebSocket
             if (ctx.getWsServer() != null) {
                 ctx.getWsServer().broadcast(new JSONObject()
                         .put("type", "user_approved")
                         .put("username", target).toString());
             }
 
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.success("User approved"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.success(
+                    ctx.getMessage("review.approve_success", language)));
         } else {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure("Failed to approve user"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("review.failed", language)));
         }
     }
 

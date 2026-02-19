@@ -26,11 +26,14 @@ public class AdminVerifyHandler implements HttpHandler {
 
         JSONObject req = WebResponseHelper.readJson(exchange);
         String token = req.optString("token", "");
+        String language = req.optString("language", "en");
 
         if (ctx.getWebAuthHelper().isValidToken(token)) {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.success("Token valid"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.success(
+                    ctx.getMessage("admin.login_success", language)));
         } else {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure("Token invalid or expired"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("admin.login_failed", language)));
         }
     }
 }

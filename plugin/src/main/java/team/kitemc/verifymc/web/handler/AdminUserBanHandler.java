@@ -29,9 +29,11 @@ public class AdminUserBanHandler implements HttpHandler {
         String target = req.optString("username", req.optString("uuid", ""));
         String operator = req.optString("operator", "admin");
         String reason = req.optString("reason", "");
+        String language = req.optString("language", "en");
 
         if (target.isBlank()) {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure("Missing username or uuid"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("admin.missing_user_identifier", language)));
             return;
         }
 
@@ -40,9 +42,11 @@ public class AdminUserBanHandler implements HttpHandler {
             org.bukkit.Bukkit.getScheduler().runTask(ctx.getPlugin(), () ->
                     org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist remove " + target));
             ctx.getAuditDao().addAudit(new AuditRecord("ban", operator, target, reason, System.currentTimeMillis()));
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.success("User banned"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.success(
+                    ctx.getMessage("admin.ban_success", language)));
         } else {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure("Failed to ban user"));
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("admin.ban_failed", language)));
         }
     }
 }

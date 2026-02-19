@@ -23,9 +23,21 @@ public class PlayerLoginListener implements Listener {
 
         ctx.debugLog("PlayerLogin: username=" + username);
 
+        String whitelistMode = ctx.getConfigManager().getWhitelistMode();
+        boolean isPluginMode = "plugin".equalsIgnoreCase(whitelistMode);
+
         Map<String, Object> user = ctx.getUserDao().getUserByUsername(username);
 
         if (user == null) {
+            if (isPluginMode) {
+                String registerUrl = ctx.getPlugin().getConfig().getString("web_register_url", "");
+                String msg = ctx.getMessage("login.not_registered", ctx.getConfigManager().getLanguage());
+                if (registerUrl != null && !registerUrl.isEmpty()) {
+                    msg = msg.replace("{url}", registerUrl);
+                }
+                event.disallow(PlayerLoginEvent.Result.KICK_WHITELIST, msg);
+                ctx.debugLog("User " + username + " not registered in plugin mode, kicking.");
+            }
             return;
         }
 
