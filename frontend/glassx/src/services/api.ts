@@ -122,7 +122,6 @@ export interface SendCodeResponse {
 export interface RegisterRequest {
   email: string
   code?: string
-  uuid: string
   username: string
   password?: string
   captchaToken?: string
@@ -149,7 +148,6 @@ export interface AdminLoginResponse {
 }
 
 export interface PendingUser {
-  uuid: string
   username: string
   email: string
   status: string
@@ -165,7 +163,7 @@ export interface PendingListResponse {
 }
 
 export interface ReviewRequest {
-  uuid: string
+  username: string
   action: 'approve' | 'reject'
   reason?: string
   language: string
@@ -177,8 +175,7 @@ export interface ReviewResponse {
 }
 
 export interface ChangePasswordRequest {
-  uuid?: string
-  username?: string
+  username: string
   newPassword: string
   language: string
 }
@@ -296,26 +293,26 @@ class ApiService {
   }
 
   // 删除用户
-  async deleteUser(uuid: string, language: string = 'zh'): Promise<ReviewResponse> {
+  async deleteUser(username: string, language: string = 'zh'): Promise<ReviewResponse> {
     return this.request<ReviewResponse>('/admin/user/delete', {
       method: 'POST',
-      body: JSON.stringify({ uuid, language }),
+      body: JSON.stringify({ username, language }),
     })
   }
 
   // 封禁用户
-  async banUser(uuid: string, language: string = 'zh'): Promise<ReviewResponse> {
+  async banUser(username: string, language: string = 'zh'): Promise<ReviewResponse> {
     return this.request<ReviewResponse>('/admin/user/ban', {
       method: 'POST',
-      body: JSON.stringify({ uuid, language }),
+      body: JSON.stringify({ username, language }),
     })
   }
 
   // 解封用户
-  async unbanUser(uuid: string, language: string = 'zh'): Promise<ReviewResponse> {
+  async unbanUser(username: string, language: string = 'zh'): Promise<ReviewResponse> {
     return this.request<ReviewResponse>('/admin/user/unban', {
       method: 'POST',
-      body: JSON.stringify({ uuid, language }),
+      body: JSON.stringify({ username, language }),
     })
   }
 

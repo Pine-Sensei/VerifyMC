@@ -61,7 +61,6 @@ public class ApiRouter {
                 () -> ctx.getConfigManager().isUsernameCaseSensitive(),
                 (username, platform) -> normalizeUsername(username, platform),
                 (email) -> isValidEmail(email),
-                (uuid) -> isValidUuid(uuid),
                 (msg) -> ctx.debugLog(msg)
         ));
 
@@ -138,15 +137,5 @@ public class ApiRouter {
     private boolean isValidEmail(String email) {
         if (email == null || email.isBlank()) return false;
         return email.matches("^[\\w.+-]+@[\\w.-]+\\.[a-zA-Z]{2,}$");
-    }
-
-    private boolean isValidUuid(String uuid) {
-        if (uuid == null || uuid.isBlank()) return false;
-        try {
-            java.util.UUID.fromString(uuid);
-            return true;
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
     }
 }

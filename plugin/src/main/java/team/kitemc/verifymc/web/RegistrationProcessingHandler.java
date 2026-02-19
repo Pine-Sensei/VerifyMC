@@ -5,7 +5,6 @@ import com.sun.net.httpserver.HttpHandler;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
@@ -43,7 +42,6 @@ public class RegistrationProcessingHandler implements HttpHandler {
     private final Supplier<Boolean> usernameCaseSensitiveProvider;
     private final BiFunction<String, String, String> usernameNormalizer;
     private final Function<String, Boolean> emailValidator;
-    private final Function<String, Boolean> uuidValidator;
     private final Consumer<String> debugLogger;
 
     public RegistrationProcessingHandler(
@@ -64,7 +62,6 @@ public class RegistrationProcessingHandler implements HttpHandler {
             Supplier<Boolean> usernameCaseSensitiveProvider,
             BiFunction<String, String, String> usernameNormalizer,
             Function<String, Boolean> emailValidator,
-            Function<String, Boolean> uuidValidator,
             Consumer<String> debugLogger
     ) {
         this.plugin = plugin;
@@ -84,16 +81,12 @@ public class RegistrationProcessingHandler implements HttpHandler {
         this.usernameCaseSensitiveProvider = usernameCaseSensitiveProvider;
         this.usernameNormalizer = usernameNormalizer;
         this.emailValidator = emailValidator;
-        this.uuidValidator = uuidValidator;
         this.debugLogger = debugLogger;
     }
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
-        String requestId = exchange.getRequestHeaders().getFirst("X-Request-ID");
-        if (requestId == null || requestId.isBlank()) {
-            requestId = UUID.randomUUID().toString();
-        }
+        String requestId = java.util.UUID.randomUUID().toString();
         logRegistrationStage(requestId, "start", null);
 
         if (!WebResponseHelper.requireMethod(exchange, "POST")) {
@@ -152,7 +145,6 @@ public class RegistrationProcessingHandler implements HttpHandler {
                 return RegistrationValidationResult.reject("register.domain_not_allowed");
             }
         }
-        // Check username existence based on case sensitivity setting
         boolean caseSensitive = usernameCaseSensitiveProvider.get();
         var existingUser = caseSensitive 
             ? userDao.getUserByUsernameExact(request.normalizedUsername())
@@ -175,9 +167,6 @@ public class RegistrationProcessingHandler implements HttpHandler {
         }
         if (!emailValidator.apply(request.email())) {
             return RegistrationValidationResult.reject("register.invalid_email");
-        }
-        if (!uuidValidator.apply(request.uuid())) {
-            return RegistrationValidationResult.reject("register.invalid_uuid");
         }
         if (request.normalizedUsername() == null || request.normalizedUsername().trim().isEmpty()) {
             return RegistrationValidationResult.reject("register.invalid_username");
@@ -281,10 +270,10 @@ public class RegistrationProcessingHandler implements HttpHandler {
         boolean ok;
         if (request.password() != null && !request.password().trim().isEmpty()) {
             String storedPassword = authmeService.encodePasswordForStorage(request.password());
-            ok = userDao.registerUser(request.uuid(), request.normalizedUsername(), request.email(), status, storedPassword,
+            ok = userDao.registerUser(request.normalizedUsername(), request.email(), status, storedPassword,
                     questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
         } else {
-            ok = userDao.registerUser(request.uuid(), request.normalizedUsername(), request.email(), status,
+            ok = userDao.registerUser(request.normalizedUsername(), request.email(), status,
                     questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
         }
 

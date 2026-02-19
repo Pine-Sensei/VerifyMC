@@ -3,7 +3,6 @@ package team.kitemc.verifymc.db;
 import java.sql.*;
 import java.util.*;
 import org.bukkit.plugin.Plugin;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class MysqlUserDao implements UserDao {
     private final Connection conn;
@@ -36,8 +35,7 @@ public class MysqlUserDao implements UserDao {
     private void initDatabase() throws SQLException {
         try (Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS users (" +
-                    "uuid VARCHAR(36) PRIMARY KEY," +
-                    "username VARCHAR(32) NOT NULL," +
+                    "username VARCHAR(32) PRIMARY KEY," +
                     "email VARCHAR(64)," +
                     "status VARCHAR(16)," +
                     "password VARCHAR(255)," +
@@ -88,7 +86,6 @@ public class MysqlUserDao implements UserDao {
                 stmt.executeUpdate("ALTER TABLE users ADD COLUMN questionnaire_scored_at BIGINT NULL");
             }
 
-            ensureIndex(stmt, "idx_username", "CREATE INDEX idx_username ON users(username)");
             ensureIndex(stmt, "idx_email", "CREATE INDEX idx_email ON users(email)");
         }
     }
@@ -107,20 +104,20 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public boolean registerUser(String uuid, String username, String email, String status) {
-        return registerUser(uuid, username, email, status, null, null, null, null);
+    public boolean registerUser(String username, String email, String status) {
+        return registerUser(username, email, status, null, null, null, null);
     }
 
     @Override
-    public boolean registerUser(String uuid, String username, String email, String status,
+    public boolean registerUser(String username, String email, String status,
             Integer questionnaireScore, Boolean questionnairePassed,
             String questionnaireReviewSummary, Long questionnaireScoredAt) {
-        String checkSql = "SELECT uuid FROM users WHERE uuid = ?";
+        String checkSql = "SELECT username FROM users WHERE username = ?";
         try (PreparedStatement checkPs = conn.prepareStatement(checkSql)) {
-            checkPs.setString(1, uuid);
+            checkPs.setString(1, username);
             ResultSet rs = checkPs.executeQuery();
             if (rs.next()) {
-                debugLog("User already exists with UUID: " + uuid + ", skipping registration");
+                debugLog("User already exists with username: " + username + ", skipping registration");
                 return false;
             }
         } catch (SQLException e) {
@@ -128,12 +125,62 @@ public class MysqlUserDao implements UserDao {
             return false;
         }
 
-        String sql = "INSERT INTO users (uuid, username, email, status, regTime, questionnaire_score, questionnaire_passed, questionnaire_review_summary, questionnaire_scored_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO users (username, email, status, regTime, questionnaire_score, questionnaire_passed, questionnaire_review_summary, questionnaire_scored_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, uuid);
-            ps.setString(2, username);
-            ps.setString(3, email);
-            ps.setString(4, status);
+            ps.setString(1, username);
+            ps.setString(2, email);
+            ps.setString(3, status);
+            ps.setLong(4, System.currentTimeMillis());
+            if (questionnaireScore != null)
+                ps.setInt(5, questionnaireScore);
+            else
+                ps.setNull(5, Types.INTEGER);
+            if (questionnairePassed != null)
+                ps.setBoolean(6, questionnairePassed);
+            else
+                ps.setNull(6, Types.BOOLEAN);
+            ps.setString(7, questionnaireReviewSummary);
+            if (questionnaireScoredAt != null)
+                ps.setLong(8, questionnaireScoredAt);
+            else
+                ps.setNull(8, Types.BIGINT);
+            ps.executeUpdate();
+            debugLog("User registered: " + username);
+            return true;
+        } catch (SQLException e) {
+            debugLog("Error registering user: " + e.getMessage());
+            return false;
+        }
+    }
+
+    @Override
+    public boolean registerUser(String username, String email, String status, String password) {
+        return registerUser(username, email, status, password, null, null, null, null);
+    }
+
+    @Override
+    public boolean registerUser(String username, String email, String status, String password,
+            Integer questionnaireScore, Boolean questionnairePassed,
+            String questionnaireReviewSummary, Long questionnaireScoredAt) {
+        String checkSql = "SELECT username FROM users WHERE username = ?";
+        try (PreparedStatement checkPs = conn.prepareStatement(checkSql)) {
+            checkPs.setString(1, username);
+            ResultSet rs = checkPs.executeQuery();
+            if (rs.next()) {
+                debugLog("User already exists with username: " + username + ", skipping registration");
+                return false;
+            }
+        } catch (SQLException e) {
+            debugLog("Error checking existing user: " + e.getMessage());
+            return false;
+        }
+
+        String sql = "INSERT INTO users (username, email, status, password, regTime, questionnaire_score, questionnaire_passed, questionnaire_review_summary, questionnaire_scored_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, username);
+            ps.setString(2, email);
+            ps.setString(3, status);
+            ps.setString(4, hashPassword(password));
             ps.setLong(5, System.currentTimeMillis());
             if (questionnaireScore != null)
                 ps.setInt(6, questionnaireScore);
@@ -149,58 +196,6 @@ public class MysqlUserDao implements UserDao {
             else
                 ps.setNull(9, Types.BIGINT);
             ps.executeUpdate();
-            debugLog("User registered: " + username);
-            return true;
-        } catch (SQLException e) {
-            debugLog("Error registering user: " + e.getMessage());
-            return false;
-        }
-    }
-
-    @Override
-    public boolean registerUser(String uuid, String username, String email, String status, String password) {
-        return registerUser(uuid, username, email, status, password, null, null, null, null);
-    }
-
-    @Override
-    public boolean registerUser(String uuid, String username, String email, String status, String password,
-            Integer questionnaireScore, Boolean questionnairePassed,
-            String questionnaireReviewSummary, Long questionnaireScoredAt) {
-        String checkSql = "SELECT uuid FROM users WHERE uuid = ?";
-        try (PreparedStatement checkPs = conn.prepareStatement(checkSql)) {
-            checkPs.setString(1, uuid);
-            ResultSet rs = checkPs.executeQuery();
-            if (rs.next()) {
-                debugLog("User already exists with UUID: " + uuid + ", skipping registration");
-                return false;
-            }
-        } catch (SQLException e) {
-            debugLog("Error checking existing user: " + e.getMessage());
-            return false;
-        }
-
-        String sql = "INSERT INTO users (uuid, username, email, status, password, regTime, questionnaire_score, questionnaire_passed, questionnaire_review_summary, questionnaire_scored_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, uuid);
-            ps.setString(2, username);
-            ps.setString(3, email);
-            ps.setString(4, status);
-            ps.setString(5, hashPassword(password));
-            ps.setLong(6, System.currentTimeMillis());
-            if (questionnaireScore != null)
-                ps.setInt(7, questionnaireScore);
-            else
-                ps.setNull(7, Types.INTEGER);
-            if (questionnairePassed != null)
-                ps.setBoolean(8, questionnairePassed);
-            else
-                ps.setNull(8, Types.BOOLEAN);
-            ps.setString(9, questionnaireReviewSummary);
-            if (questionnaireScoredAt != null)
-                ps.setLong(10, questionnaireScoredAt);
-            else
-                ps.setNull(10, Types.BIGINT);
-            ps.executeUpdate();
             debugLog("User registered with password: " + username);
             return true;
         } catch (SQLException e) {
@@ -210,14 +205,13 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public boolean updateUserStatus(String uuidOrName, String status) {
-        String sql = "UPDATE users SET status=? WHERE uuid=? OR username=?";
+    public boolean updateUserStatus(String username, String status) {
+        String sql = "UPDATE users SET status=? WHERE username=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, status);
-            ps.setString(2, uuidOrName);
-            ps.setString(3, uuidOrName);
+            ps.setString(2, username);
             int rows = ps.executeUpdate();
-            debugLog("User status updated: " + uuidOrName + " to " + status);
+            debugLog("User status updated: " + username + " to " + status);
             return rows > 0;
         } catch (SQLException e) {
             debugLog("Error updating user status: " + e.getMessage());
@@ -240,14 +234,13 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public boolean updateUserPassword(String uuidOrName, String password) {
-        String sql = "UPDATE users SET password=? WHERE uuid=? OR username=?";
+    public boolean updateUserPassword(String username, String password) {
+        String sql = "UPDATE users SET password=? WHERE username=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, hashPassword(password));
-            ps.setString(2, uuidOrName);
-            ps.setString(3, uuidOrName);
+            ps.setString(2, username);
             int rows = ps.executeUpdate();
-            debugLog("User password updated: " + uuidOrName);
+            debugLog("User password updated: " + username);
             return rows > 0;
         } catch (SQLException e) {
             debugLog("Error updating user password: " + e.getMessage());
@@ -256,14 +249,13 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public boolean updateUserEmail(String uuidOrName, String email) {
-        String sql = "UPDATE users SET email=? WHERE uuid=? OR username=?";
+    public boolean updateUserEmail(String username, String email) {
+        String sql = "UPDATE users SET email=? WHERE username=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, email);
-            ps.setString(2, uuidOrName);
-            ps.setString(3, uuidOrName);
+            ps.setString(2, username);
             int rows = ps.executeUpdate();
-            debugLog("User email updated: " + uuidOrName);
+            debugLog("User email updated: " + username);
             return rows > 0;
         } catch (SQLException e) {
             debugLog("Error updating user email: " + e.getMessage());
@@ -301,7 +293,6 @@ public class MysqlUserDao implements UserDao {
 
     private Map<String, Object> mapUserFromResultSet(ResultSet rs) throws SQLException {
         Map<String, Object> user = new HashMap<>();
-        user.put("uuid", rs.getString("uuid"));
         user.put("username", rs.getString("username"));
         user.put("email", rs.getString("email"));
         user.put("status", rs.getString("status"));
@@ -313,22 +304,6 @@ public class MysqlUserDao implements UserDao {
         user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
         user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
         return user;
-    }
-
-    @Override
-    public Map<String, Object> getUserByUuid(String uuid) {
-        String sql = "SELECT * FROM users WHERE uuid=?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, uuid);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return mapUserFromResultSet(rs);
-                }
-            }
-        } catch (SQLException e) {
-            debugLog("Error getting user by UUID: " + e.getMessage());
-        }
-        return null;
     }
 
     @Override
@@ -364,13 +339,12 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public boolean deleteUser(String uuidOrName) {
-        String sql = "DELETE FROM users WHERE uuid=? OR username=?";
+    public boolean deleteUser(String username) {
+        String sql = "DELETE FROM users WHERE username=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, uuidOrName);
-            ps.setString(2, uuidOrName);
+            ps.setString(1, username);
             int rows = ps.executeUpdate();
-            debugLog("User deleted: " + uuidOrName);
+            debugLog("User deleted: " + username);
             return rows > 0;
         } catch (SQLException e) {
             debugLog("Error deleting user: " + e.getMessage());
@@ -621,15 +595,14 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public boolean updateUserDiscordId(String uuidOrName, String discordId) {
-        debugLog("updateUserDiscordId called: uuidOrName=" + uuidOrName + ", discordId=" + discordId);
-        String sql = "UPDATE users SET discord_id=? WHERE uuid=? OR LOWER(username)=LOWER(?)";
+    public boolean updateUserDiscordId(String username, String discordId) {
+        debugLog("updateUserDiscordId called: username=" + username + ", discordId=" + discordId);
+        String sql = "UPDATE users SET discord_id=? WHERE LOWER(username)=LOWER(?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, discordId);
-            ps.setString(2, uuidOrName);
-            ps.setString(3, uuidOrName);
+            ps.setString(2, username);
             int rows = ps.executeUpdate();
-            debugLog("User Discord ID updated: " + uuidOrName + " -> " + discordId + ", rows affected: " + rows);
+            debugLog("User Discord ID updated: " + username + " -> " + discordId + ", rows affected: " + rows);
             return rows > 0;
         } catch (SQLException e) {
             debugLog("Error updating Discord ID: " + e.getMessage());

@@ -9,9 +9,6 @@ import team.kitemc.verifymc.web.WebResponseHelper;
 import java.io.IOException;
 import java.util.Map;
 
-/**
- * Returns user whitelist/registration status by UUID.
- */
 public class UserStatusHandler implements HttpHandler {
     private final PluginContext ctx;
 
@@ -24,19 +21,19 @@ public class UserStatusHandler implements HttpHandler {
         if (!WebResponseHelper.requireMethod(exchange, "GET")) return;
 
         String query = exchange.getRequestURI().getQuery();
-        String uuid = null;
+        String username = null;
         if (query != null) {
             for (String param : query.split("&")) {
                 String[] kv = param.split("=", 2);
-                if (kv.length == 2 && "uuid".equals(kv[0])) {
-                    uuid = kv[1];
+                if (kv.length == 2 && "username".equals(kv[0])) {
+                    username = java.net.URLDecoder.decode(kv[1], java.nio.charset.StandardCharsets.UTF_8);
                 }
             }
         }
 
         JSONObject resp = new JSONObject();
-        if (uuid != null && !uuid.isBlank()) {
-            Map<String, Object> user = ctx.getUserDao().getUserByUuid(uuid);
+        if (username != null && !username.isBlank()) {
+            Map<String, Object> user = ctx.getUserDao().getUserByUsername(username);
             if (user != null) {
                 resp.put("success", true);
                 resp.put("registered", true);
@@ -48,7 +45,7 @@ public class UserStatusHandler implements HttpHandler {
             }
         } else {
             resp.put("success", false);
-            resp.put("msg", "Missing uuid");
+            resp.put("msg", "Missing username");
         }
         WebResponseHelper.sendJson(exchange, resp);
     }

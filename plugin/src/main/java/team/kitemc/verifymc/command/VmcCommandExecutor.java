@@ -262,7 +262,6 @@ public class VmcCommandExecutor implements CommandExecutor, TabCompleter {
 
         sender.sendMessage("§6[VerifyMC] §f--- User Info ---");
         sender.sendMessage("§7  Username: §f" + user.getOrDefault("username", "?"));
-        sender.sendMessage("§7  UUID: §f" + user.getOrDefault("uuid", "?"));
         sender.sendMessage("§7  Email: §f" + user.getOrDefault("email", "?"));
         sender.sendMessage("§7  Status: §e" + user.getOrDefault("status", "?"));
     }

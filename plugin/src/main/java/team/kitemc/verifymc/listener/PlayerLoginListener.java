@@ -1,6 +1,5 @@
 package team.kitemc.verifymc.listener;
 
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -10,11 +9,6 @@ import team.kitemc.verifymc.core.PluginContext;
 
 import java.util.Map;
 
-/**
- * Handles player login events — checks if the player is whitelisted
- * and their registration status. Replaces the inline Listener in the
- * original VerifyMC god class.
- */
 public class PlayerLoginListener implements Listener {
     private final PluginContext ctx;
 
@@ -25,20 +19,13 @@ public class PlayerLoginListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerLogin(PlayerLoginEvent event) {
         Player player = event.getPlayer();
-        String uuid = player.getUniqueId().toString();
         String username = player.getName();
 
-        ctx.debugLog("PlayerLogin: uuid=" + uuid + " username=" + username);
+        ctx.debugLog("PlayerLogin: username=" + username);
 
-        // Check if user is registered
-        Map<String, Object> user = ctx.getUserDao().getUserByUuid(uuid);
-        if (user == null) {
-            // Also check by username
-            user = ctx.getUserDao().getUserByUsername(username);
-        }
+        Map<String, Object> user = ctx.getUserDao().getUserByUsername(username);
 
         if (user == null) {
-            // Not registered — allow Bukkit whitelist to handle naturally
             return;
         }
 
@@ -46,7 +33,6 @@ public class PlayerLoginListener implements Listener {
 
         switch (status) {
             case "approved" -> {
-                // Ensure they're on the whitelist
                 ctx.debugLog("User " + username + " is approved, allowing login.");
             }
             case "pending" -> {

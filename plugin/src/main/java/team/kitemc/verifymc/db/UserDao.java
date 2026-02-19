@@ -4,23 +4,23 @@ import java.util.List;
 import java.util.Map;
 
 public interface UserDao {
-    boolean registerUser(String uuid, String username, String email, String status);
+    boolean registerUser(String username, String email, String status);
 
-    boolean registerUser(String uuid, String username, String email, String status,
+    boolean registerUser(String username, String email, String status,
                          Integer questionnaireScore, Boolean questionnairePassed,
                          String questionnaireReviewSummary, Long questionnaireScoredAt);
     
-    boolean registerUser(String uuid, String username, String email, String status, String password);
+    boolean registerUser(String username, String email, String status, String password);
 
-    boolean registerUser(String uuid, String username, String email, String status, String password,
+    boolean registerUser(String username, String email, String status, String password,
                          Integer questionnaireScore, Boolean questionnairePassed,
                          String questionnaireReviewSummary, Long questionnaireScoredAt);
     
-    boolean updateUserStatus(String uuidOrName, String status);
+    boolean updateUserStatus(String username, String status);
     
-    boolean updateUserPassword(String uuidOrName, String password);
+    boolean updateUserPassword(String username, String password);
 
-    boolean updateUserEmail(String uuidOrName, String email);
+    boolean updateUserEmail(String username, String email);
     
     List<Map<String, Object>> getAllUsers();
     
@@ -40,13 +40,11 @@ public interface UserDao {
     
     List<Map<String, Object>> getApprovedUsersWithPaginationAndSearch(int page, int pageSize, String searchQuery);
     
-    Map<String, Object> getUserByUuid(String uuid);
-    
     Map<String, Object> getUserByUsername(String username);
     
     Map<String, Object> getUserByUsernameExact(String username);
     
-    boolean deleteUser(String uuidOrName);
+    boolean deleteUser(String username);
     
     void save();
     
@@ -54,14 +52,14 @@ public interface UserDao {
     
     List<Map<String, Object>> getPendingUsers();
     
-    boolean updateUserDiscordId(String uuidOrName, String discordId);
+    boolean updateUserDiscordId(String username, String discordId);
     
     Map<String, Object> getUserByDiscordId(String discordId);
     
     boolean isDiscordIdLinked(String discordId);
 
-    default boolean updateUserStatus(String uuidOrName, String status, String operator) {
-        return updateUserStatus(uuidOrName, status);
+    default boolean updateUserStatus(String username, String status, String operator) {
+        return updateUserStatus(username, status);
     }
 
     default List<Map<String, Object>> getUsers(int page, int size, String search, String status) {
@@ -87,12 +85,12 @@ public interface UserDao {
         return getTotalUserCountWithSearch(search);
     }
 
-    default boolean banUser(String uuidOrName) {
-        return updateUserStatus(uuidOrName, "banned");
+    default boolean banUser(String username) {
+        return updateUserStatus(username, "banned");
     }
 
-    default boolean unbanUser(String uuidOrName) {
-        return updateUserStatus(uuidOrName, "approved");
+    default boolean unbanUser(String username) {
+        return updateUserStatus(username, "approved");
     }
 
     default List<Map<String, Object>> getUsersByStatus(String status) {
@@ -102,7 +100,7 @@ public interface UserDao {
             .collect(java.util.stream.Collectors.toList());
     }
 
-    default boolean updatePassword(String uuidOrName, String password) {
-        return updateUserPassword(uuidOrName, password);
+    default boolean updatePassword(String username, String password) {
+        return updateUserPassword(username, password);
     }
 } 

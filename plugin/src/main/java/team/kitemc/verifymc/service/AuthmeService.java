@@ -1,7 +1,6 @@
 package team.kitemc.verifymc.service;
 
 import org.bukkit.Bukkit;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.plugin.Plugin;
 import team.kitemc.verifymc.db.UserDao;
 
@@ -13,13 +12,8 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.regex.Pattern;
 
-/**
- * AuthMe integration service class
- * Uses direct database operations (mysql / sqlite).
- */
 public class AuthmeService {
     private final Plugin plugin;
     private final boolean debug;
@@ -77,27 +71,14 @@ public class AuthmeService {
         return updateAuthmePassword(username, newPassword);
     }
 
-    /**
-     * Change password (alias for changePasswordInAuthme)
-     */
     public boolean changePassword(String username, String newPassword) {
         return changePasswordInAuthme(username, newPassword);
     }
 
-    /**
-     * Encode password in AuthMe-compatible format for VerifyMC local storage.
-     * Accepts plain text and returns encoded value; already-encoded AuthMe values are returned as-is.
-     */
     public String encodePasswordForStorage(String plainOrEncodedPassword) {
         return buildStoredPassword(plainOrEncodedPassword);
     }
 
-    /**
-     * Synchronize approved users between VerifyMC and AuthMe.
-     * Rules:
-     * - Only approved local users are allowed to sync from local to AuthMe.
-     * - If AuthMe has user while local missing or pending, create/update local to approved.
-     */
     public void syncApprovedUsers() {
         if (!isAuthmeEnabled() || userDao == null) {
             return;
@@ -118,7 +99,6 @@ public class AuthmeService {
                 authmeByLowerName.put(name.toLowerCase(), name);
             }
 
-            // local approved -> authme
             for (Map<String, Object> local : localUsers) {
                 String status = (String) local.get("status");
                 String username = (String) local.get("username");
@@ -138,7 +118,6 @@ public class AuthmeService {
                     String authPassword = profile != null ? profile.password : null;
                     String authEmail = profile != null ? profile.email : null;
 
-                    // if local has password but AuthMe row exists with empty password, repair it
                     if (password != null && !password.trim().isEmpty() && (authPassword == null || authPassword.trim().isEmpty())) {
                         updateAuthmePassword(authName, password);
                     }
@@ -149,7 +128,6 @@ public class AuthmeService {
                 }
             }
 
-            // authme -> local approved
             for (Map.Entry<String, AuthmeProfile> entry : authmeProfilesByName.entrySet()) {
                 String authName = entry.getKey();
                 AuthmeProfile profile = entry.getValue();
@@ -157,46 +135,30 @@ public class AuthmeService {
                 String authEmail = profile != null ? profile.email : null;
                 Map<String, Object> local = localByLowerName.get(authName.toLowerCase());
                 if (local == null) {
-                    OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(authName);
-                    UUID id = offlinePlayer.getUniqueId();
                     String localEmail = authEmail != null ? authEmail : "";
                     if (authPassword != null && !authPassword.trim().isEmpty()) {
-                        userDao.registerUser(id.toString(), authName, localEmail, "approved", authPassword);
+                        userDao.registerUser(authName, localEmail, "approved", authPassword);
                     } else {
-                        userDao.registerUser(id.toString(), authName, localEmail, "approved");
+                        userDao.registerUser(authName, localEmail, "approved");
                     }
                     continue;
                 }
                 String status = (String) local.get("status");
                 if (!"approved".equals(status)) {
-                    String uuid = (String) local.get("uuid");
-                    if (uuid != null) {
-                        userDao.updateUserStatus(uuid, "approved");
-                    }
+                    userDao.updateUserStatus(authName, "approved");
                 }
 
-                // keep local password in sync with AuthMe hash
                 if (authPassword != null && !authPassword.trim().isEmpty()) {
                     String localPassword = (String) local.get("password");
                     if (localPassword == null || localPassword.trim().isEmpty() || !authPassword.equals(localPassword)) {
-                        String uuid = (String) local.get("uuid");
-                        if (uuid != null) {
-                            userDao.updateUserPassword(uuid, authPassword);
-                        } else {
-                            userDao.updateUserPassword(authName, authPassword);
-                        }
+                        userDao.updateUserPassword(authName, authPassword);
                     }
                 }
 
                 if (authEmail != null && !authEmail.trim().isEmpty()) {
                     String localEmail = (String) local.get("email");
                     if (localEmail == null || localEmail.trim().isEmpty() || !authEmail.equalsIgnoreCase(localEmail)) {
-                        String uuid = (String) local.get("uuid");
-                        if (uuid != null && !uuid.trim().isEmpty()) {
-                            userDao.updateUserEmail(uuid, authEmail);
-                        } else {
-                            userDao.updateUserEmail(authName, authEmail);
-                        }
+                        userDao.updateUserEmail(authName, authEmail);
                     }
                 }
             }

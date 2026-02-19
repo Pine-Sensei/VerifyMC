@@ -9,10 +9,6 @@ import team.kitemc.verifymc.web.WebResponseHelper;
 import java.io.IOException;
 import java.util.Map;
 
-/**
- * Checks the review status for a given user (by UUID or username).
- * Extracted from WebServer.start() — the "/api/review/status" context.
- */
 public class ReviewStatusHandler implements HttpHandler {
     private final PluginContext ctx;
 
@@ -25,22 +21,18 @@ public class ReviewStatusHandler implements HttpHandler {
         if (!WebResponseHelper.requireMethod(exchange, "GET")) return;
 
         String query = exchange.getRequestURI().getQuery();
-        String uuid = null;
         String username = null;
         if (query != null) {
             for (String param : query.split("&")) {
                 String[] kv = param.split("=", 2);
-                if (kv.length == 2) {
-                    if ("uuid".equals(kv[0])) uuid = kv[1];
-                    if ("username".equals(kv[0])) username = kv[1];
+                if (kv.length == 2 && "username".equals(kv[0])) {
+                    username = java.net.URLDecoder.decode(kv[1], java.nio.charset.StandardCharsets.UTF_8);
                 }
             }
         }
 
         Map<String, Object> user = null;
-        if (uuid != null && !uuid.isBlank()) {
-            user = ctx.getUserDao().getUserByUuid(uuid);
-        } else if (username != null && !username.isBlank()) {
+        if (username != null && !username.isBlank()) {
             user = ctx.getUserDao().getUserByUsername(username);
         }
 

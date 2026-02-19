@@ -44,7 +44,7 @@
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow v-for="user in pendingUsers" :key="user.uuid">
+                <TableRow v-for="user in pendingUsers" :key="user.username">
                   <TableCell class="font-medium text-white">{{ user.username }}</TableCell>
                   <TableCell>{{ user.email }}</TableCell>
                   <TableCell>{{ formatDate(user.regTime || user.registerTime) }}</TableCell>
@@ -56,7 +56,7 @@
                         variant="outline"
                         size="sm"
                         @click="approveUser(user)"
-                        :disabled="loading || processingUsers.has(user.uuid)"
+                        :disabled="loading || processingUsers.has(user.username)"
                       >
                         {{ $t('admin.review.actions.approve') }}
                       </Button>
@@ -64,7 +64,7 @@
                         variant="outline"
                         size="sm"
                         @click="openRejectDialog(user)"
-                        :disabled="loading || processingUsers.has(user.uuid)"
+                        :disabled="loading || processingUsers.has(user.username)"
                       >
                         {{ $t('admin.review.actions.reject') }}
                       </Button>
@@ -116,7 +116,7 @@
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow v-for="user in allUsers" :key="user.uuid">
+                <TableRow v-for="user in allUsers" :key="user.username">
                   <TableCell class="font-medium text-white break-all">{{ user.username }}</TableCell>
                   <TableCell class="break-all">{{ user.email }}</TableCell>
                   <TableCell>
@@ -512,12 +512,12 @@ const closeRejectDialog = () => {
 }
 
 const approveUser = async (user: any) => {
-  processingUsers.value.add(user.uuid)
+  processingUsers.value.add(user.username)
   actionLoading.value = true
 
   try {
     const response = await apiService.reviewUser({
-      uuid: user.uuid,
+      username: user.username,
       action: 'approve',
       language: locale.value
     })
@@ -532,7 +532,7 @@ const approveUser = async (user: any) => {
   } catch (error) {
     notification.error(t('admin.review.messages.error'), t('admin.review.messages.error'))
   } finally {
-    processingUsers.value.delete(user.uuid)
+    processingUsers.value.delete(user.username)
     actionLoading.value = false
   }
 }
@@ -541,12 +541,12 @@ const confirmReject = async () => {
   if (!rejectDialog.value.user) return
 
   rejectDialog.value.processing = true
-  processingUsers.value.add(rejectDialog.value.user.uuid)
+  processingUsers.value.add(rejectDialog.value.user.username)
   actionLoading.value = true
 
   try {
     const response = await apiService.reviewUser({
-      uuid: rejectDialog.value.user.uuid,
+      username: rejectDialog.value.user.username,
       action: 'reject',
       reason: rejectDialog.value.reason || undefined,
       language: locale.value
@@ -564,8 +564,8 @@ const confirmReject = async () => {
     notification.error(t('admin.review.messages.error'), t('admin.review.messages.error'))
   } finally {
     rejectDialog.value.processing = false
-    if (rejectDialog.value.user?.uuid) {
-      processingUsers.value.delete(rejectDialog.value.user.uuid)
+    if (rejectDialog.value.user?.username) {
+      processingUsers.value.delete(rejectDialog.value.user.username)
     }
     actionLoading.value = false
   }
@@ -593,7 +593,7 @@ const confirmDelete = async () => {
   showDeleteDialog.value = false
 
   try {
-    const response = await apiService.deleteUser(selectedUser.value.uuid, locale.value)
+    const response = await apiService.deleteUser(selectedUser.value.username, locale.value)
 
     if (response.success) {
       notifyResult(true, 'admin.users.messages.delete_success', response.msg)
@@ -616,7 +616,7 @@ const confirmBan = async () => {
   showBanDialog.value = false
 
   try {
-    const response = await apiService.banUser(selectedUser.value.uuid, locale.value)
+    const response = await apiService.banUser(selectedUser.value.username, locale.value)
 
     if (response.success) {
       notifyResult(true, 'admin.users.messages.ban_success', response.msg)
@@ -639,7 +639,7 @@ const confirmUnban = async () => {
   showUnbanDialog.value = false
 
   try {
-    const response = await apiService.unbanUser(selectedUser.value.uuid, locale.value)
+    const response = await apiService.unbanUser(selectedUser.value.username, locale.value)
 
     if (response.success) {
       notifyResult(true, 'admin.users.messages.unban_success', response.msg)
@@ -662,7 +662,7 @@ const confirmChangePassword = async () => {
 
   try {
     const response = await apiService.changePassword({
-      uuid: selectedUser.value.uuid,
+      username: selectedUser.value.username,
       newPassword: newPassword.value,
       language: locale.value
     })

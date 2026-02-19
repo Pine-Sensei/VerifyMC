@@ -71,12 +71,6 @@ public class FileUserDao implements UserDao {
                             debugLog("Added missing password field for user: " + user.get("username"));
                         }
                         
-                        if (!user.containsKey("uuid")) {
-                            user.put("uuid", entry.getKey());
-                            hasUpgraded = true;
-                            debugLog("Added missing uuid field for user: " + user.get("username"));
-                        }
-                        
                         if (!user.containsKey("regTime")) {
                             user.put("regTime", System.currentTimeMillis());
                             hasUpgraded = true;
@@ -144,30 +138,30 @@ public class FileUserDao implements UserDao {
     }
 
     @Override
-    public boolean registerUser(String uuid, String username, String email, String status) {
-        return registerUser(uuid, username, email, status, null, null, null, null);
+    public boolean registerUser(String username, String email, String status) {
+        return registerUser(username, email, status, null, null, null, null);
     }
 
     @Override
-    public boolean registerUser(String uuid, String username, String email, String status,
+    public boolean registerUser(String username, String email, String status,
                                 Integer questionnaireScore, Boolean questionnairePassed,
                                 String questionnaireReviewSummary, Long questionnaireScoredAt) {
-        debugLog("registerUser called: uuid=" + uuid + ", username=" + username + ", email=" + email + ", status=" + status);
+        debugLog("registerUser called: username=" + username + ", email=" + email + ", status=" + status);
         try {
-            if (users.containsKey(uuid)) {
-                debugLog("User already exists with UUID: " + uuid + ", skipping registration");
+            String key = username.toLowerCase();
+            if (users.containsKey(key)) {
+                debugLog("User already exists with username: " + username + ", skipping registration");
                 return false;
             }
 
             Map<String, Object> user = new HashMap<>();
-            user.put("uuid", uuid);
             user.put("username", username);
             user.put("email", email);
             user.put("status", status);
             user.put("regTime", System.currentTimeMillis());
             applyQuestionnaireAuditFields(user, questionnaireScore, questionnairePassed, questionnaireReviewSummary, questionnaireScoredAt);
             debugLog("Adding user to map: " + user);
-            users.put(uuid, user);
+            users.put(key, user);
             save();
             debugLog("User registration successful");
             return true;
@@ -178,23 +172,23 @@ public class FileUserDao implements UserDao {
     }
 
     @Override
-    public boolean registerUser(String uuid, String username, String email, String status, String password) {
-        return registerUser(uuid, username, email, status, password, null, null, null, null);
+    public boolean registerUser(String username, String email, String status, String password) {
+        return registerUser(username, email, status, password, null, null, null, null);
     }
 
     @Override
-    public boolean registerUser(String uuid, String username, String email, String status, String password,
+    public boolean registerUser(String username, String email, String status, String password,
                                 Integer questionnaireScore, Boolean questionnairePassed,
                                 String questionnaireReviewSummary, Long questionnaireScoredAt) {
-        debugLog("registerUser with password called: uuid=" + uuid + ", username=" + username + ", email=" + email + ", status=" + status);
+        debugLog("registerUser with password called: username=" + username + ", email=" + email + ", status=" + status);
         try {
-            if (users.containsKey(uuid)) {
-                debugLog("User already exists with UUID: " + uuid + ", skipping registration");
+            String key = username.toLowerCase();
+            if (users.containsKey(key)) {
+                debugLog("User already exists with username: " + username + ", skipping registration");
                 return false;
             }
 
             Map<String, Object> user = new HashMap<>();
-            user.put("uuid", uuid);
             user.put("username", username);
             user.put("email", email);
             user.put("status", status);
@@ -202,7 +196,7 @@ public class FileUserDao implements UserDao {
             user.put("regTime", System.currentTimeMillis());
             applyQuestionnaireAuditFields(user, questionnaireScore, questionnairePassed, questionnaireReviewSummary, questionnaireScoredAt);
             debugLog("Adding user with password to map: " + user);
-            users.put(uuid, user);
+            users.put(key, user);
             save();
             debugLog("User registration with password successful");
             return true;
@@ -219,48 +213,30 @@ public class FileUserDao implements UserDao {
     }
 
     @Override
-    public boolean updateUserStatus(String uuidOrName, String status) {
-        debugLog("updateUserStatus called: uuidOrName=" + uuidOrName + ", status=" + status);
-        Map<String, Object> user = users.get(uuidOrName);
+    public boolean updateUserStatus(String username, String status) {
+        debugLog("updateUserStatus called: username=" + username + ", status=" + status);
+        String key = username.toLowerCase();
+        Map<String, Object> user = users.get(key);
         
         if (user == null) {
-            for (Map<String, Object> u : users.values()) {
-                if (u.get("username") != null && u.get("username").toString().equalsIgnoreCase(uuidOrName)) {
-                    user = u;
-                    break;
-                }
-            }
-        }
-        
-        if (user == null) {
-            debugLog("User not found: " + uuidOrName);
+            debugLog("User not found: " + username);
             return false;
         }
         String oldStatus = (String) user.get("status");
         user.put("status", status);
         save();
-        debugLog("User status updated: " + uuidOrName + " from " + oldStatus + " to " + status);
+        debugLog("User status updated: " + username + " from " + oldStatus + " to " + status);
         return true;
     }
 
     @Override
-    public boolean updateUserPassword(String uuidOrName, String password) {
-        debugLog("updateUserPassword called: uuidOrName=" + uuidOrName);
-        Map<String, Object> user = null;
-        
-        user = users.get(uuidOrName);
-        
-        if (user == null) {
-            for (Map<String, Object> u : users.values()) {
-                if (u.get("username") != null && u.get("username").toString().equalsIgnoreCase(uuidOrName)) {
-                    user = u;
-                    break;
-                }
-            }
-        }
+    public boolean updateUserPassword(String username, String password) {
+        debugLog("updateUserPassword called: username=" + username);
+        String key = username.toLowerCase();
+        Map<String, Object> user = users.get(key);
         
         if (user == null) {
-            debugLog("User not found: " + uuidOrName);
+            debugLog("User not found: " + username);
             return false;
         }
         
@@ -271,23 +247,13 @@ public class FileUserDao implements UserDao {
     }
 
     @Override
-    public boolean updateUserEmail(String uuidOrName, String email) {
-        debugLog("updateUserEmail called: uuidOrName=" + uuidOrName);
-        Map<String, Object> user = null;
-
-        user = users.get(uuidOrName);
-
-        if (user == null) {
-            for (Map<String, Object> u : users.values()) {
-                if (u.get("username") != null && u.get("username").toString().equalsIgnoreCase(uuidOrName)) {
-                    user = u;
-                    break;
-                }
-            }
-        }
+    public boolean updateUserEmail(String username, String email) {
+        debugLog("updateUserEmail called: username=" + username);
+        String key = username.toLowerCase();
+        Map<String, Object> user = users.get(key);
 
         if (user == null) {
-            debugLog("User not found: " + uuidOrName);
+            debugLog("User not found: " + username);
             return false;
         }
 
@@ -297,11 +263,11 @@ public class FileUserDao implements UserDao {
         return true;
     }
 
-
     @Override
-    public Map<String, Object> getUserByUuid(String uuid) {
-        debugLog("Getting user by UUID: " + uuid);
-        Map<String, Object> user = users.get(uuid);
+    public Map<String, Object> getUserByUsername(String username) {
+        debugLog("Getting user by username: " + username);
+        String key = username.toLowerCase();
+        Map<String, Object> user = users.get(key);
         if (user != null) {
             debugLog("User found: " + user.get("username"));
         } else {
@@ -311,24 +277,11 @@ public class FileUserDao implements UserDao {
     }
 
     @Override
-    public Map<String, Object> getUserByUsername(String username) {
-        debugLog("Getting user by username: " + username);
-        for (Map<String, Object> user : users.values()) {
-            if (user.get("username") != null && user.get("username").toString().equalsIgnoreCase(username)) {
-                debugLog("User found: " + user.get("uuid"));
-                return user;
-            }
-        }
-        debugLog("User not found");
-        return null;
-    }
-
-    @Override
     public Map<String, Object> getUserByUsernameExact(String username) {
         debugLog("Getting user by username (exact match): " + username);
         for (Map<String, Object> user : users.values()) {
             if (user.get("username") != null && user.get("username").toString().equals(username)) {
-                debugLog("User found: " + user.get("uuid"));
+                debugLog("User found: " + user.get("username"));
                 return user;
             }
         }
@@ -337,24 +290,11 @@ public class FileUserDao implements UserDao {
     }
 
     @Override
-    public boolean deleteUser(String uuidOrName) {
-        debugLog("deleteUser called: uuidOrName=" + uuidOrName);
+    public boolean deleteUser(String username) {
+        debugLog("deleteUser called: username=" + username);
         try {
-            Map<String, Object> removed = users.remove(uuidOrName);
-            
-            if (removed == null) {
-                String keyToRemove = null;
-                for (Map.Entry<String, Map<String, Object>> entry : users.entrySet()) {
-                    if (entry.getValue().get("username") != null && 
-                        entry.getValue().get("username").toString().equalsIgnoreCase(uuidOrName)) {
-                        keyToRemove = entry.getKey();
-                        break;
-                    }
-                }
-                if (keyToRemove != null) {
-                    removed = users.remove(keyToRemove);
-                }
-            }
+            String key = username.toLowerCase();
+            Map<String, Object> removed = users.remove(key);
             
             if (removed != null) {
                 debugLog("User deleted: " + removed.get("username"));
@@ -603,23 +543,13 @@ public class FileUserDao implements UserDao {
     }
     
     @Override
-    public boolean updateUserDiscordId(String uuidOrName, String discordId) {
-        debugLog("updateUserDiscordId called: uuidOrName=" + uuidOrName + ", discordId=" + discordId);
-        Map<String, Object> user = null;
-        
-        user = users.get(uuidOrName);
-        
-        if (user == null) {
-            for (Map<String, Object> u : users.values()) {
-                if (u.get("username") != null && u.get("username").toString().equalsIgnoreCase(uuidOrName)) {
-                    user = u;
-                    break;
-                }
-            }
-        }
+    public boolean updateUserDiscordId(String username, String discordId) {
+        debugLog("updateUserDiscordId called: username=" + username + ", discordId=" + discordId);
+        String key = username.toLowerCase();
+        Map<String, Object> user = users.get(key);
         
         if (user == null) {
-            debugLog("User not found: " + uuidOrName);
+            debugLog("User not found: " + username);
             return false;
         }
         
