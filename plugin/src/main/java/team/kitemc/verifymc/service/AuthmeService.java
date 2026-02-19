@@ -144,7 +144,7 @@ public class AuthmeService {
                     continue;
                 }
                 String status = (String) local.get("status");
-                if (!"approved".equals(status)) {
+                if (!"approved".equals(status) && !"banned".equals(status)) {
                     userDao.updateUserStatus(authName, "approved");
                 }
 
