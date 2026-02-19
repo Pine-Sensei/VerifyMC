@@ -46,6 +46,7 @@ public class PluginContext {
         this.configManager = new ConfigManager(plugin);
         this.i18nManager = new I18nManager(plugin);
         this.resourceManager = new ResourceManager(plugin);
+        this.resourceManager.setConfigManager(configManager);
     }
 
     // --- Getters ---

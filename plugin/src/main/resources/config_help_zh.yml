@@ -47,9 +47,6 @@ register:
 username_regex: "^[a-zA-Z0-9_-]{3,16}$"
 # 如果为 false，则仅大小写不同的用户名（例如 "Player" 和 "player"）将被视为相同。
 username_case_sensitive: false
-# 允许免白名单登录服务器的IP地址列表。
-whitelist_bypass_ips:
-  - 127.0.0.1
 # 访问网页管理面板的密码。
 admin:
   password: your_custom_password
@@ -91,28 +88,10 @@ smtp:
 email_subject: VerifyMC Verification Code
 
 # ----------------------------------------
-# 同步设置 (用于 bukkit 模式)
+# 自动更新资源
 # ----------------------------------------
-# 如果为 true，会自动将 whitelist.json 的变更同步到插件数据库。
-whitelist_json_sync: true
-# 如果为 true，会自动将已批准的玩家添加到 whitelist.json，并移除被封禁/删除的玩家。
-auto_sync_whitelist: true
-# 如果关闭了 'bukkit' 模式，此项若为 true，则会从 whitelist.json 清理本插件添加过的玩家。
-auto_cleanup_whitelist: true
-
-# ----------------------------------------
-# 自动更新与备份
-# ----------------------------------------
-# 如果为 true，插件更新时会自动向 config.yml 中添加新增的配置项。
-auto_update_config: true
-# 如果为 true，将自动更新语言文件。
-auto_update_i18n: true
-# 如果为 true，将自动更新邮件模板。
-auto_update_email: true
-# 如果为 true，将自动更新主题文件。
-auto_update_static: true
-# 如果为 true，将在自动更新前完整备份插件数据文件夹。
-backup_on_update: true 
+# 如果为 true，插件启动时会自动更新语言文件、邮件模板和主题文件。
+auto_update_resources: true
 
 # ----------------------------------------
 # 邮箱注册限制
@@ -134,19 +113,16 @@ email_domain_whitelist:
   - foxmail.com 
 
 # ----------------------------------------
-# 存储与数据迁移
+# 存储
 # ----------------------------------------
-storage:
-  # 存储类型，可选: data（本地文件）, mysql（外部数据库）
-  type: data
-  # 是否在 storage.type 切换时自动将原存储的数据迁移到新存储（如 data→mysql 或 mysql→data）
-  auto_migrate_on_switch: false
-  mysql:
-    host: localhost
-    port: 3306
-    database: verifymc
-    user: root
-    password: yourpassword 
+# 存储类型，可选: data（本地文件）, mysql（外部数据库）
+storage: data
+mysql:
+  host: localhost
+  port: 3306
+  database: verifymc
+  user: root
+  password: yourpassword 
 
 # ----------------------------------------
 # Authme集成配置

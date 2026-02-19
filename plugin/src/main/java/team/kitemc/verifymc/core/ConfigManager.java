@@ -124,8 +124,9 @@ public class ConfigManager {
         return getConfig().getString("whitelist_mode", "bukkit");
     }
 
-    public boolean isWhitelistSyncEnabled() {
-        return getConfig().getBoolean("whitelist_sync", false);
+    // --- Auto Update Resources ---
+    public boolean isAutoUpdateResources() {
+        return getConfig().getBoolean("auto_update_resources", true);
     }
 
     // --- AuthMe ---

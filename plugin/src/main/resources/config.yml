@@ -11,8 +11,6 @@ register:
   auto_approve: false
 username_regex: "^[a-zA-Z0-9_-]{3,16}$"
 username_case_sensitive: false
-whitelist_bypass_ips:
-  - 127.0.0.1
 admin:
   password: your_custom_password
 user_notification:
@@ -31,14 +29,7 @@ smtp:
   from: your_email@qq.com
   enable_ssl: true
 email_subject: VerifyMC Verification Code
-whitelist_json_sync: true
-auto_sync_whitelist: true
-auto_cleanup_whitelist: true
-auto_update_config: true
-auto_update_i18n: true
-auto_update_email: true
-auto_update_static: true
-backup_on_update: true
+auto_update_resources: true
 enable_email_domain_whitelist: true
 enable_email_alias_limit: false
 email_domain_whitelist:
@@ -51,10 +42,8 @@ email_domain_whitelist:
   - icloud.com
   - yahoo.com
   - foxmail.com
-storage:
-  type: data
-  auto_migrate_on_switch: false
-  mysql:
+storage: data
+mysql:
     host: localhost
     port: 3306
     database: verifymc

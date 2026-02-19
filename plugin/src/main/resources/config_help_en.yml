@@ -47,9 +47,6 @@ register:
 username_regex: "^[a-zA-Z0-9_-]{3,16}$"
 # If false, usernames that only differ by case (e.g., "Player" and "player") are treated as the same.
 username_case_sensitive: false
-# A list of IP addresses that can join the server without being whitelisted.
-whitelist_bypass_ips:
-  - 127.0.0.1
 # The password for accessing the admin panel on the web interface.
 admin:
   password: your_custom_password
@@ -91,28 +88,10 @@ smtp:
 email_subject: VerifyMC Verification Code
 
 # ----------------------------------------
-# Sync Settings (for bukkit mode)
+# Auto Update Resources
 # ----------------------------------------
-# If true, automatically syncs changes from whitelist.json to the plugin's database.
-whitelist_json_sync: true
-# If true, automatically adds approved users to whitelist.json and removes banned/deleted users.
-auto_sync_whitelist: true
-# If 'bukkit' mode is disabled, this setting (if true) cleans players from whitelist.json.
-auto_cleanup_whitelist: true
-
-# ----------------------------------------
-# Auto Update & Backup
-# ----------------------------------------
-# If true, automatically adds new settings to your config.yml on plugin updates.
-auto_update_config: true
-# If true, automatically updates the language files.
-auto_update_i18n: true
-# If true, automatically updates the email templates.
-auto_update_email: true
-# If true, automatically updates theme files.
-auto_update_static: true
-# If true, creates a full backup of the plugin data folder before any auto-updates.
-backup_on_update: true 
+# If true, automatically updates i18n files, email templates, and static theme files when the plugin starts.
+auto_update_resources: true
 
 # ----------------------------------------
 # Email Registration Restrictions
@@ -134,19 +113,16 @@ email_domain_whitelist:
   - foxmail.com 
 
 # ----------------------------------------
-# Storage & Data Migration
+# Storage
 # ----------------------------------------
-storage:
-  # Storage type, options: data (local file), mysql (external database)
-  type: data
-  # Whether to automatically migrate data from the original storage to the new storage when switching storage.type (e.g., data→mysql or mysql→data)
-  auto_migrate_on_switch: false
-  mysql:
-    host: localhost
-    port: 3306
-    database: verifymc
-    user: root
-    password: yourpassword 
+# Storage type, options: data (local file), mysql (external database)
+storage: data
+mysql:
+  host: localhost
+  port: 3306
+  database: verifymc
+  user: root
+  password: yourpassword 
 
 # ----------------------------------------
 # Authme Integration Configuration

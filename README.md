@@ -22,7 +22,7 @@
 8. 📋 **Registration Questionnaire**: Customizable questionnaire system with multi-language support.
 9. 📧 **User Notifications**: Automatic email notifications for whitelist approval/rejection.
 10. 🌐 **Multi-language Support**: Both web UI and plugin messages support English and Chinese.
-11. ⚙️ **Highly Customizable**: Set max accounts per email, player ID regex, whitelist bypass IPs, and more.
+11. ⚙️ **Highly Customizable**: Set max accounts per email, player ID regex, and more.
 12. 🪶 **Lightweight**: Plugin jar is under 6MB, integrates multiple features, and runs efficiently.
 13. 🔄 **Auto Update & Backup**: Config files auto-upgrade, with full backup before each update.
 14. 🧩 **Flexible Whitelist Modes**: Supports Bukkit native whitelist sync, plugin self-management, and MySQL storage.

@@ -24,9 +24,14 @@ import java.util.function.BiFunction;
 public class ResourceManager implements BiFunction<String, String, String> {
     private final JavaPlugin plugin;
     private I18nManager i18nManager;
+    private ConfigManager configManager;
 
     public ResourceManager(JavaPlugin plugin) {
         this.plugin = plugin;
+    }
+
+    public void setConfigManager(ConfigManager configManager) {
+        this.configManager = configManager;
     }
 
     /**
@@ -57,9 +62,17 @@ public class ResourceManager implements BiFunction<String, String, String> {
         plugin.saveDefaultConfig();
         saveResourceIfNotExists("config_help_zh.yml");
         saveResourceIfNotExists("config_help_en.yml");
-        extractDirectoryFromJar("i18n");
-        extractDirectoryFromJar("email");
-        extractStaticAssets();
+
+        boolean autoUpdate = configManager != null && configManager.isAutoUpdateResources();
+        if (autoUpdate) {
+            extractDirectoryFromJar("i18n", true);
+            extractDirectoryFromJar("email", true);
+            extractStaticAssets(true);
+        } else {
+            extractDirectoryFromJar("i18n", false);
+            extractDirectoryFromJar("email", false);
+            extractStaticAssets(false);
+        }
     }
 
     /**
@@ -73,10 +86,11 @@ public class ResourceManager implements BiFunction<String, String, String> {
     }
 
     /**
-     * Extract a directory from the plugin JAR to the data folder,
-     * only creating files that don't already exist.
+     * Extract a directory from the plugin JAR to the data folder.
+     * @param dirName The directory name to extract
+     * @param overwrite If true, overwrite existing files; if false, only create files that don't exist
      */
-    public void extractDirectoryFromJar(String dirName) {
+    public void extractDirectoryFromJar(String dirName, boolean overwrite) {
         File targetDir = new File(plugin.getDataFolder(), dirName);
         if (!targetDir.exists()) {
             targetDir.mkdirs();
@@ -91,7 +105,7 @@ public class ResourceManager implements BiFunction<String, String, String> {
                     .filter(e -> e.getName().startsWith(dirName + "/") && !e.isDirectory())
                     .forEach(entry -> {
                         File outFile = new File(plugin.getDataFolder(), entry.getName());
-                        if (!outFile.exists()) {
+                        if (overwrite || !outFile.exists()) {
                             outFile.getParentFile().mkdirs();
                             try (InputStream is = jar.getInputStream(entry);
                                  OutputStream os = new FileOutputStream(outFile)) {
@@ -114,8 +128,8 @@ public class ResourceManager implements BiFunction<String, String, String> {
     /**
      * Extract static web assets (themes).
      */
-    private void extractStaticAssets() {
-        extractDirectoryFromJar("static");
+    private void extractStaticAssets(boolean overwrite) {
+        extractDirectoryFromJar("static", overwrite);
     }
 
     /**
