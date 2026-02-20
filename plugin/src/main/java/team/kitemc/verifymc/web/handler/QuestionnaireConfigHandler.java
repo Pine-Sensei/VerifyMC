@@ -32,8 +32,11 @@ public class QuestionnaireConfigHandler implements HttpHandler {
 
         if (!ctx.getQuestionnaireService().isEnabled()) {
             JSONObject resp = new JSONObject();
-            resp.put("success", false);
-            resp.put("msg", ctx.getMessage("questionnaire.not_enabled", lang));
+            resp.put("success", true);
+            JSONObject data = new JSONObject();
+            data.put("enabled", false);
+            data.put("questions", new org.json.JSONArray());
+            resp.put("data", data);
             WebResponseHelper.sendJson(exchange, resp);
             return;
         }
@@ -41,7 +44,7 @@ public class QuestionnaireConfigHandler implements HttpHandler {
         JSONObject config = ctx.getQuestionnaireService().getQuestionnaireConfig(lang);
         JSONObject resp = new JSONObject();
         resp.put("success", true);
-        resp.put("config", config);
+        resp.put("data", config);
         WebResponseHelper.sendJson(exchange, resp);
     }
 }

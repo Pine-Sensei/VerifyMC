@@ -50,7 +50,7 @@ public class ConfigHandler implements HttpHandler {
 
         JSONObject questionnaireConfig = new JSONObject();
         questionnaireConfig.put("enabled", ctx.getQuestionnaireService() != null && ctx.getQuestionnaireService().isEnabled());
-        questionnaireConfig.put("pass_score", ctx.getConfigManager().getQuestionnaireRateLimitIpMax());
+        questionnaireConfig.put("pass_score", ctx.getQuestionnaireService() != null ? ctx.getQuestionnaireService().getPassScore() : 60);
         config.put("questionnaire", questionnaireConfig);
 
         JSONObject discordConfig = new JSONObject();

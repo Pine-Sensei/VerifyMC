@@ -41,12 +41,16 @@ public class UserStatusHandler implements HttpHandler {
             Map<String, Object> user = ctx.getUserDao().getUserByUsername(username);
             if (user != null) {
                 resp.put("success", true);
-                resp.put("registered", true);
-                resp.put("status", user.getOrDefault("status", "unknown"));
-                resp.put("username", user.getOrDefault("username", ""));
+                JSONObject data = new JSONObject();
+                data.put("status", user.getOrDefault("status", "unknown"));
+                data.put("registered", true);
+                data.put("username", user.getOrDefault("username", ""));
+                resp.put("data", data);
             } else {
                 resp.put("success", true);
-                resp.put("registered", false);
+                JSONObject data = new JSONObject();
+                data.put("registered", false);
+                resp.put("data", data);
             }
         } else {
             resp.put("success", false);

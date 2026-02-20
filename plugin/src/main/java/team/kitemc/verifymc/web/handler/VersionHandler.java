@@ -24,14 +24,14 @@ public class VersionHandler implements HttpHandler {
 
         JSONObject resp = new JSONObject();
         resp.put("success", true);
-        resp.put("version", ctx.getPlugin().getDescription().getVersion());
+        resp.put("currentVersion", ctx.getPlugin().getDescription().getVersion());
 
         if (ctx.getVersionCheckService() != null) {
             JSONObject info = ctx.getVersionCheckService().getVersionInfo();
             if (info != null) {
-                resp.put("latest_version", info.optString("latestVersion", ""));
-                resp.put("update_available", info.optBoolean("updateAvailable", false));
-                resp.put("download_url", info.optString("releasesUrl", ""));
+                resp.put("latestVersion", info.optString("latestVersion", ""));
+                resp.put("updateAvailable", info.optBoolean("updateAvailable", false));
+                resp.put("releasesUrl", info.optString("releasesUrl", ""));
             }
         }
 
