@@ -2,8 +2,11 @@ package team.kitemc.verifymc.registration;
 
 public class RegistrationOutcomeResolver {
 
-    public boolean shouldAutoApprove(boolean manualReviewRequired, boolean registerAutoApprove) {
-        return registerAutoApprove && !manualReviewRequired;
+    public boolean shouldAutoApprove(boolean manualReviewRequired, boolean questionnairePassed, boolean registerAutoApprove) {
+        if (!registerAutoApprove) {
+            return false;
+        }
+        return questionnairePassed || !manualReviewRequired;
     }
 
     public String resolveStatus(RegistrationOutcome outcome) {
@@ -19,18 +22,24 @@ public class RegistrationOutcomeResolver {
             return RegistrationOutcome.FAILED;
         }
 
-        if (manualReviewRequired) {
-            if (!questionnairePassed) {
+        if (registerAutoApprove) {
+            if (questionnairePassed) {
+                return RegistrationOutcome.SUCCESS_WHITELISTED;
+            }
+            if (manualReviewRequired) {
                 return scoringServiceUnavailable
                         ? RegistrationOutcome.QUESTIONNAIRE_SCORING_ERROR_PENDING_REVIEW
                         : RegistrationOutcome.QUESTIONNAIRE_PENDING_REVIEW;
             }
-            // Questionnaire passed but manual review is still required
-            return RegistrationOutcome.QUESTIONNAIRE_PENDING_REVIEW;
-        }
-        if (registerAutoApprove) {
             return RegistrationOutcome.SUCCESS_WHITELISTED;
         }
+
+        if (manualReviewRequired) {
+            return scoringServiceUnavailable
+                    ? RegistrationOutcome.QUESTIONNAIRE_SCORING_ERROR_PENDING_REVIEW
+                    : RegistrationOutcome.QUESTIONNAIRE_PENDING_REVIEW;
+        }
+
         return RegistrationOutcome.SUCCESS_PENDING;
     }
 }
