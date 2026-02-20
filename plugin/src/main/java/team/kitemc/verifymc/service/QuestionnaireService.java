@@ -233,6 +233,7 @@ public class QuestionnaireService {
         
         Map<Integer, QuestionAnswer> answerMap = new HashMap<>();
         JSONArray answersArray = answers.optJSONArray("answers");
+        
         if (answersArray != null) {
             for (int i = 0; i < answersArray.length(); i++) {
                 JSONObject answerObj = answersArray.getJSONObject(i);
@@ -247,6 +248,28 @@ public class QuestionnaireService {
                 }
                 String textAnswer = answerObj.optString("text_answer", "");
                 answerMap.put(questionId, new QuestionAnswer(type, selectedOptionIds, textAnswer));
+            }
+        } else {
+            for (String key : answers.keySet()) {
+                try {
+                    int questionId = Integer.parseInt(key);
+                    JSONObject answerObj = answers.getJSONObject(key);
+                    String type = answerObj.optString("type", "single_choice");
+                    List<Integer> selectedOptionIds = new ArrayList<>();
+                    JSONArray optionsArray = answerObj.optJSONArray("selectedOptionIds");
+                    if (optionsArray == null) {
+                        optionsArray = answerObj.optJSONArray("selected_option_ids");
+                    }
+                    if (optionsArray != null) {
+                        for (int j = 0; j < optionsArray.length(); j++) {
+                            selectedOptionIds.add(optionsArray.getInt(j));
+                        }
+                    }
+                    String textAnswer = answerObj.optString("textAnswer", answerObj.optString("text_answer", ""));
+                    answerMap.put(questionId, new QuestionAnswer(type, selectedOptionIds, textAnswer));
+                } catch (NumberFormatException e) {
+                    debugLog("Invalid question id key: " + key);
+                }
             }
         }
         

@@ -70,6 +70,7 @@ public class QuestionnaireSubmitHandler implements HttpHandler {
         resp.put("score", score);
         resp.put("pass_score", passScore);
         resp.put("passed", passed);
+        resp.put("manual_review_required", manualReviewRequired);
         resp.put("submitted_at", submittedAt);
         resp.put("expires_at", record.expiresAt());
         if (details != null && !details.isEmpty()) {
