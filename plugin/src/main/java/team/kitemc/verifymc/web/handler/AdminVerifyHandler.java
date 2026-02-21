@@ -30,10 +30,10 @@ public class AdminVerifyHandler implements HttpHandler {
 
         if (ctx.getWebAuthHelper().isValidToken(token)) {
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.success(
-                    ctx.getMessage("admin.login_success", language)));
+                    ctx.getMessage("login.token_valid", language)));
         } else {
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
-                    ctx.getMessage("admin.login_failed", language)));
+                    ctx.getMessage("login.token_invalid", language)));
         }
     }
 }

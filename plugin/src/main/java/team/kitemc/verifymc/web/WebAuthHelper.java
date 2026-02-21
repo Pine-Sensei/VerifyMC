@@ -11,9 +11,19 @@ import org.bukkit.plugin.Plugin;
 public class WebAuthHelper {
     private static final long TOKEN_EXPIRY_TIME = 3600000;
     private final Plugin plugin;
-    private final ConcurrentHashMap<String, Long> validTokens = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, TokenInfo> validTokens = new ConcurrentHashMap<>();
     private final SecureRandom secureRandom = new SecureRandom();
     private volatile Thread cleanupThread;
+
+    private static class TokenInfo {
+        final long expiryTime;
+        final String username;
+
+        TokenInfo(long expiryTime, String username) {
+            this.expiryTime = expiryTime;
+            this.username = username;
+        }
+    }
 
     public WebAuthHelper(Plugin plugin) {
         this.plugin = plugin;
@@ -28,31 +38,34 @@ public class WebAuthHelper {
         return validateToken(token);
     }
 
-    public String generateSecureToken() {
+    public String generateSecureToken(String username) {
         byte[] randomBytes = new byte[32];
         secureRandom.nextBytes(randomBytes);
         try {
-            String secret = plugin.getConfig().getString("admin.password", "default_secret");
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             md.update(randomBytes);
-            md.update(secret.getBytes());
+            md.update(Long.toString(System.currentTimeMillis()).getBytes());
             byte[] hash = md.digest();
             String token = Base64.getEncoder().encodeToString(hash);
-            validTokens.put(token, System.currentTimeMillis() + TOKEN_EXPIRY_TIME);
+            validTokens.put(token, new TokenInfo(System.currentTimeMillis() + TOKEN_EXPIRY_TIME, username));
             return token;
         } catch (NoSuchAlgorithmException e) {
             String token = Base64.getEncoder().encodeToString(randomBytes);
-            validTokens.put(token, System.currentTimeMillis() + TOKEN_EXPIRY_TIME);
+            validTokens.put(token, new TokenInfo(System.currentTimeMillis() + TOKEN_EXPIRY_TIME, username));
             return token;
         }
     }
 
-    /**
-     * Generate a new authentication token (alias for generateSecureToken)
-     * @return New token string
-     */
+    public String generateSecureToken() {
+        return generateSecureToken("system");
+    }
+
+    public String generateToken(String username) {
+        return generateSecureToken(username);
+    }
+
     public String generateToken() {
-        return generateSecureToken();
+        return generateSecureToken("system");
     }
 
     public void startTokenCleanupTask() {
@@ -61,7 +74,7 @@ public class WebAuthHelper {
                 try {
                     Thread.sleep(300000);
                     long currentTime = System.currentTimeMillis();
-                    validTokens.entrySet().removeIf(entry -> entry.getValue() < currentTime);
+                    validTokens.entrySet().removeIf(entry -> entry.getValue().expiryTime < currentTime);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
@@ -82,15 +95,23 @@ public class WebAuthHelper {
     }
 
     public boolean validateToken(String token) {
-        Long expiryTime = validTokens.get(token);
-        if (expiryTime == null) {
+        TokenInfo tokenInfo = validTokens.get(token);
+        if (tokenInfo == null) {
             return false;
         }
-        if (System.currentTimeMillis() > expiryTime) {
+        if (System.currentTimeMillis() > tokenInfo.expiryTime) {
             validTokens.remove(token);
             return false;
         }
         return true;
+    }
+
+    public String getUsername(String token) {
+        TokenInfo tokenInfo = validTokens.get(token);
+        if (tokenInfo == null || System.currentTimeMillis() > tokenInfo.expiryTime) {
+            return null;
+        }
+        return tokenInfo.username;
     }
 
     /**
