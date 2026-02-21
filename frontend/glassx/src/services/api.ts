@@ -146,6 +146,8 @@ export interface AdminLoginResponse {
   success: boolean
   token: string
   message: string
+  isAdmin?: boolean
+  username?: string
 }
 
 export interface PendingUser {
@@ -179,6 +181,31 @@ export interface ChangePasswordRequest {
   username: string
   password: string
   language: string
+}
+
+export interface AuditRecord {
+  id?: number
+  action: string
+  operator: string
+  target: string
+  detail: string
+  timestamp: number
+}
+
+export interface AuditListResponse {
+  success: boolean
+  audits: AuditRecord[]
+  message?: string
+}
+
+export interface DownloadResource {
+  id: string
+  name: string
+  description: string
+  version?: string
+  size?: string
+  url: string
+  icon?: string
 }
 
 class ApiService {
@@ -271,12 +298,17 @@ class ApiService {
     })
   }
 
-  // 管理员登录
-  async adminLogin(data: AdminLoginRequest): Promise<AdminLoginResponse> {
-    return this.request<AdminLoginResponse>('/admin/login', {
+  // 统一登录接口（管理员和玩家共用）
+  async login(data: AdminLoginRequest): Promise<AdminLoginResponse> {
+    return this.request<AdminLoginResponse>('/login', {
       method: 'POST',
       body: JSON.stringify(data),
     })
+  }
+
+  // 兼容旧方法名
+  async adminLogin(data: AdminLoginRequest): Promise<AdminLoginResponse> {
+    return this.login(data)
   }
 
   // 获取待审核用户列表
@@ -439,6 +471,62 @@ class ApiService {
     return this.request<{ success: boolean; message?: string; msg?: string }>('/admin/sync', {
       method: 'POST',
       body: JSON.stringify({ language }),
+    })
+  }
+
+  // 获取审计日志
+  async getAuditLogs(): Promise<AuditListResponse> {
+    return this.request<AuditListResponse>('/admin/audits')
+  }
+
+  // 获取下载资源列表（预留接口，后端可能未实现）
+  async getDownloadResources(): Promise<{ success: boolean; resources?: DownloadResource[]; message?: string }> {
+    return this.request('/downloads')
+  }
+
+  // 获取服务器状态（预留接口，后端可能未实现）
+  async getServerStatus(): Promise<{
+    success: boolean
+    data?: {
+      online: boolean
+      players?: {
+        online: number
+        max: number
+        list?: Array<{ name: string; uuid?: string }>
+      }
+      version?: string
+      tps?: number
+      memory?: {
+        used: number
+        max: number
+      }
+      motd?: string
+    }
+    message?: string
+  }> {
+    return this.request('/server/status')
+  }
+
+  // 更新用户信息（预留接口）
+  async updateUserInfo(data: {
+    email?: string
+    language?: string
+  }): Promise<{ success: boolean; message?: string }> {
+    return this.request('/user/update', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  // 用户修改密码
+  async userChangePassword(data: {
+    currentPassword: string
+    newPassword: string
+    language: string
+  }): Promise<{ success: boolean; message?: string }> {
+    return this.request('/user/password', {
+      method: 'POST',
+      body: JSON.stringify(data),
     })
   }
 }

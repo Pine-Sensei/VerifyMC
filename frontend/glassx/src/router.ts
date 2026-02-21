@@ -22,16 +22,18 @@ const routes: RouteRecordRaw[] = [
     meta: { title: "login.title" },
   },
   {
+    path: "/dashboard",
+    name: "Dashboard",
+    component: () => import("./pages/Dashboard.vue"),
+    meta: { title: "dashboard.title", requiresAuth: true },
+  },
+  {
     path: "/admin",
-    name: "AdminPanel",
-    component: () => import("./pages/AdminPanel.vue"),
-    meta: { title: "admin.title", requiresAuth: true },
+    redirect: "/dashboard",
   },
   {
     path: "/status",
-    name: "UserStatus",
-    component: () => import("./pages/UserStatus.vue"),
-    meta: { title: "user_status.title", requiresAuth: true },
+    redirect: "/dashboard",
   },
   {
     path: "/404",
@@ -68,7 +70,8 @@ router.beforeEach((to, from, next) => {
   const authenticated = sessionService.isAuthenticated()
 
   if (to.path === '/login' && authenticated) {
-    const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : '/admin'
+    // Redirect authenticated users to dashboard
+    const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : '/dashboard'
     next(redirect)
     return
   }

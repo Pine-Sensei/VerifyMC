@@ -134,7 +134,7 @@
     }
   },
   "login": {
-    "title": "Admin Login",
+    "title": "Login",
     "subtitle": "Enter your account credentials",
     "form": {
       "username": "Username/Email",
@@ -157,7 +157,7 @@
   },
   "admin": {
     "title": "Admin Panel",
-    "login_success": "Admin login successful, redirecting...",
+    "login_success": "Login successful, redirecting...",
     "tabs": {
       "review": "Pending Review",
       "users": "User Management"
@@ -341,5 +341,82 @@
     "linked": "Discord Linked",
     "required_hint": "Discord account linking is required",
     "required": "You must link your Discord account to register"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "sections": {
+      "player": "Player",
+      "admin": "Admin"
+    },
+    "roles": {
+      "admin": "Admin",
+      "player": "Player"
+    },
+    "menu": {
+      "profile": "Profile",
+      "downloads": "Downloads",
+      "server_status": "Server Status",
+      "user_management": "User Management",
+      "audit_log": "Audit Log"
+    },
+    "profile": {
+      "edit_profile": "Edit Profile",
+      "change_password": "Change Password",
+      "current_password": "Current Password",
+      "current_password_placeholder": "Enter current password",
+      "new_password": "New Password",
+      "new_password_placeholder": "Enter new password",
+      "change_password_btn": "Change Password",
+      "password_required": "Please fill in all password fields",
+      "password_change_success": "Password changed successfully",
+      "save_success": "Profile saved successfully"
+    },
+    "downloads": {
+      "title": "Download Center",
+      "description": "Download client, modpacks and other resources for the server",
+      "download": "Download",
+      "no_resources": "No resources available",
+      "no_resources_hint": "Please check back later",
+      "instructions_title": "Installation Instructions",
+      "instruction_1": "Download the required resource files",
+      "instruction_2": "Place the files in your Minecraft game directory",
+      "instruction_3": "Launch the game and join the server"
+    },
+    "server_status": {
+      "title": "Server Status",
+      "online": "Online",
+      "offline": "Offline",
+      "players": "Players",
+      "tps": "TPS",
+      "memory": "Memory",
+      "version": "Version",
+      "online_players": "Online Players",
+      "no_players": "No players online",
+      "api_not_available": "Server status API not implemented, showing mock data"
+    },
+    "audit_log": {
+      "title": "Audit Log",
+      "all_actions": "All Actions",
+      "actions": {
+        "approve": "Approve",
+        "reject": "Reject",
+        "ban": "Ban",
+        "unban": "Unban",
+        "delete": "Delete",
+        "register": "Register",
+        "login": "Login",
+        "logout": "Logout",
+        "password_change": "Password Change",
+        "admin_access_denied": "Access Denied"
+      },
+      "table": {
+        "time": "Time",
+        "action": "Action",
+        "operator": "Operator",
+        "target": "Target",
+        "detail": "Detail"
+      },
+      "no_logs": "No audit logs available"
+    }
   }
 }
