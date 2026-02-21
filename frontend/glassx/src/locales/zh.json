@@ -134,7 +134,7 @@
     }
   },
   "login": {
-    "title": "管理员登录",
+    "title": "登录",
     "subtitle": "请输入您的账户信息",
     "form": {
       "username": "用户名/邮箱",
@@ -157,7 +157,7 @@
   },
   "admin": {
     "title": "管理面板",
-    "login_success": "管理员登录成功，正在跳转...",
+    "login_success": "登录成功，正在跳转...",
     "tabs": {
       "review": "待审核",
       "users": "用户管理"
@@ -335,5 +335,82 @@
     "linked": "已绑定 Discord",
     "required_hint": "绑定 Discord 账户是必需的",
     "required": "需要绑定 Discord 账户才能注册"
+  },
+  "dashboard": {
+    "title": "控制面板",
+    "sections": {
+      "player": "玩家区",
+      "admin": "管理区"
+    },
+    "roles": {
+      "admin": "管理员",
+      "player": "玩家"
+    },
+    "menu": {
+      "profile": "个人资料",
+      "downloads": "下载中心",
+      "server_status": "服务器状态",
+      "user_management": "玩家管理",
+      "audit_log": "审计日志"
+    },
+    "profile": {
+      "edit_profile": "编辑资料",
+      "change_password": "修改密码",
+      "current_password": "当前密码",
+      "current_password_placeholder": "请输入当前密码",
+      "new_password": "新密码",
+      "new_password_placeholder": "请输入新密码",
+      "change_password_btn": "更改密码",
+      "password_required": "请填写所有密码字段",
+      "password_change_success": "密码修改成功",
+      "save_success": "资料保存成功"
+    },
+    "downloads": {
+      "title": "下载中心",
+      "description": "下载服务器所需的客户端、模组包等资源",
+      "download": "下载",
+      "no_resources": "暂无可下载资源",
+      "no_resources_hint": "请稍后再来查看",
+      "instructions_title": "安装说明",
+      "instruction_1": "下载所需的资源文件",
+      "instruction_2": "将文件放入 Minecraft 游戏目录",
+      "instruction_3": "启动游戏并加入服务器"
+    },
+    "server_status": {
+      "title": "服务器状态",
+      "online": "在线",
+      "offline": "离线",
+      "players": "在线玩家",
+      "tps": "TPS",
+      "memory": "内存",
+      "version": "版本",
+      "online_players": "在线玩家列表",
+      "no_players": "暂无玩家在线",
+      "api_not_available": "服务器状态 API 暂未实现，显示的是模拟数据"
+    },
+    "audit_log": {
+      "title": "审计日志",
+      "all_actions": "所有操作",
+      "actions": {
+        "approve": "通过",
+        "reject": "拒绝",
+        "ban": "封禁",
+        "unban": "解封",
+        "delete": "删除",
+        "register": "注册",
+        "login": "登录",
+        "logout": "登出",
+        "password_change": "修改密码",
+        "admin_access_denied": "访问被拒绝"
+      },
+      "table": {
+        "time": "时间",
+        "action": "操作",
+        "operator": "操作者",
+        "target": "目标",
+        "detail": "详情"
+      },
+      "no_logs": "暂无审计日志"
+    }
   }
 }

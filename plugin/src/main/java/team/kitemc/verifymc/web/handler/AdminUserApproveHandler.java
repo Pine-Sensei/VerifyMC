@@ -24,11 +24,13 @@ public class AdminUserApproveHandler implements HttpHandler {
     @Override
     public void handle(HttpExchange exchange) throws IOException {
         if (!WebResponseHelper.requireMethod(exchange, "POST")) return;
-        if (!requireAuth(exchange)) return;
+
+        // Require admin privileges and get operator username
+        String operator = AdminAuthUtil.requireAdmin(exchange, ctx);
+        if (operator == null) return;
 
         JSONObject req = WebResponseHelper.readJson(exchange);
         String target = req.optString("username", req.optString("uuid", ""));
-        String operator = req.optString("operator", "admin");
         String language = req.optString("language", "en");
 
         if (target.isBlank()) {
@@ -75,17 +77,5 @@ public class AdminUserApproveHandler implements HttpHandler {
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
                     ctx.getMessage("review.failed", language)));
         }
-    }
-
-    private boolean requireAuth(HttpExchange exchange) throws IOException {
-        String token = exchange.getRequestHeaders().getFirst("Authorization");
-        if (token != null && token.startsWith("Bearer ")) {
-            token = token.substring(7);
-        }
-        if (!ctx.getWebAuthHelper().isValidToken(token)) {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure("Unauthorized"), 401);
-            return false;
-        }
-        return true;
     }
 }

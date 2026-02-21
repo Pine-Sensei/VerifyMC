@@ -25,7 +25,9 @@ public class AdminAuditHandler implements HttpHandler {
     @Override
     public void handle(HttpExchange exchange) throws IOException {
         if (!WebResponseHelper.requireMethod(exchange, "GET")) return;
-        if (!AdminAuthUtil.requireAuth(exchange, ctx)) return;
+
+        // Require admin privileges
+        if (AdminAuthUtil.requireAdmin(exchange, ctx) == null) return;
 
         List<AuditRecord> audits = ctx.getAuditDao().getAllAudits();
         JSONArray arr = new JSONArray();

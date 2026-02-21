@@ -118,10 +118,17 @@ const handleSubmit = async () => {
     
     if (response.success) {
       sessionService.setToken(response.token)
+      
+      // Store user info including admin status
+      sessionService.setUserInfo({
+        username: response.username || form.username.trim(),
+        isAdmin: response.isAdmin ?? false
+      })
+      
       notification.success(response.message || t('login.messages.success'))
       const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/')
         ? route.query.redirect
-        : '/admin'
+        : '/dashboard'
 
       setTimeout(() => {
         router.push(redirect)

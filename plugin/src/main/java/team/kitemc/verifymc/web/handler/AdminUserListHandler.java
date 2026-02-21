@@ -27,14 +27,8 @@ public class AdminUserListHandler implements HttpHandler {
     public void handle(HttpExchange exchange) throws IOException {
         if (!WebResponseHelper.requireMethod(exchange, "GET")) return;
 
-        String token = exchange.getRequestHeaders().getFirst("Authorization");
-        if (token != null && token.startsWith("Bearer ")) {
-            token = token.substring(7);
-        }
-        if (!ctx.getWebAuthHelper().isValidToken(token)) {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure("Unauthorized"), 401);
-            return;
-        }
+        // Require admin privileges
+        if (AdminAuthUtil.requireAdmin(exchange, ctx) == null) return;
 
         // Parse query params
         String query = exchange.getRequestURI().getQuery();

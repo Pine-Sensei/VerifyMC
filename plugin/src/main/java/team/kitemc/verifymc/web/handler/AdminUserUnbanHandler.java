@@ -23,11 +23,13 @@ public class AdminUserUnbanHandler implements HttpHandler {
     @Override
     public void handle(HttpExchange exchange) throws IOException {
         if (!WebResponseHelper.requireMethod(exchange, "POST")) return;
-        if (!AdminAuthUtil.requireAuth(exchange, ctx)) return;
+
+        // Require admin privileges and get operator username
+        String operator = AdminAuthUtil.requireAdmin(exchange, ctx);
+        if (operator == null) return;
 
         JSONObject req = WebResponseHelper.readJson(exchange);
         String target = req.optString("username", req.optString("uuid", ""));
-        String operator = req.optString("operator", "admin");
         String language = req.optString("language", "en");
 
         if (target.isBlank()) {

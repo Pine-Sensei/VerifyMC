@@ -97,9 +97,11 @@ public class LoginHandler implements HttpHandler {
 
         WebAuthHelper webAuthHelper = ctx.getWebAuthHelper();
         String token = webAuthHelper.generateToken(actualUsername);
+        boolean isAdmin = opsManager != null && opsManager.isOp(actualUsername);
         JSONObject resp = ApiResponseFactory.success(ctx.getMessage("login.success", language));
         resp.put("token", token);
         resp.put("username", actualUsername);
+        resp.put("isAdmin", isAdmin);
         WebResponseHelper.sendJson(exchange, resp);
     }
 }
