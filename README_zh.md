@@ -84,7 +84,7 @@
 
 1. 在 `config.yml` 中设置 `auth_methods: [captcha]`（最快启动方式，无需 SMTP）。
 2. 设置 `whitelist_mode: plugin` 和 `web_register_url: https://your-domain.com/`。
-3. 将 `admin.password` 修改为强密码。
+3. 通过网页注册账号，然后在服务器中给自己 OP 权限（`op <用户名>`）即可访问管理后台。
 4. （可选）小型私服可开启 `register.auto_approve: true`。
 5. 重启服务器并访问 `http://你的服务器IP:8080`。
 

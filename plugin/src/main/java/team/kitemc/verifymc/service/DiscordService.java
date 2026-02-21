@@ -172,6 +172,15 @@ public class DiscordService {
     }
     
     /**
+     * Get OAuth2 authorization URL (alias for generateAuthUrl)
+     * @param username The username to link
+     * @return Authorization URL
+     */
+    public String getAuthorizationUrl(String username) {
+        return generateAuthUrl(username);
+    }
+    
+    /**
      * Handle OAuth2 callback
      * @param code Authorization code from Discord
      * @param state State token
@@ -489,6 +498,15 @@ public class DiscordService {
         }
         
         return true;
+    }
+    
+    /**
+     * Unlink Discord account from a user (alias for unlinkDiscord)
+     * @param username The username
+     * @return true if successful
+     */
+    public boolean unlinkUser(String username) {
+        return unlinkDiscord(username);
     }
     
     /**

@@ -22,7 +22,7 @@
 8. 📋 **Registration Questionnaire**: Customizable questionnaire system with multi-language support.
 9. 📧 **User Notifications**: Automatic email notifications for whitelist approval/rejection.
 10. 🌐 **Multi-language Support**: Both web UI and plugin messages support English and Chinese.
-11. ⚙️ **Highly Customizable**: Set max accounts per email, player ID regex, whitelist bypass IPs, and more.
+11. ⚙️ **Highly Customizable**: Set max accounts per email, player ID regex, and more.
 12. 🪶 **Lightweight**: Plugin jar is under 6MB, integrates multiple features, and runs efficiently.
 13. 🔄 **Auto Update & Backup**: Config files auto-upgrade, with full backup before each update.
 14. 🧩 **Flexible Whitelist Modes**: Supports Bukkit native whitelist sync, plugin self-management, and MySQL storage.
@@ -78,7 +78,7 @@
 
 1. Set `auth_methods: [captcha]` in `config.yml` (fastest setup, no SMTP required).
 2. Set `whitelist_mode: plugin` and `web_register_url: https://your-domain.com/`.
-3. Configure `admin.password` to a strong password.
+3. Register an account via the web page, then grant yourself OP (`op <username>`) to access the admin panel.
 4. (Optional) Enable `register.auto_approve: true` for small private servers.
 5. Restart the server and open `http://your_server_ip:8080`.
 

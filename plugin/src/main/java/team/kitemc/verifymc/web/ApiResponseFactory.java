@@ -6,10 +6,10 @@ import org.json.JSONObject;
  * Factory for building standardised JSON API responses.
  * Both {@code msg} and {@code message} keys are included for backward compatibility
  * with older frontend versions that read different keys.
+ * (Preserved from original.)
  */
 public final class ApiResponseFactory {
-    private ApiResponseFactory() {
-    }
+    private ApiResponseFactory() {}
 
     public static JSONObject success(String message) {
         return create(true, message);

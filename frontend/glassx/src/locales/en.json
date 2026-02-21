@@ -135,20 +135,24 @@
   },
   "login": {
     "title": "Admin Login",
-    "subtitle": "Enter admin account credentials",
+    "subtitle": "Enter your account credentials",
     "form": {
-      "email": "Admin Password",
-      "email_placeholder": "Enter admin password",
+      "username": "Username/Email",
+      "username_placeholder": "Enter username or email",
+      "password": "Password",
+      "password_placeholder": "Enter password",
       "submit": "Login"
     },
     "validation": {
-      "email_required": "Please enter admin password",
-      "email_format": "Please enter a valid admin password"
+      "username_required": "Please enter username or email",
+      "password_required": "Please enter password"
     },
     "messages": {
       "success": "Login successful, redirecting to admin panel...",
       "error": "Login failed, please try again later",
-      "invalid_credentials": "Invalid admin credentials, please try again"
+      "invalid_credentials": "Invalid username or password",
+      "not_authorized": "You do not have admin privileges",
+      "system_error": "System configuration error, please contact server admin"
     }
   },
   "admin": {

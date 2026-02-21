@@ -90,7 +90,7 @@ public class CaptchaService {
         // Generate image
         String imageBase64 = generateCaptchaImage(displayText);
         
-        return new CaptchaResult(token, imageBase64);
+        return new CaptchaResult(token, imageBase64, answer);
     }
     
     /**
@@ -286,10 +286,12 @@ public class CaptchaService {
     public static class CaptchaResult {
         private final String token;
         private final String imageBase64;
+        private final String answer;
         
-        public CaptchaResult(String token, String imageBase64) {
+        public CaptchaResult(String token, String imageBase64, String answer) {
             this.token = token;
             this.imageBase64 = imageBase64;
+            this.answer = answer;
         }
         
         public String getToken() {
@@ -298,6 +300,31 @@ public class CaptchaService {
         
         public String getImageBase64() {
             return imageBase64;
+        }
+        
+        public String getAnswer() {
+            return answer;
+        }
+        
+        /**
+         * Record-style accessor for token
+         */
+        public String token() {
+            return token;
+        }
+        
+        /**
+         * Record-style accessor for imageBase64
+         */
+        public String imageBase64() {
+            return imageBase64;
+        }
+        
+        /**
+         * Record-style accessor for answer
+         */
+        public String answer() {
+            return answer;
         }
     }
 }

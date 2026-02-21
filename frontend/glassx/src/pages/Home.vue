@@ -15,7 +15,7 @@ import HeroGeometric from '@/components/HeroGeometric.vue'
 
 const config = inject('config', { value: {} as any })
 
-const serverName = computed(() => config.value?.frontend?.web_server_prefix)
+const serverName = computed(() => config.value?.config?.web_server_prefix)
 </script>
 
 <style scoped>

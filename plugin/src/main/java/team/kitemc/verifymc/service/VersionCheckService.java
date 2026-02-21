@@ -82,6 +82,14 @@ public class VersionCheckService {
     }
     
     /**
+     * Check for updates asynchronously (alias for checkForUpdatesAsync)
+     * @return CompletableFuture with update check result
+     */
+    public CompletableFuture<UpdateCheckResult> checkAsync() {
+        return checkForUpdatesAsync();
+    }
+    
+    /**
      * Fetch latest version from GitHub pom.xml
      * @return Latest version string or null if failed
      */
@@ -231,6 +239,14 @@ public class VersionCheckService {
         json.put("releasesUrl", GITHUB_RELEASES_URL);
         json.put("lastCheckTime", lastCheckTime);
         return json;
+    }
+    
+    /**
+     * Get version info as JSON (alias for getVersionInfoJson)
+     * @return JSON object with version information
+     */
+    public JSONObject getVersionInfo() {
+        return getVersionInfoJson();
     }
     
     /**

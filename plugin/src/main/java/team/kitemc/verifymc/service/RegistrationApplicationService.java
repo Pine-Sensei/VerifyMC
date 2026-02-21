@@ -18,13 +18,13 @@ public class RegistrationApplicationService {
             boolean registerAutoApprove,
             boolean scoringServiceUnavailable
     ) {
-        boolean autoApprove = resolver.shouldAutoApprove(manualReviewRequired, registerAutoApprove);
+        boolean autoApprove = resolver.shouldAutoApprove(manualReviewRequired, questionnairePassed, registerAutoApprove);
         RegistrationOutcome outcome = resolver.resolve(registerOk, manualReviewRequired, questionnairePassed, registerAutoApprove, scoringServiceUnavailable);
         return new RegistrationDecision(autoApprove, outcome);
     }
 
-    public boolean shouldAutoApprove(boolean manualReviewRequired, boolean registerAutoApprove) {
-        return resolver.shouldAutoApprove(manualReviewRequired, registerAutoApprove);
+    public boolean shouldAutoApprove(boolean manualReviewRequired, boolean questionnairePassed, boolean registerAutoApprove) {
+        return resolver.shouldAutoApprove(manualReviewRequired, questionnairePassed, registerAutoApprove);
     }
 
     public String resolveStatus(RegistrationDecision decision) {

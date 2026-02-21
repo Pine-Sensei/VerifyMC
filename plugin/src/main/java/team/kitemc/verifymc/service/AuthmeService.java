@@ -1,9 +1,9 @@
 package team.kitemc.verifymc.service;
 
 import org.bukkit.Bukkit;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.plugin.Plugin;
 import team.kitemc.verifymc.db.UserDao;
+import team.kitemc.verifymc.util.PasswordUtil;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -13,13 +13,8 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.regex.Pattern;
 
-/**
- * AuthMe integration service class
- * Uses direct database operations (mysql / sqlite).
- */
 public class AuthmeService {
     private final Plugin plugin;
     private final boolean debug;
@@ -40,6 +35,42 @@ public class AuthmeService {
 
     public boolean isPasswordRequired() {
         return plugin.getConfig().getBoolean("authme.require_password", false);
+    }
+
+    public String getAuthmePassword(String username) {
+        if (!isAuthmeEnabled() || username == null || username.isEmpty()) {
+            return null;
+        }
+        String sql = "SELECT " + passwordColumn() + " FROM " + tableName() + " WHERE " + nameColumn() + " = ?";
+        try (Connection conn = getAuthmeConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, username);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString(1);
+                }
+            }
+        } catch (Exception e) {
+            debugLog("Failed to get AuthMe password for " + username + ": " + e.getMessage());
+        }
+        return null;
+    }
+
+    public boolean hasAuthmeUser(String username) {
+        if (!isAuthmeEnabled() || username == null || username.isEmpty()) {
+            return false;
+        }
+        String sql = "SELECT 1 FROM " + tableName() + " WHERE " + nameColumn() + " = ?";
+        try (Connection conn = getAuthmeConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, username);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (Exception e) {
+            debugLog("Failed to check AuthMe user " + username + ": " + e.getMessage());
+        }
+        return false;
     }
 
     public boolean isValidPassword(String password) {
@@ -77,20 +108,14 @@ public class AuthmeService {
         return updateAuthmePassword(username, newPassword);
     }
 
-    /**
-     * Encode password in AuthMe-compatible format for VerifyMC local storage.
-     * Accepts plain text and returns encoded value; already-encoded AuthMe values are returned as-is.
-     */
+    public boolean changePassword(String username, String newPassword) {
+        return changePasswordInAuthme(username, newPassword);
+    }
+
     public String encodePasswordForStorage(String plainOrEncodedPassword) {
         return buildStoredPassword(plainOrEncodedPassword);
     }
 
-    /**
-     * Synchronize approved users between VerifyMC and AuthMe.
-     * Rules:
-     * - Only approved local users are allowed to sync from local to AuthMe.
-     * - If AuthMe has user while local missing or pending, create/update local to approved.
-     */
     public void syncApprovedUsers() {
         if (!isAuthmeEnabled() || userDao == null) {
             return;
@@ -111,7 +136,6 @@ public class AuthmeService {
                 authmeByLowerName.put(name.toLowerCase(), name);
             }
 
-            // local approved -> authme
             for (Map<String, Object> local : localUsers) {
                 String status = (String) local.get("status");
                 String username = (String) local.get("username");
@@ -131,7 +155,6 @@ public class AuthmeService {
                     String authPassword = profile != null ? profile.password : null;
                     String authEmail = profile != null ? profile.email : null;
 
-                    // if local has password but AuthMe row exists with empty password, repair it
                     if (password != null && !password.trim().isEmpty() && (authPassword == null || authPassword.trim().isEmpty())) {
                         updateAuthmePassword(authName, password);
                     }
@@ -142,7 +165,6 @@ public class AuthmeService {
                 }
             }
 
-            // authme -> local approved
             for (Map.Entry<String, AuthmeProfile> entry : authmeProfilesByName.entrySet()) {
                 String authName = entry.getKey();
                 AuthmeProfile profile = entry.getValue();
@@ -150,46 +172,34 @@ public class AuthmeService {
                 String authEmail = profile != null ? profile.email : null;
                 Map<String, Object> local = localByLowerName.get(authName.toLowerCase());
                 if (local == null) {
-                    OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(authName);
-                    UUID id = offlinePlayer.getUniqueId();
                     String localEmail = authEmail != null ? authEmail : "";
                     if (authPassword != null && !authPassword.trim().isEmpty()) {
-                        userDao.registerUser(id.toString(), authName, localEmail, "approved", authPassword);
+                        userDao.registerUser(authName, localEmail, "approved", authPassword);
                     } else {
-                        userDao.registerUser(id.toString(), authName, localEmail, "approved");
+                        userDao.registerUser(authName, localEmail, "approved");
                     }
+                    Bukkit.getScheduler().runTask(plugin, () ->
+                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "whitelist add " + authName));
                     continue;
                 }
                 String status = (String) local.get("status");
-                if (!"approved".equals(status)) {
-                    String uuid = (String) local.get("uuid");
-                    if (uuid != null) {
-                        userDao.updateUserStatus(uuid, "approved");
-                    }
+                if (!"approved".equals(status) && !"banned".equals(status)) {
+                    userDao.updateUserStatus(authName, "approved");
+                    Bukkit.getScheduler().runTask(plugin, () ->
+                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "whitelist add " + authName));
                 }
 
-                // keep local password in sync with AuthMe hash
                 if (authPassword != null && !authPassword.trim().isEmpty()) {
                     String localPassword = (String) local.get("password");
                     if (localPassword == null || localPassword.trim().isEmpty() || !authPassword.equals(localPassword)) {
-                        String uuid = (String) local.get("uuid");
-                        if (uuid != null) {
-                            userDao.updateUserPassword(uuid, authPassword);
-                        } else {
-                            userDao.updateUserPassword(authName, authPassword);
-                        }
+                        userDao.updateUserPassword(authName, authPassword);
                     }
                 }
 
                 if (authEmail != null && !authEmail.trim().isEmpty()) {
                     String localEmail = (String) local.get("email");
                     if (localEmail == null || localEmail.trim().isEmpty() || !authEmail.equalsIgnoreCase(localEmail)) {
-                        String uuid = (String) local.get("uuid");
-                        if (uuid != null && !uuid.trim().isEmpty()) {
-                            userDao.updateUserEmail(uuid, authEmail);
-                        } else {
-                            userDao.updateUserEmail(authName, authEmail);
-                        }
+                        userDao.updateUserEmail(authName, authEmail);
                     }
                 }
             }
@@ -414,48 +424,11 @@ public class AuthmeService {
         if (plainPassword == null) {
             return null;
         }
-        if (plainPassword.startsWith("$SHA$")) {
+        if (PasswordUtil.isHashed(plainPassword)) {
             return plainPassword;
         }
-        return authmeSha256(plainPassword);
+        return PasswordUtil.hash(plainPassword);
     }
-
-    private String authmeSha256(String plainPassword) {
-        String salt = generateHexSalt(getSaltLength());
-        return "$SHA$" + salt + "$" + sha256Hex(sha256Hex(plainPassword) + salt);
-    }
-
-    private int getSaltLength() {
-        return plugin.getConfig().getInt("authme.database.salt_length", 16);
-    }
-
-    private String generateHexSalt(int length) {
-        java.security.SecureRandom random = new java.security.SecureRandom();
-        StringBuilder sb = new StringBuilder(length);
-        for (int i = 0; i < length; i++) {
-            sb.append(Integer.toHexString(random.nextInt(16)));
-        }
-        return sb.toString();
-    }
-
-    private String sha256Hex(String data) {
-        try {
-            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(data.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            return bytesToHex(hash);
-        } catch (Exception e) {
-            return data;
-        }
-    }
-
-    private String bytesToHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
-        }
-        return sb.toString();
-    }
-
 
     private void debugLog(String msg) {
         if (debug) {

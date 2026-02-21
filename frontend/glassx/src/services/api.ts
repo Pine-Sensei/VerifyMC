@@ -122,7 +122,6 @@ export interface SendCodeResponse {
 export interface RegisterRequest {
   email: string
   code?: string
-  uuid: string
   username: string
   password?: string
   captchaToken?: string
@@ -138,6 +137,7 @@ export interface RegisterResponse {
 }
 
 export interface AdminLoginRequest {
+  username: string
   password: string
   language: string
 }
@@ -149,7 +149,6 @@ export interface AdminLoginResponse {
 }
 
 export interface PendingUser {
-  uuid: string
   username: string
   email: string
   status: string
@@ -165,7 +164,7 @@ export interface PendingListResponse {
 }
 
 export interface ReviewRequest {
-  uuid: string
+  username: string
   action: 'approve' | 'reject'
   reason?: string
   language: string
@@ -177,9 +176,8 @@ export interface ReviewResponse {
 }
 
 export interface ChangePasswordRequest {
-  uuid?: string
-  username?: string
-  newPassword: string
+  username: string
+  password: string
   language: string
 }
 
@@ -224,7 +222,8 @@ class ApiService {
 
   // 获取配置
   async getConfig(): Promise<ConfigResponse> {
-    return this.request<ConfigResponse>('/config')
+    const response = await this.request<{ success: boolean; config: ConfigResponse }>('/config')
+    return response.config || response as unknown as ConfigResponse
   }
 
   // 获取验证码
@@ -234,7 +233,7 @@ class ApiService {
 
   // 发送验证码
   async sendCode(data: SendCodeRequest): Promise<SendCodeResponse> {
-    return this.request<SendCodeResponse>('/send_code', {
+    return this.request<SendCodeResponse>('/verify/send', {
       method: 'POST',
       body: JSON.stringify(data),
     })
@@ -258,7 +257,7 @@ class ApiService {
     msg?: string
     message?: string
   }> {
-    return this.request(`/questionnaire?language=${encodeURIComponent(language)}`)
+    return this.request(`/questionnaire/config?language=${encodeURIComponent(language)}`)
   }
 
   // 提交问卷
@@ -266,7 +265,7 @@ class ApiService {
     answers: Record<string, QuestionnaireAnswer>
     language: string
   }): Promise<SubmitQuestionnaireResponse> {
-    return this.request<SubmitQuestionnaireResponse>('/submit-questionnaire', {
+    return this.request<SubmitQuestionnaireResponse>('/questionnaire/submit', {
       method: 'POST',
       body: JSON.stringify(payload),
     })
@@ -274,7 +273,7 @@ class ApiService {
 
   // 管理员登录
   async adminLogin(data: AdminLoginRequest): Promise<AdminLoginResponse> {
-    return this.request<AdminLoginResponse>('/admin-login', {
+    return this.request<AdminLoginResponse>('/admin/login', {
       method: 'POST',
       body: JSON.stringify(data),
     })
@@ -282,38 +281,39 @@ class ApiService {
 
   // 获取待审核用户列表
   async getPendingList(language: string = 'zh'): Promise<PendingListResponse> {
-    return this.request<PendingListResponse>(`/pending-list?language=${language}`)
+    return this.request<PendingListResponse>(`/admin/users?language=${language}&status=pending`)
   }
 
   // 审核用户
   async reviewUser(data: ReviewRequest): Promise<ReviewResponse> {
-    return this.request<ReviewResponse>('/review', {
+    const endpoint = data.action === 'approve' ? '/admin/user/approve' : '/admin/user/reject'
+    return this.request<ReviewResponse>(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
     })
   }
 
   // 删除用户
-  async deleteUser(uuid: string, language: string = 'zh'): Promise<ReviewResponse> {
-    return this.request<ReviewResponse>('/delete-user', {
+  async deleteUser(username: string, language: string = 'zh'): Promise<ReviewResponse> {
+    return this.request<ReviewResponse>('/admin/user/delete', {
       method: 'POST',
-      body: JSON.stringify({ uuid, language }),
+      body: JSON.stringify({ username, language }),
     })
   }
 
   // 封禁用户
-  async banUser(uuid: string, language: string = 'zh'): Promise<ReviewResponse> {
-    return this.request<ReviewResponse>('/ban-user', {
+  async banUser(username: string, language: string = 'zh'): Promise<ReviewResponse> {
+    return this.request<ReviewResponse>('/admin/user/ban', {
       method: 'POST',
-      body: JSON.stringify({ uuid, language }),
+      body: JSON.stringify({ username, language }),
     })
   }
 
   // 解封用户
-  async unbanUser(uuid: string, language: string = 'zh'): Promise<ReviewResponse> {
-    return this.request<ReviewResponse>('/unban-user', {
+  async unbanUser(username: string, language: string = 'zh'): Promise<ReviewResponse> {
+    return this.request<ReviewResponse>('/admin/user/unban', {
       method: 'POST',
-      body: JSON.stringify({ uuid, language }),
+      body: JSON.stringify({ username, language }),
     })
   }
 
@@ -334,7 +334,7 @@ class ApiService {
 
   // 获取所有用户
   async getAllUsers(): Promise<{ success: boolean; users: PendingUser[]; message?: string }> {
-    return this.request<{ success: boolean; users: PendingUser[]; message?: string }>('/all-users')
+    return this.request<{ success: boolean; users: PendingUser[]; message?: string }>('/admin/users')
   }
 
   // 获取分页用户列表
@@ -353,14 +353,14 @@ class ApiService {
   }> {
     const params = new URLSearchParams({
       page: page.toString(),
-      pageSize: pageSize.toString(),
+      size: pageSize.toString(),
     });
 
     if (search.trim()) {
       params.append('search', search.trim());
     }
 
-    return this.request(`/users-paginated?${params.toString()}`);
+    return this.request(`/admin/users?${params.toString()}`);
   }
 
   // 获取待审核用户列表 (兼容方法)
@@ -375,12 +375,12 @@ class ApiService {
 
   // 获取用户状态
   async getUserStatus(): Promise<{ success: boolean; data: { status: string; reason?: string }; message?: string }> {
-    return this.request<{ success: boolean; data: { status: string; reason?: string }; message?: string }>('/user-status')
+    return this.request<{ success: boolean; data: { status: string; reason?: string }; message?: string }>('/user/status')
   }
 
   // 修改用户密码
   async changePassword(data: ChangePasswordRequest): Promise<ReviewResponse> {
-    return this.request<ReviewResponse>('/change-password', {
+    return this.request<ReviewResponse>('/admin/user/password', {
       method: 'POST',
       body: JSON.stringify(data),
     })
@@ -406,7 +406,7 @@ class ApiService {
     releasesUrl?: string;
     error?: string;
   }> {
-    return this.request('/version-check')
+    return this.request('/version')
   }
 
   // Discord OAuth - 获取授权 URL
@@ -415,10 +415,7 @@ class ApiService {
     auth_url?: string;
     msg?: string;
   }> {
-    return this.request('/discord/auth', {
-      method: 'POST',
-      body: JSON.stringify({ username }),
-    })
+    return this.request(`/discord/auth?username=${encodeURIComponent(username)}`)
   }
 
   // Discord OAuth - 检查绑定状态
@@ -435,6 +432,14 @@ class ApiService {
     msg?: string;
   }> {
     return this.request(`/discord/status?username=${encodeURIComponent(username)}`)
+  }
+
+  // AuthMe 同步
+  async syncAuthme(language: string = 'en'): Promise<{ success: boolean; message?: string; msg?: string }> {
+    return this.request<{ success: boolean; message?: string; msg?: string }>('/admin/sync', {
+      method: 'POST',
+      body: JSON.stringify({ language }),
+    })
   }
 }
 

@@ -44,7 +44,7 @@
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow v-for="user in pendingUsers" :key="user.uuid">
+                <TableRow v-for="user in pendingUsers" :key="user.username">
                   <TableCell class="font-medium text-white">{{ user.username }}</TableCell>
                   <TableCell>{{ user.email }}</TableCell>
                   <TableCell>{{ formatDate(user.regTime || user.registerTime) }}</TableCell>
@@ -56,7 +56,7 @@
                         variant="outline"
                         size="sm"
                         @click="approveUser(user)"
-                        :disabled="loading || processingUsers.has(user.uuid)"
+                        :disabled="loading || processingUsers.has(user.username)"
                       >
                         {{ $t('admin.review.actions.approve') }}
                       </Button>
@@ -64,7 +64,7 @@
                         variant="outline"
                         size="sm"
                         @click="openRejectDialog(user)"
-                        :disabled="loading || processingUsers.has(user.uuid)"
+                        :disabled="loading || processingUsers.has(user.username)"
                       >
                         {{ $t('admin.review.actions.reject') }}
                       </Button>
@@ -116,7 +116,7 @@
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow v-for="user in allUsers" :key="user.uuid">
+                <TableRow v-for="user in allUsers" :key="user.username">
                   <TableCell class="font-medium text-white break-all">{{ user.username }}</TableCell>
                   <TableCell class="break-all">{{ user.email }}</TableCell>
                   <TableCell>
@@ -463,6 +463,7 @@ const loadQuestionnaireConfig = async () => {
 }
 
 const loadPendingUsers = async () => {
+  actionLoading.value = true
   try {
     console.log('Loading pending users...')
     const response = await apiService.getPendingList(locale.value)
@@ -474,22 +475,25 @@ const loadPendingUsers = async () => {
     } else {
       console.error('Pending users error:', response.message)
       if (response.message && response.message.includes('Authentication')) {
-        notification.error(t('common.error'), response.message)
+        notification.error(response.message)
       } else {
-        notification.error(t('common.error'), response.message || t('admin.review.messages.error'))
+        notification.error(response.message || t('admin.review.messages.error'))
       }
     }
   } catch (error) {
     console.error('Exception loading pending users:', error)
-    notification.error(t('common.error'), t('admin.review.messages.error'))
+    notification.error(t('admin.review.messages.error'))
+  } finally {
+    actionLoading.value = false
   }
 }
 
 const notifyResult = (success: boolean, key: string, backendMessage?: string) => {
+  const displayMessage = backendMessage || t(key)
   if (success) {
-    notification.success(t(key), backendMessage && backendMessage !== t(key) ? backendMessage : '')
+    notification.success(displayMessage)
   } else {
-    notification.error(t(key), backendMessage && backendMessage !== t(key) ? backendMessage : '')
+    notification.error(displayMessage)
   }
 }
 
@@ -512,27 +516,28 @@ const closeRejectDialog = () => {
 }
 
 const approveUser = async (user: any) => {
-  processingUsers.value.add(user.uuid)
+  processingUsers.value.add(user.username)
   actionLoading.value = true
 
   try {
     const response = await apiService.reviewUser({
-      uuid: user.uuid,
+      username: user.username,
       action: 'approve',
       language: locale.value
     })
 
     if (response.success) {
       notifyResult(true, 'admin.review.messages.approve_success', response.msg)
+      await apiService.syncAuthme(locale.value)
       await loadPendingUsers()
       await loadAllUsers()
     } else {
       notifyResult(false, 'admin.review.messages.error', response.msg)
     }
   } catch (error) {
-    notification.error(t('admin.review.messages.error'), t('admin.review.messages.error'))
+    notification.error(t('admin.review.messages.error'))
   } finally {
-    processingUsers.value.delete(user.uuid)
+    processingUsers.value.delete(user.username)
     actionLoading.value = false
   }
 }
@@ -541,12 +546,12 @@ const confirmReject = async () => {
   if (!rejectDialog.value.user) return
 
   rejectDialog.value.processing = true
-  processingUsers.value.add(rejectDialog.value.user.uuid)
+  processingUsers.value.add(rejectDialog.value.user.username)
   actionLoading.value = true
 
   try {
     const response = await apiService.reviewUser({
-      uuid: rejectDialog.value.user.uuid,
+      username: rejectDialog.value.user.username,
       action: 'reject',
       reason: rejectDialog.value.reason || undefined,
       language: locale.value
@@ -561,11 +566,11 @@ const confirmReject = async () => {
       notifyResult(false, 'admin.review.messages.error', response.msg)
     }
   } catch (error) {
-    notification.error(t('admin.review.messages.error'), t('admin.review.messages.error'))
+    notification.error(t('admin.review.messages.error'))
   } finally {
     rejectDialog.value.processing = false
-    if (rejectDialog.value.user?.uuid) {
-      processingUsers.value.delete(rejectDialog.value.user.uuid)
+    if (rejectDialog.value.user?.username) {
+      processingUsers.value.delete(rejectDialog.value.user.username)
     }
     actionLoading.value = false
   }
@@ -593,7 +598,7 @@ const confirmDelete = async () => {
   showDeleteDialog.value = false
 
   try {
-    const response = await apiService.deleteUser(selectedUser.value.uuid, locale.value)
+    const response = await apiService.deleteUser(selectedUser.value.username, locale.value)
 
     if (response.success) {
       notifyResult(true, 'admin.users.messages.delete_success', response.msg)
@@ -602,7 +607,7 @@ const confirmDelete = async () => {
       notifyResult(false, 'admin.users.messages.error', response.msg)
     }
   } catch (error) {
-    notification.error(t('admin.users.messages.error'), t('admin.users.messages.error'))
+    notification.error(t('admin.users.messages.error'))
   } finally {
     actionLoading.value = false
     selectedUser.value = null
@@ -616,7 +621,7 @@ const confirmBan = async () => {
   showBanDialog.value = false
 
   try {
-    const response = await apiService.banUser(selectedUser.value.uuid, locale.value)
+    const response = await apiService.banUser(selectedUser.value.username, locale.value)
 
     if (response.success) {
       notifyResult(true, 'admin.users.messages.ban_success', response.msg)
@@ -625,7 +630,7 @@ const confirmBan = async () => {
       notifyResult(false, 'admin.users.messages.error', response.msg)
     }
   } catch (error) {
-    notification.error(t('admin.users.messages.error'), t('admin.users.messages.error'))
+    notification.error(t('admin.users.messages.error'))
   } finally {
     actionLoading.value = false
     selectedUser.value = null
@@ -639,7 +644,7 @@ const confirmUnban = async () => {
   showUnbanDialog.value = false
 
   try {
-    const response = await apiService.unbanUser(selectedUser.value.uuid, locale.value)
+    const response = await apiService.unbanUser(selectedUser.value.username, locale.value)
 
     if (response.success) {
       notifyResult(true, 'admin.users.messages.unban_success', response.msg)
@@ -648,7 +653,7 @@ const confirmUnban = async () => {
       notifyResult(false, 'admin.users.messages.error', response.msg)
     }
   } catch (error) {
-    notification.error(t('admin.users.messages.error'), t('admin.users.messages.error'))
+    notification.error(t('admin.users.messages.error'))
   } finally {
     actionLoading.value = false
     selectedUser.value = null
@@ -662,8 +667,8 @@ const confirmChangePassword = async () => {
 
   try {
     const response = await apiService.changePassword({
-      uuid: selectedUser.value.uuid,
-      newPassword: newPassword.value,
+      username: selectedUser.value.username,
+      password: newPassword.value,
       language: locale.value
     })
 
@@ -676,7 +681,7 @@ const confirmChangePassword = async () => {
       notifyResult(false, 'admin.users.messages.error', response.msg)
     }
   } catch (error) {
-    notification.error(t('admin.users.messages.error'), t('admin.users.messages.error'))
+    notification.error(t('admin.users.messages.error'))
   } finally {
     actionLoading.value = false
   }

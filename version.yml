@@ -1,39 +1,62 @@
 release: true
-version: 1.5.1
+version: 1.6.0
 release_notes: |
-  [简体中文](https://github.com/KiteMC/VerifyMC/blob/v1.5.1/release_notes_zh.md) | English | [Official Documentation](https://kitemc.com/docs/verifymc/)
+  [简体中文](https://github.com/KiteMC/VerifyMC/blob/v1.6.0/release_notes_zh.md) | English | [Official Documentation](https://kitemc.com/docs/verifymc/)
 
-  # VerifyMC v1.5.1 Release Notes
+  # VerifyMC v1.6.0 Release Notes
 
-  ## Architecture: Registration Flow Refactoring
+  ## Architecture: Modular Refactoring
 
-  - Extracted registration processing into dedicated `RegistrationProcessingHandler` with clear validation pipeline
-  - Introduced `RegistrationOutcome` enum and `RegistrationOutcomeResolver` for deterministic outcome logic
-  - Added `RegistrationApplicationService`, `QuestionnaireApplicationService`, `ReviewApplicationService` for business orchestration
-  - Created `ApiResponseFactory`, `WebResponseHelper`, `WebAuthHelper` utility classes to reduce code duplication
-  - Introduced `RegistrationRequest` and `RegistrationValidationResult` records for type-safe request/response handling
-  - Added delegate handler classes (`RegistrationHandler`, `QuestionnaireHandler`, `ReviewHandler`, `UserAdminHandler`) as extension points
+  - Introduced `PluginContext` as a central service container, replacing scattered fields in `VerifyMC` and the 13-parameter `WebServer` constructor
+  - Extracted `ConfigManager`, `I18nManager`, `OpsManager`, `ResourceManager` into `core/` package for clear separation of concerns
+  - Split monolithic `WebServer` (~1800 lines) into 20+ single-responsibility `HttpHandler` classes under `web/handler/`
+  - Added `ApiRouter` for centralized route registration
+  - Introduced `VmcCommandExecutor` for in-game admin commands (`/vmc approve/reject/ban/unban/delete/list/info`)
+  - Added `PlayerLoginListener` with plugin-mode whitelist enforcement and status-based kick messages
+  - Unified admin handler authentication via `AdminAuthUtil` utility class
+
+  ## Identifier Migration: UUID → Username
+
+  - Removed UUID as primary user identifier; username is now the sole key across all layers
+  - Updated `UserDao`, `FileUserDao`, `MysqlUserDao` to use username-based lookups and operations
+  - Added `getUserByEmail`, `getUserByUsernameExact` to `UserDao` interface
+  - Added convenience default methods on `UserDao`: `banUser`, `unbanUser`, `getUsers`, `getTotalUsers`, `getUsersByStatus`, `updatePassword`
+
+  ## Admin Login Refactoring
+
+  - Replaced static `admin.password` config with player-data-based authentication
+  - Admin login now verifies against registered player credentials; only server OPs can access the admin panel
+  - Login supports both username and email lookup with AuthMe password integration
 
   ## Security Improvements
 
-  - Token generation now uses `SecureRandom` instead of `Math.random()` for cryptographically secure tokens
-  - Token cleanup thread set to daemon mode with proper interrupt handling to prevent blocking server shutdown
-  - Password storage unified through `AuthmeService.encodePasswordForStorage()`, removed duplicate hashing in `MysqlUserDao`
-  - Added automatic plaintext password migration on startup
+  - Introduced `PasswordUtil` with SHA-256 + salt hashing (AuthMe-compatible `$SHA$` format)
+  - Plaintext password fallback now logs a warning to encourage migration
+  - Unified admin endpoint authentication through `AdminAuthUtil`
+  - Added query parameter URL decoding to prevent injection via encoded characters
+
+  ## API Endpoint Restructuring
+
+  - RESTful API paths: `/api/admin/users`, `/api/admin/user/approve`, `/api/admin/user/reject`, etc.
+  - Questionnaire endpoints moved to `/api/questionnaire/config` and `/api/questionnaire/submit`
+  - Added `/api/admin/sync` endpoint for AuthMe data synchronization
+  - Added `/api/user/status` endpoint for user status queries
 
   ## Frontend Improvements
 
-  - New `useAdminUsers` composable with pagination, search, and multi-layer fallback (with unit tests)
-  - Added typed API interfaces for questionnaire (`Question`, `QuestionType`, `SubmitQuestionnaireResponse`)
-  - Registration form now supports platform field and bedrock username auto-normalization
-  - Questionnaire `manual_review_required` support in registration flow
-  - Global fixed background with unified visual experience across all pages
+  - Admin login form updated to username + password fields
+  - API service updated to match new RESTful endpoint paths
+  - Notification messages simplified and unified
+
+  ## Dependency Updates
+
+  - MySQL driver updated from `mysql-connector-java` to `mysql-connector-j`
+  - Removed duplicate `jakarta.mail-api` dependency
+  - Maven Shade Plugin updated to 3.5.0 with improved filtering and `ServicesResourceTransformer`
 
   ## Bug Fixes
 
-  - Fixed `shouldAutoApprove` now correctly respects `manualReviewRequired` flag
-  - Fixed `RegistrationOutcomeResolver` logic for questionnaire-passed-but-manual-review-required scenario
-  - Removed duplicate `buildQuestionnaireReviewSummary` from `WebServer`
-  - `AuditDao`/`AuditRecord` migrated from `Map<String,Object>` to type-safe record class
-  - Added `updateUserEmail` to `MysqlUserDao` for AuthMe sync
+  - Fixed AuthMe sync skipping banned users during status upgrade
+  - Fixed scoring service unavailability detection in questionnaire results
+  - Fixed `WebResponseHelper.readJson` to handle malformed JSON bodies gracefully
 

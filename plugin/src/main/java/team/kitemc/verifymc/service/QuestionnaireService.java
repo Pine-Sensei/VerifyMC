@@ -210,6 +210,71 @@ public class QuestionnaireService {
         result.put("questions", questionsArray);
         return result;
     }
+    
+    /**
+     * Get questionnaire configuration (alias for getQuestionnaire)
+     * @param language Language code
+     * @return JSON object with questionnaire configuration
+     */
+    public JSONObject getQuestionnaireConfig(String language) {
+        return getQuestionnaire(language);
+    }
+    
+    /**
+     * Score questionnaire answers
+     * @param answers JSON object containing answers
+     * @param language Language code
+     * @return QuestionnaireResult with scoring details
+     */
+    public QuestionnaireResult scoreAnswers(JSONObject answers, String language) {
+        if (answers == null) {
+            return new QuestionnaireResult(false, 0, getPassScore(), Collections.emptyList());
+        }
+        
+        Map<Integer, QuestionAnswer> answerMap = new HashMap<>();
+        JSONArray answersArray = answers.optJSONArray("answers");
+        
+        if (answersArray != null) {
+            for (int i = 0; i < answersArray.length(); i++) {
+                JSONObject answerObj = answersArray.getJSONObject(i);
+                int questionId = answerObj.getInt("question_id");
+                String type = answerObj.optString("type", "single_choice");
+                List<Integer> selectedOptionIds = new ArrayList<>();
+                JSONArray optionsArray = answerObj.optJSONArray("selected_option_ids");
+                if (optionsArray != null) {
+                    for (int j = 0; j < optionsArray.length(); j++) {
+                        selectedOptionIds.add(optionsArray.getInt(j));
+                    }
+                }
+                String textAnswer = answerObj.optString("text_answer", "");
+                answerMap.put(questionId, new QuestionAnswer(type, selectedOptionIds, textAnswer));
+            }
+        } else {
+            for (String key : answers.keySet()) {
+                try {
+                    int questionId = Integer.parseInt(key);
+                    JSONObject answerObj = answers.getJSONObject(key);
+                    String type = answerObj.optString("type", "single_choice");
+                    List<Integer> selectedOptionIds = new ArrayList<>();
+                    JSONArray optionsArray = answerObj.optJSONArray("selectedOptionIds");
+                    if (optionsArray == null) {
+                        optionsArray = answerObj.optJSONArray("selected_option_ids");
+                    }
+                    if (optionsArray != null) {
+                        for (int j = 0; j < optionsArray.length(); j++) {
+                            selectedOptionIds.add(optionsArray.getInt(j));
+                        }
+                    }
+                    String textAnswer = answerObj.optString("textAnswer", answerObj.optString("text_answer", ""));
+                    answerMap.put(questionId, new QuestionAnswer(type, selectedOptionIds, textAnswer));
+                } catch (NumberFormatException e) {
+                    debugLog("Invalid question id key: " + key);
+                }
+            }
+        }
+        
+        return evaluateAnswers(answerMap);
+    }
 
     public QuestionnaireResult evaluateAnswers(Map<Integer, QuestionAnswer> answers) {
         if (!isEnabled() || questionnaireConfig == null) {
@@ -408,6 +473,7 @@ public class QuestionnaireService {
         private final String reason;
         private final double confidence;
         private final boolean manualReview;
+        private final boolean scoringUnavailable;
         private final String provider;
         private final String model;
         private final String requestId;
@@ -423,6 +489,7 @@ public class QuestionnaireService {
             this.reason = reason;
             this.confidence = confidence;
             this.manualReview = manualReview;
+            this.scoringUnavailable = manualReview && isScoringUnavailableReason(reason);
             this.provider = provider;
             this.model = model;
             this.requestId = requestId;
@@ -430,8 +497,17 @@ public class QuestionnaireService {
             this.retryCount = retryCount;
         }
 
+        private static boolean isScoringUnavailableReason(String reason) {
+            if (reason == null) return false;
+            String lower = reason.toLowerCase();
+            return lower.contains("unavailable") || lower.contains("incomplete") ||
+                   lower.contains("saturated") || lower.contains("circuit breaker") ||
+                   lower.contains("interrupted");
+        }
+
         public int getQuestionId() { return questionId; }
         public int getScore() { return score; }
+        public boolean isScoringUnavailable() { return scoringUnavailable; }
         public JSONObject toJson() {
             JSONObject json = new JSONObject();
             json.put("question_id", questionId);
@@ -441,6 +517,7 @@ public class QuestionnaireService {
             json.put("reason", reason);
             json.put("confidence", confidence);
             json.put("manual_review", manualReview);
+            json.put("scoring_unavailable", scoringUnavailable);
             json.put("provider", provider);
             json.put("model", model);
             json.put("request_id", requestId);
@@ -477,12 +554,22 @@ public class QuestionnaireService {
             return false;
         }
 
+        public boolean isScoringServiceUnavailable() {
+            for (QuestionScoreDetail detail : details) {
+                if (detail.isScoringUnavailable()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public JSONObject toJson() {
             JSONObject json = new JSONObject();
             json.put("passed", passed);
             json.put("score", score);
             json.put("pass_score", passScore);
             json.put("manual_review_required", isManualReviewRequired());
+            json.put("scoring_service_unavailable", isScoringServiceUnavailable());
 
             JSONArray detailArray = new JSONArray();
             for (QuestionScoreDetail detail : details) {
