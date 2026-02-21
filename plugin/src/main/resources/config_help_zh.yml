@@ -139,12 +139,10 @@ authme:
     type: sqlite
     # AuthMe 表名
     table: authme
-    # 密码格式仅支持 sha256，如原先不是，请在 AuthMe 中切换（ AuthMe 支持惰性回退）。
+    # 密码格式仅支持 sha256，盐长度固定为 16。如原先不是，请在 AuthMe 中切换（ AuthMe 支持惰性回退）。
     # 在 Authme 中切换完之后请先直接上游戏登录一次使加密格式惰性回退成 sha265 或者也可以直接在后台重置密码。
     # VerifyMC 与 AuthMe 双向同步间隔（秒）
     sync_interval_seconds: 30
-    # AuthMe SHA256 默认盐长度（默认 16）
-    salt_length: 16
     mysql:
       host: 127.0.0.1
       port: 3306

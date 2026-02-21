@@ -3,6 +3,7 @@ package team.kitemc.verifymc.service;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 import team.kitemc.verifymc.db.UserDao;
+import team.kitemc.verifymc.util.PasswordUtil;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -387,48 +388,11 @@ public class AuthmeService {
         if (plainPassword == null) {
             return null;
         }
-        if (plainPassword.startsWith("$SHA$")) {
+        if (PasswordUtil.isHashed(plainPassword)) {
             return plainPassword;
         }
-        return authmeSha256(plainPassword);
+        return PasswordUtil.hash(plainPassword);
     }
-
-    private String authmeSha256(String plainPassword) {
-        String salt = generateHexSalt(getSaltLength());
-        return "$SHA$" + salt + "$" + sha256Hex(sha256Hex(plainPassword) + salt);
-    }
-
-    private int getSaltLength() {
-        return plugin.getConfig().getInt("authme.database.salt_length", 16);
-    }
-
-    private String generateHexSalt(int length) {
-        java.security.SecureRandom random = new java.security.SecureRandom();
-        StringBuilder sb = new StringBuilder(length);
-        for (int i = 0; i < length; i++) {
-            sb.append(Integer.toHexString(random.nextInt(16)));
-        }
-        return sb.toString();
-    }
-
-    private String sha256Hex(String data) {
-        try {
-            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(data.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            return bytesToHex(hash);
-        } catch (Exception e) {
-            return data;
-        }
-    }
-
-    private String bytesToHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
-        }
-        return sb.toString();
-    }
-
 
     private void debugLog(String msg) {
         if (debug) {

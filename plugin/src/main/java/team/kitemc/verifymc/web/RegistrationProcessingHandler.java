@@ -269,8 +269,7 @@ public class RegistrationProcessingHandler implements HttpHandler {
 
         boolean ok;
         if (request.password() != null && !request.password().trim().isEmpty()) {
-            String storedPassword = authmeService.encodePasswordForStorage(request.password());
-            ok = userDao.registerUser(request.normalizedUsername(), request.email(), status, storedPassword,
+            ok = userDao.registerUser(request.normalizedUsername(), request.email(), status, request.password(),
                     questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
         } else {
             ok = userDao.registerUser(request.normalizedUsername(), request.email(), status,

@@ -37,8 +37,7 @@ public class AdminUserPasswordHandler implements HttpHandler {
             return;
         }
 
-        String storedPassword = ctx.getAuthmeService().encodePasswordForStorage(password);
-        boolean ok = ctx.getUserDao().updatePassword(target, storedPassword);
+        boolean ok = ctx.getUserDao().updatePassword(target, password);
 
         if (ok && ctx.getAuthmeService().isAuthmeEnabled()) {
             ctx.getAuthmeService().changePassword(target, password);

@@ -56,9 +56,8 @@ authme:
   database:
     type: sqlite
     table: authme
-    # 直写密码格式仅支持 sha256
+    # 直写密码格式仅支持 sha256，盐长度固定为 16
     sync_interval_seconds: 30
-    salt_length: 16
     mysql:
       host: 127.0.0.1
       port: 3306

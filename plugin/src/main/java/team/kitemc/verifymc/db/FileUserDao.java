@@ -5,6 +5,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.Gson;
+import team.kitemc.verifymc.util.PasswordUtil;
 
 public class FileUserDao implements UserDao {
     private final File file;
@@ -192,7 +193,7 @@ public class FileUserDao implements UserDao {
             user.put("username", username);
             user.put("email", email);
             user.put("status", status);
-            user.put("password", password);
+            user.put("password", PasswordUtil.hash(password));
             user.put("regTime", System.currentTimeMillis());
             applyQuestionnaireAuditFields(user, questionnaireScore, questionnairePassed, questionnaireReviewSummary, questionnaireScoredAt);
             debugLog("Adding user with password to map: " + user);
@@ -240,7 +241,7 @@ public class FileUserDao implements UserDao {
             return false;
         }
         
-        user.put("password", password);
+        user.put("password", PasswordUtil.hash(password));
         save();
         debugLog("User password updated: " + user.get("username"));
         return true;

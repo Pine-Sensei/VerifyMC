@@ -3,6 +3,7 @@ package team.kitemc.verifymc.db;
 import java.sql.*;
 import java.util.*;
 import org.bukkit.plugin.Plugin;
+import team.kitemc.verifymc.util.PasswordUtil;
 
 public class MysqlUserDao implements UserDao {
     private final Connection conn;
@@ -180,7 +181,7 @@ public class MysqlUserDao implements UserDao {
             ps.setString(1, username);
             ps.setString(2, email);
             ps.setString(3, status);
-            ps.setString(4, hashPassword(password));
+            ps.setString(4, PasswordUtil.hash(password));
             ps.setLong(5, System.currentTimeMillis());
             if (questionnaireScore != null)
                 ps.setInt(6, questionnaireScore);
@@ -219,25 +220,11 @@ public class MysqlUserDao implements UserDao {
         }
     }
 
-    private String hashPassword(String password) {
-        if (password == null || password.isEmpty()) return null;
-        try {
-            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(password.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hash) sb.append(String.format("%02x", b));
-            return sb.toString();
-        } catch (java.security.NoSuchAlgorithmException e) {
-            debugLog("SHA-256 not available, storing password hash failed");
-            return null;
-        }
-    }
-
     @Override
     public boolean updateUserPassword(String username, String password) {
         String sql = "UPDATE users SET password=? WHERE username=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, hashPassword(password));
+            ps.setString(1, PasswordUtil.hash(password));
             ps.setString(2, username);
             int rows = ps.executeUpdate();
             debugLog("User password updated: " + username);
