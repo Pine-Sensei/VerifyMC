@@ -32,6 +32,7 @@ public class ConfigHandler implements HttpHandler {
         config.put("announcement", ctx.getConfigManager().getAnnouncement());
         config.put("usernameRegex", ctx.getConfigManager().getUsernameRegex());
         config.put("webServerPrefix", ctx.getConfigManager().getWebServerPrefix());
+        config.put("wsPort", ctx.getConfigManager().getWsPort());
 
         JSONObject authmeConfig = new JSONObject();
         authmeConfig.put("enabled", ctx.getConfigManager().isAuthmeEnabled());

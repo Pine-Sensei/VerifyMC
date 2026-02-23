@@ -73,8 +73,7 @@ public class UserPasswordHandler implements HttpHandler {
             return;
         }
 
-        String hashedNewPassword = PasswordUtil.hash(newPassword);
-        boolean updated = ctx.getUserDao().updatePassword(username, hashedNewPassword);
+        boolean updated = ctx.getUserDao().updatePassword(username, newPassword);
 
         if (updated) {
             if (ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {

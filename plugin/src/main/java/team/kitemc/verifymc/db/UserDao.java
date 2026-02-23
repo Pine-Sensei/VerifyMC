@@ -18,7 +18,11 @@ public interface UserDao {
     
     boolean updateUserStatus(String username, String status);
     
-    boolean updateUserPassword(String username, String password);
+    /**
+     * Updates a user's password using a plaintext password input.
+     * Implementations are responsible for hashing before persistence.
+     */
+    boolean updateUserPassword(String username, String plainPassword);
 
     boolean updateUserEmail(String username, String email);
     
@@ -102,8 +106,8 @@ public interface UserDao {
             .collect(java.util.stream.Collectors.toList());
     }
 
-    default boolean updatePassword(String username, String password) {
-        return updateUserPassword(username, password);
+    default boolean updatePassword(String username, String plainPassword) {
+        return updateUserPassword(username, plainPassword);
     }
 
     /**

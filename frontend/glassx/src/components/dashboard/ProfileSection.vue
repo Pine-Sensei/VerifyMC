@@ -147,7 +147,7 @@ interface DiscordStatus {
   message?: string
 }
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const notification = useNotification()
 const config = inject<{ value: ConfigResponse }>('config', { value: {} as ConfigResponse })
 
@@ -228,7 +228,7 @@ const saveProfile = async () => {
   try {
     const response = await apiService.updateUserInfo({
       email: form.value.email,
-      language: 'en',
+      language: locale.value,
     })
     if (response.success) {
       notification.success(t('dashboard.profile.save_success'))
@@ -257,7 +257,7 @@ const changePassword = async () => {
     const response = await apiService.userChangePassword({
       currentPassword: passwordForm.value.currentPassword,
       newPassword: passwordForm.value.newPassword,
-      language: 'en',
+      language: locale.value,
     })
     if (response.success) {
       notification.success(t('dashboard.profile.password_change_success'))

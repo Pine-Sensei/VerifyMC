@@ -232,10 +232,10 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
     }
 
     @Override
-    public boolean updateUserPassword(String username, String password) {
+    public boolean updateUserPassword(String username, String plainPassword) {
         String sql = "UPDATE users SET password=? WHERE username=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, PasswordUtil.hash(password));
+            ps.setString(1, PasswordUtil.hash(plainPassword));
             ps.setString(2, username);
             int rows = ps.executeUpdate();
             debugLog("User password updated: " + username);

@@ -284,7 +284,7 @@ public class FileUserDao implements UserDao {
     }
 
     @Override
-    public boolean updateUserPassword(String username, String password) {
+    public boolean updateUserPassword(String username, String plainPassword) {
         debugLog("updateUserPassword called: username=" + username);
         String key = username.toLowerCase();
         Map<String, Object> user = users.get(key);
@@ -294,7 +294,7 @@ public class FileUserDao implements UserDao {
             return false;
         }
         
-        user.put("password", PasswordUtil.hash(password));
+        user.put("password", PasswordUtil.hash(plainPassword));
         save();
         debugLog("User password updated: " + user.get("username"));
         return true;
