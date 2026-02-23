@@ -7,6 +7,7 @@ import team.kitemc.verifymc.core.PluginContext;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
  * Serves static files (front-end HTML/CSS/JS) from the plugin data directory.
@@ -21,10 +22,7 @@ public class StaticFileHandler implements HttpHandler {
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
-        String path = exchange.getRequestURI().getPath();
-        if (path.equals("/") || path.isEmpty()) {
-            path = "/index.html";
-        }
+        String relativePath = toRelativePath(exchange.getRequestURI().getPath());
 
         // Determine the theme directory
         String theme = ctx.getConfigManager().getTheme();
@@ -36,17 +34,23 @@ public class StaticFileHandler implements HttpHandler {
             themeDir = staticDir;
         }
 
-        File file = new File(themeDir, path);
-
-        // Security: prevent path traversal
-        if (!file.getCanonicalPath().startsWith(themeDir.getCanonicalPath())) {
+        Path themeDirPath = themeDir.toPath().toAbsolutePath().normalize();
+        Path requestPath = resolveWithinBase(themeDirPath, relativePath);
+        if (requestPath == null) {
             exchange.sendResponseHeaders(403, -1);
             return;
         }
 
+        File file = requestPath.toFile();
+
         if (!file.exists() || file.isDirectory()) {
             // Try serving index.html for SPA routing
-            File indexFile = new File(themeDir, "index.html");
+            Path indexPath = resolveWithinBase(themeDirPath, "index.html");
+            if (indexPath == null) {
+                exchange.sendResponseHeaders(403, -1);
+                return;
+            }
+            File indexFile = indexPath.toFile();
             if (indexFile.exists()) {
                 serveFile(exchange, indexFile);
             } else {
@@ -61,6 +65,25 @@ public class StaticFileHandler implements HttpHandler {
         }
 
         serveFile(exchange, file);
+    }
+
+    static String toRelativePath(String uriPath) {
+        if (uriPath == null || uriPath.isEmpty() || "/".equals(uriPath)) {
+            return "index.html";
+        }
+        String relativePath = uriPath;
+        while (relativePath.startsWith("/")) {
+            relativePath = relativePath.substring(1);
+        }
+        return relativePath.isEmpty() ? "index.html" : relativePath;
+    }
+
+    static Path resolveWithinBase(Path basePath, String relativePath) {
+        Path candidate = basePath.resolve(relativePath).normalize();
+        if (!candidate.startsWith(basePath)) {
+            return null;
+        }
+        return candidate;
     }
 
     private void serveFile(HttpExchange exchange, File file) throws IOException {
