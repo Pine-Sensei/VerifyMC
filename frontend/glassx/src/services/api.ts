@@ -431,8 +431,15 @@ class ApiService {
   }
 
   // 获取用户状态
-  async getUserStatus(): Promise<{ success: boolean; data: { status: string; reason?: string }; message?: string }> {
-    return this.request<{ success: boolean; data: { status: string; reason?: string }; message?: string }>('/user/status')
+  async getUserStatus(language: string = 'zh'): Promise<{ success: boolean; data: { status: string; reason?: string }; message?: string }> {
+    const params = new URLSearchParams({ language })
+    const username = sessionService.getUserInfo()?.username
+
+    if (username) {
+      params.set('username', username)
+    }
+
+    return this.request<{ success: boolean; data: { status: string; reason?: string }; message?: string }>(`/user/status?${params.toString()}`)
   }
 
   // 修改用户密码
