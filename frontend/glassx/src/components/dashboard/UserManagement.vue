@@ -261,7 +261,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, inject, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RefreshCw, Key, Trash2, Ban, CheckCircle } from 'lucide-vue-next'
 import { useNotification } from '@/composables/useNotification'
@@ -286,9 +286,6 @@ const { t, locale } = useI18n()
 const notification = useNotification()
 
 const getWsPort = inject<() => number>('getWsPort', () => window.location.port ? (parseInt(window.location.port, 10) + 1) : 8081)
-
-// Debounce timer for search
-let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
 
 const activeTab = ref('review')
 const actionLoading = ref(false)
@@ -316,16 +313,6 @@ const {
   handlePageSizeChange,
   resetUsersPagination,
 } = useAdminUsers({ locale, t, notification })
-
-// Debounced search - trigger loadAllUsers after 300ms of inactivity
-watch(searchQuery, () => {
-  if (searchDebounceTimer) {
-    clearTimeout(searchDebounceTimer)
-  }
-  searchDebounceTimer = setTimeout(() => {
-    loadAllUsers()
-  }, 300)
-})
 
 const loading = computed(() => usersLoading.value || actionLoading.value)
 
@@ -645,10 +632,6 @@ onMounted(async () => {
 onUnmounted(() => {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.close()
-  }
-  // Clear debounce timer
-  if (searchDebounceTimer) {
-    clearTimeout(searchDebounceTimer)
   }
 })
 </script>
