@@ -201,7 +201,7 @@ public class VerifyMC extends JavaPlugin {
         context.setQuestionnaireApplicationService(new QuestionnaireApplicationService());
 
         // Web auth
-        context.setWebAuthHelper(new WebAuthHelper(this));
+        context.setWebAuthHelper(new WebAuthHelper(this, context.getI18nManager()));
     }
 
     private void initWebLayer(Logger log) {

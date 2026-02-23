@@ -10,6 +10,7 @@ import team.kitemc.verifymc.web.ApiResponseFactory;
 import team.kitemc.verifymc.web.WebResponseHelper;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 public class UserUpdateHandler implements HttpHandler {
@@ -23,7 +24,7 @@ public class UserUpdateHandler implements HttpHandler {
     public void handle(HttpExchange exchange) throws IOException {
         if (!WebResponseHelper.requireMethod(exchange, "POST")) return;
 
-        String username = ctx.getWebAuthHelper().authenticateRequest(exchange);
+        String username = AdminAuthUtil.getAuthenticatedUser(exchange, ctx);
         if (username == null) return;
 
         JSONObject req;
@@ -54,6 +55,31 @@ public class UserUpdateHandler implements HttpHandler {
         if (user == null) {
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
                     ctx.getMessage("error.user_not_found", language)));
+            return;
+        }
+
+        String currentEmail = (String) user.get("email");
+        if (newEmail.equalsIgnoreCase(currentEmail)) {
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.success(
+                    ctx.getMessage("user.update_success", language)));
+            return;
+        }
+
+        if (ctx.getConfigManager().isEmailDomainWhitelistEnabled()) {
+            String domain = newEmail.contains("@") ? newEmail.substring(newEmail.indexOf('@') + 1) : "";
+            List<String> whitelist = ctx.getConfigManager().getEmailDomainWhitelist();
+            if (!whitelist.contains(domain)) {
+                WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                        ctx.getMessage("register.domain_not_allowed", language)));
+                return;
+            }
+        }
+
+        int maxAccounts = ctx.getConfigManager().getMaxAccountsPerEmail();
+        int emailCount = ctx.getUserDao().countUsersByEmail(newEmail);
+        if (emailCount >= maxAccounts) {
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("register.email_limit", language)));
             return;
         }
 

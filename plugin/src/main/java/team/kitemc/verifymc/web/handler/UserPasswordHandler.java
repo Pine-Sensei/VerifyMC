@@ -24,7 +24,7 @@ public class UserPasswordHandler implements HttpHandler {
     public void handle(HttpExchange exchange) throws IOException {
         if (!WebResponseHelper.requireMethod(exchange, "POST")) return;
 
-        String username = ctx.getWebAuthHelper().authenticateRequest(exchange);
+        String username = AdminAuthUtil.getAuthenticatedUser(exchange, ctx);
         if (username == null) return;
 
         JSONObject req;

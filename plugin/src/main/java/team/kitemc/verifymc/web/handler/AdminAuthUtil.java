@@ -109,4 +109,29 @@ public final class AdminAuthUtil {
 
         return ctx.getWebAuthHelper().getUsername(token);
     }
+
+    /**
+     * Attempts to extract the username from a valid token without sending error response.
+     * Useful for endpoints that provide different data based on authentication status.
+     *
+     * @param exchange The HTTP exchange containing the request
+     * @param ctx The plugin context for accessing services
+     * @return The username if token is valid, null otherwise (no error response sent)
+     */
+    public static String getAuthenticatedUserQuietly(HttpExchange exchange, PluginContext ctx) {
+        try {
+            String token = exchange.getRequestHeaders().getFirst("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+
+            if (token == null || !ctx.getWebAuthHelper().isValidToken(token)) {
+                return null;
+            }
+
+            return ctx.getWebAuthHelper().getUsername(token);
+        } catch (Exception e) {
+            return null;
+        }
+    }
 }

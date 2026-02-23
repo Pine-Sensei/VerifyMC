@@ -2,7 +2,6 @@ package team.kitemc.verifymc.web.handler;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import org.bukkit.Bukkit;
 import org.bukkit.Server;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -40,16 +39,19 @@ public class ServerStatusHandler implements HttpHandler {
             players.put("online", server.getOnlinePlayers().size());
             players.put("max", server.getMaxPlayers());
             
-            Collection<? extends Player> onlinePlayers = server.getOnlinePlayers();
-            if (!onlinePlayers.isEmpty()) {
-                JSONArray playerList = new JSONArray();
-                for (Player player : onlinePlayers) {
-                    JSONObject playerInfo = new JSONObject();
-                    playerInfo.put("name", player.getName());
-                    playerInfo.put("uuid", player.getUniqueId().toString());
-                    playerList.put(playerInfo);
+            String authenticatedUser = AdminAuthUtil.getAuthenticatedUserQuietly(exchange, ctx);
+            if (authenticatedUser != null) {
+                Collection<? extends Player> onlinePlayers = server.getOnlinePlayers();
+                if (!onlinePlayers.isEmpty()) {
+                    JSONArray playerList = new JSONArray();
+                    for (Player player : onlinePlayers) {
+                        JSONObject playerInfo = new JSONObject();
+                        playerInfo.put("name", player.getName());
+                        playerInfo.put("uuid", player.getUniqueId().toString());
+                        playerList.put(playerInfo);
+                    }
+                    players.put("list", playerList);
                 }
-                players.put("list", playerList);
             }
             data.put("players", players);
             
@@ -91,7 +93,8 @@ public class ServerStatusHandler implements HttpHandler {
                     return Math.round(tpsArray[0] * 100.0) / 100.0;
                 }
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            ctx.debugLog("Could not retrieve TPS: " + e.getMessage());
         }
         return -1.0;
     }
