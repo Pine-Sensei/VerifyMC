@@ -1,66 +1,66 @@
 <template>
-  <div class="profile-section">
-    <div class="profile-header">
-      <div class="avatar-container">
-        <div class="avatar">
+  <div class="max-w-4xl mx-auto flex flex-col gap-6">
+    <Card class="flex flex-col sm:flex-row items-center gap-6 p-6 text-center sm:text-left">
+      <div class="relative">
+        <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white">
           <User class="w-12 h-12" />
         </div>
-        <div class="status-badge" :class="statusClass">
+        <div class="absolute -bottom-1 -right-1 px-2 py-1 rounded-lg text-[0.7rem] font-semibold whitespace-nowrap" :class="statusClass">
           {{ statusText }}
         </div>
       </div>
-      <div class="profile-info">
-        <h2 class="username">{{ userInfo?.username || 'User' }}</h2>
-        <p class="email">{{ userInfo?.email || '' }}</p>
+      <div class="flex-1">
+        <h2 class="text-2xl font-bold text-white mb-1">{{ userInfo?.username || 'User' }}</h2>
+        <p class="text-white/60 m-0">{{ userInfo?.email || '' }}</p>
       </div>
-    </div>
+    </Card>
 
     <!-- Status Card -->
-    <div class="status-card" :class="statusCardClass">
-      <div class="status-icon-wrapper">
-        <Clock v-if="userStatus === 'pending'" class="status-icon" />
-        <CheckCircle v-else-if="userStatus === 'approved'" class="status-icon" />
-        <XCircle v-else class="status-icon" />
+    <Card class="border-l-4 p-5 flex items-start gap-4" :class="statusCardClass">
+      <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" :class="statusIconWrapperClass">
+        <Clock v-if="userStatus === 'pending'" class="w-6 h-6" />
+        <CheckCircle v-else-if="userStatus === 'approved'" class="w-6 h-6" />
+        <XCircle v-else class="w-6 h-6" />
       </div>
-      <div class="status-content">
-        <h3 class="status-title">{{ $t(`user_status.status.${userStatus}`) }}</h3>
-        <p class="status-message">{{ $t(`user_status.messages.${userStatus}`) }}</p>
-        <p v-if="userStatus === 'rejected' && rejectReason" class="reject-reason">
+      <div class="flex-1">
+        <h3 class="text-lg font-semibold text-white mb-1">{{ $t(`user_status.status.${userStatus}`) }}</h3>
+        <p class="text-white/70 text-sm m-0">{{ $t(`user_status.messages.${userStatus}`) }}</p>
+        <p v-if="userStatus === 'rejected' && rejectReason" class="text-white/60 mt-2 text-sm">
           {{ $t('user_status.reason') }}: {{ rejectReason }}
         </p>
       </div>
-    </div>
+    </Card>
 
     <!-- Profile Form -->
-    <div class="profile-form glass-card">
-      <h3 class="form-title">{{ $t('dashboard.profile.edit_profile') }}</h3>
+    <Card class="p-6">
+      <h3 class="text-lg font-semibold text-white mb-5">{{ $t('dashboard.profile.edit_profile') }}</h3>
 
-      <div class="form-grid">
-        <div class="form-group">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="flex flex-col gap-2">
           <Label>{{ $t('register.form.username') }}</Label>
-          <Input :value="userInfo?.username" disabled class="input-disabled" />
+          <Input :value="userInfo?.username" disabled class="opacity-60 cursor-not-allowed" />
         </div>
 
-        <div class="form-group">
+        <div class="flex flex-col gap-2">
           <Label>{{ $t('register.form.email') }}</Label>
           <Input v-model="form.email" :placeholder="$t('register.form.email_placeholder')" :disabled="saving" />
         </div>
       </div>
 
-      <div class="form-actions">
+      <div class="mt-5 flex justify-end">
         <Button @click="saveProfile" :disabled="saving" variant="default">
-          <div v-if="saving" class="spinner-small"></div>
+          <div v-if="saving" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
           {{ saving ? $t('common.loading') : $t('common.save') }}
         </Button>
       </div>
-    </div>
+    </Card>
 
     <!-- Change Password -->
-    <div class="password-section glass-card">
-      <h3 class="form-title">{{ $t('dashboard.profile.change_password') }}</h3>
+    <Card class="p-6">
+      <h3 class="text-lg font-semibold text-white mb-5">{{ $t('dashboard.profile.change_password') }}</h3>
 
-      <div class="form-grid">
-        <div class="form-group">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="flex flex-col gap-2">
           <Label>{{ $t('dashboard.profile.current_password') }}</Label>
           <Input
             v-model="passwordForm.currentPassword"
@@ -70,7 +70,7 @@
           />
         </div>
 
-        <div class="form-group">
+        <div class="flex flex-col gap-2">
           <Label>{{ $t('dashboard.profile.new_password') }}</Label>
           <Input
             v-model="passwordForm.newPassword"
@@ -81,40 +81,41 @@
         </div>
       </div>
 
-      <div class="form-actions">
+      <div class="mt-5 flex justify-end">
         <Button @click="changePassword" :disabled="changingPassword" variant="outline">
-          <div v-if="changingPassword" class="spinner-small"></div>
+          <div v-if="changingPassword" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
           {{ changingPassword ? $t('common.loading') : $t('dashboard.profile.change_password_btn') }}
         </Button>
       </div>
-    </div>
+    </Card>
 
     <!-- Discord Status -->
-    <div v-if="discordEnabled" class="discord-section glass-card">
-      <h3 class="form-title">{{ $t('discord.linked') }}</h3>
-      <div class="discord-content">
-        <div v-if="discordStatus?.linked" class="discord-linked">
-          <div class="discord-avatar">
+    <Card v-if="discordEnabled" class="p-6">
+      <h3 class="text-lg font-semibold text-white mb-5">{{ $t('discord.linked') }}</h3>
+      <div class="flex items-center">
+        <div v-if="discordStatus?.linked" class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-[#5865F2]/20 flex items-center justify-center text-[#5865F2] overflow-hidden">
             <img
               v-if="discordStatus.user?.avatar"
               :src="`https://cdn.discordapp.com/avatars/${discordStatus.user.id}/${discordStatus.user.avatar}.png`"
               alt="Discord Avatar"
+              class="w-full h-full object-cover"
             />
             <User v-else class="w-8 h-8" />
           </div>
-          <div class="discord-info">
-            <span class="discord-name">{{ discordStatus.user?.globalName || discordStatus.user?.username }}</span>
-            <span class="discord-tag">@{{ discordStatus.user?.username }}</span>
+          <div class="flex flex-col">
+            <span class="font-semibold text-white">{{ discordStatus.user?.globalName || discordStatus.user?.username }}</span>
+            <span class="text-sm text-white/50">@{{ discordStatus.user?.username }}</span>
           </div>
         </div>
-        <div v-else class="discord-unlinked">
-          <p>{{ $t('discord.required_hint') }}</p>
+        <div v-else class="flex items-center justify-between w-full">
+          <p class="text-white/60 m-0">{{ $t('discord.required_hint') }}</p>
           <Button @click="linkDiscord" variant="outline">
             {{ $t('discord.link_button') }}
           </Button>
         </div>
       </div>
-    </div>
+    </Card>
   </div>
 </template>
 
@@ -128,6 +129,7 @@ import { apiService, type ConfigResponse } from '@/services/api'
 import Label from '@/components/ui/Label.vue'
 import Input from '@/components/ui/Input.vue'
 import Button from '@/components/ui/Button.vue'
+import Card from '@/components/ui/Card.vue'
 
 // Type definitions
 type UserStatus = 'pending' | 'approved' | 'rejected'
@@ -171,9 +173,9 @@ const discordEnabled = computed(() => config.value?.discord?.enabled)
 
 const statusClass = computed(() => {
   switch (userStatus.value) {
-    case 'pending': return 'status-pending'
-    case 'approved': return 'status-approved'
-    case 'rejected': return 'status-rejected'
+    case 'pending': return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+    case 'approved': return 'bg-green-500/20 text-green-500 border border-green-500/30'
+    case 'rejected': return 'bg-red-500/20 text-red-500 border border-red-500/30'
     default: return ''
   }
 })
@@ -182,9 +184,18 @@ const statusText = computed(() => t(`user_status.status.${userStatus.value}`))
 
 const statusCardClass = computed(() => {
   switch (userStatus.value) {
-    case 'pending': return 'card-pending'
-    case 'approved': return 'card-approved'
-    case 'rejected': return 'card-rejected'
+    case 'pending': return 'bg-yellow-500/10 border-yellow-500'
+    case 'approved': return 'bg-green-500/10 border-green-500'
+    case 'rejected': return 'bg-red-500/10 border-red-500'
+    default: return ''
+  }
+})
+
+const statusIconWrapperClass = computed(() => {
+  switch (userStatus.value) {
+    case 'pending': return 'bg-yellow-500/20 text-yellow-400'
+    case 'approved': return 'bg-green-500/20 text-green-500'
+    case 'rejected': return 'bg-red-500/20 text-red-500'
     default: return ''
   }
 })
@@ -292,270 +303,3 @@ onMounted(() => {
   }
 })
 </script>
-
-<style scoped>
-.profile-section {
-  max-width: 800px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.profile-header {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 1.5rem;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.avatar-container {
-  position: relative;
-}
-
-.avatar {
-  width: 80px;
-  height: 80px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-}
-
-.status-badge {
-  position: absolute;
-  bottom: -4px;
-  right: -4px;
-  padding: 0.25rem 0.5rem;
-  border-radius: 8px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.status-pending {
-  background: rgba(234, 179, 8, 0.2);
-  color: #fbbf24;
-  border: 1px solid rgba(234, 179, 8, 0.3);
-}
-
-.status-approved {
-  background: rgba(34, 197, 94, 0.2);
-  color: #22c55e;
-  border: 1px solid rgba(34, 197, 94, 0.3);
-}
-
-.status-rejected {
-  background: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
-.profile-info {
-  flex: 1;
-}
-
-.username {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: white;
-  margin: 0 0 0.25rem 0;
-}
-
-.email {
-  color: rgba(255, 255, 255, 0.6);
-  margin: 0;
-}
-
-/* Status Card */
-.status-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  padding: 1.25rem;
-  border-radius: 12px;
-  border-left: 4px solid;
-}
-
-.card-pending {
-  background: rgba(234, 179, 8, 0.1);
-  border-color: #eab308;
-}
-
-.card-approved {
-  background: rgba(34, 197, 94, 0.1);
-  border-color: #22c55e;
-}
-
-.card-rejected {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: #ef4444;
-}
-
-.status-icon-wrapper {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.card-pending .status-icon-wrapper {
-  background: rgba(234, 179, 8, 0.2);
-  color: #fbbf24;
-}
-
-.card-approved .status-icon-wrapper {
-  background: rgba(34, 197, 94, 0.2);
-  color: #22c55e;
-}
-
-.card-rejected .status-icon-wrapper {
-  background: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-}
-
-.status-icon {
-  width: 24px;
-  height: 24px;
-}
-
-.status-content {
-  flex: 1;
-}
-
-.status-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: white;
-  margin: 0 0 0.25rem 0;
-}
-
-.status-message {
-  color: rgba(255, 255, 255, 0.7);
-  margin: 0;
-  font-size: 0.875rem;
-}
-
-.reject-reason {
-  color: rgba(255, 255, 255, 0.6);
-  margin: 0.5rem 0 0 0;
-  font-size: 0.875rem;
-}
-
-/* Form Styles */
-.glass-card {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 1.5rem;
-}
-
-.form-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: white;
-  margin: 0 0 1.25rem 0;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.input-disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.form-actions {
-  margin-top: 1.25rem;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.spinner-small {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-right: 0.5rem;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Discord Section */
-.discord-content {
-  display: flex;
-  align-items: center;
-}
-
-.discord-linked {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.discord-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: rgba(88, 101, 242, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #5865f2;
-  overflow: hidden;
-}
-
-.discord-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.discord-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.discord-name {
-  font-weight: 600;
-  color: white;
-}
-
-.discord-tag {
-  font-size: 0.875rem;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.discord-unlinked {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.discord-unlinked p {
-  color: rgba(255, 255, 255, 0.6);
-  margin: 0;
-}
-</style>

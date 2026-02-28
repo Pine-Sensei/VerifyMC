@@ -1,105 +1,125 @@
 <template>
-  <div class="dashboard-container">
+  <div class="min-h-screen w-full relative">
     <!-- Mobile Header -->
-    <header class="mobile-header">
-      <button @click="toggleMobileMenu" class="hamburger-btn">
+    <header class="lg:hidden fixed top-0 w-full z-40 bg-white/5 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-4 h-16">
+      <Button @click="toggleMobileMenu" variant="outline" size="icon" class="lg:hidden border-white/10 bg-white/5 text-white hover:bg-white/10">
         <Menu class="w-6 h-6" />
-      </button>
-      <h1 class="mobile-title">{{ serverName }}</h1>
+      </Button>
+      <h1 class="text-lg font-bold text-white">{{ serverName }}</h1>
       <LanguageSwitcher />
     </header>
 
     <!-- Mobile Overlay -->
-    <div v-if="mobileMenuOpen" class="mobile-overlay" @click="closeMobileMenu"></div>
+    <div v-if="mobileMenuOpen" class="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm" @click="closeMobileMenu"></div>
 
     <!-- Sidebar -->
-    <aside class="sidebar" :class="{ 'sidebar-collapsed': sidebarCollapsed, 'sidebar-mobile-open': mobileMenuOpen }">
-      <div class="sidebar-header">
-        <div class="sidebar-logo">
-          <div class="logo-icon">
+    <aside 
+      class="fixed left-0 top-0 h-full bg-white/5 backdrop-blur-xl border-r border-white/10 z-50 transition-all duration-300 flex flex-col"
+      :class="[
+        sidebarCollapsed ? 'w-20' : 'w-64',
+        mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      ]"
+    >
+      <!-- Sidebar Header -->
+      <div class="h-16 flex items-center justify-between px-4 border-b border-white/10 shrink-0">
+        <div class="flex items-center gap-3 overflow-hidden">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white shrink-0">
             <Server class="w-6 h-6" />
           </div>
-          <span v-if="!sidebarCollapsed" class="logo-text">{{ serverName }}</span>
+          <span v-if="!sidebarCollapsed" class="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-br from-blue-400 to-purple-500 whitespace-nowrap">{{ serverName }}</span>
         </div>
-        <button @click="toggleSidebar" class="sidebar-toggle">
+        <Button v-if="!mobileMenuOpen" @click="toggleSidebar" variant="outline" size="icon" class="hidden lg:flex w-7 h-7 border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10">
           <ChevronLeft v-if="!sidebarCollapsed" class="w-4 h-4" />
           <ChevronRight v-else class="w-4 h-4" />
-        </button>
+        </Button>
       </div>
 
-      <nav class="sidebar-nav">
+      <!-- Navigation -->
+      <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-6">
         <!-- Player Section -->
-        <div class="nav-section">
-          <div v-if="!sidebarCollapsed" class="nav-section-title">{{ $t('dashboard.sections.player') }}</div>
-          <div class="nav-items">
-            <button
-              v-for="item in playerMenuItems"
-              :key="item.id"
-              @click="setActiveSection(item.id)"
-              :class="['nav-item', { 'nav-item-active': activeSection === item.id }]"
-              :title="sidebarCollapsed ? item.label : ''"
-            >
-              <component :is="item.icon" class="nav-icon" />
-              <span v-if="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
-            </button>
-          </div>
+        <div class="space-y-1">
+          <div v-if="!sidebarCollapsed" class="px-3 text-xs font-semibold uppercase tracking-wider text-white/40 mb-2">{{ $t('dashboard.sections.player') }}</div>
+          <button
+            v-for="item in playerMenuItems"
+            :key="item.id"
+            @click="setActiveSection(item.id)"
+            class="w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all group relative"
+            :class="[
+              activeSection === item.id 
+                ? 'bg-white/10 text-white border-l-2 border-blue-400' 
+                : 'text-white/60 hover:bg-white/10 hover:text-white'
+            ]"
+            :title="sidebarCollapsed ? item.label : ''"
+          >
+            <component :is="item.icon" class="w-5 h-5 shrink-0" />
+            <span v-if="!sidebarCollapsed" class="text-sm font-medium whitespace-nowrap">{{ item.label }}</span>
+          </button>
         </div>
 
         <!-- Admin Section -->
-        <div v-if="isAdmin" class="nav-section">
-          <div v-if="!sidebarCollapsed" class="nav-section-title">{{ $t('dashboard.sections.admin') }}</div>
-          <div class="nav-items">
-            <button
-              v-for="item in adminMenuItems"
-              :key="item.id"
-              @click="setActiveSection(item.id)"
-              :class="['nav-item', { 'nav-item-active': activeSection === item.id }]"
-              :title="sidebarCollapsed ? item.label : ''"
-            >
-              <component :is="item.icon" class="nav-icon" />
-              <span v-if="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
-            </button>
-          </div>
+        <div v-if="isAdmin" class="space-y-1">
+          <div v-if="!sidebarCollapsed" class="px-3 text-xs font-semibold uppercase tracking-wider text-white/40 mb-2">{{ $t('dashboard.sections.admin') }}</div>
+          <button
+            v-for="item in adminMenuItems"
+            :key="item.id"
+            @click="setActiveSection(item.id)"
+            class="w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all group relative"
+            :class="[
+              activeSection === item.id 
+                ? 'bg-white/10 text-white border-l-2 border-blue-400' 
+                : 'text-white/60 hover:bg-white/10 hover:text-white'
+            ]"
+            :title="sidebarCollapsed ? item.label : ''"
+          >
+            <component :is="item.icon" class="w-5 h-5 shrink-0" />
+            <span v-if="!sidebarCollapsed" class="text-sm font-medium whitespace-nowrap">{{ item.label }}</span>
+          </button>
         </div>
       </nav>
 
       <!-- User Info -->
-      <div class="sidebar-footer">
-        <div class="user-info">
-          <div class="user-avatar">
+      <div class="p-4 border-t border-white/10 bg-white/5 shrink-0">
+        <div class="flex items-center gap-3 mb-3 overflow-hidden">
+          <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white shrink-0">
             <User class="w-5 h-5" />
           </div>
-          <div v-if="!sidebarCollapsed" class="user-details">
-            <span class="user-name">{{ userInfo?.username || 'User' }}</span>
-            <span v-if="isAdmin" class="user-role">{{ $t('dashboard.roles.admin') }}</span>
-            <span v-else class="user-role">{{ $t('dashboard.roles.player') }}</span>
+          <div v-if="!sidebarCollapsed" class="flex flex-col overflow-hidden">
+            <span class="text-sm font-semibold text-white truncate">{{ userInfo?.username || 'User' }}</span>
+            <span class="text-xs text-white/50 truncate">{{ isAdmin ? $t('dashboard.roles.admin') : $t('dashboard.roles.player') }}</span>
           </div>
         </div>
-        <button @click="handleLogout" class="logout-btn" :title="$t('nav.logout')">
+        <Button @click="handleLogout" variant="outline" class="w-full gap-2 bg-red-500/10 hover:bg-red-500/20 border-red-500/20 text-red-400 hover:text-red-300 hover:border-red-500/30">
           <LogOut class="w-4 h-4" />
           <span v-if="!sidebarCollapsed">{{ $t('nav.logout') }}</span>
-        </button>
+        </Button>
       </div>
     </aside>
 
     <!-- Main Content -->
-    <main class="main-content">
-      <div class="content-header">
-        <h1 class="page-title">{{ currentSectionTitle }}</h1>
-        <div class="header-actions">
-          <LanguageSwitcher />
+    <main 
+      class="min-h-screen transition-all duration-300 flex flex-col"
+      :class="[
+        sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
+      ]"
+    >
+      <div class="pt-20 lg:pt-8 px-4 lg:px-8 pb-8 flex-1">
+        <div class="mb-6 flex items-center justify-between">
+          <h1 class="text-2xl font-bold text-white">{{ currentSectionTitle }}</h1>
+          <div class="hidden lg:block">
+            <LanguageSwitcher />
+          </div>
         </div>
-      </div>
 
-      <div class="content-body">
-        <!-- Player Sections -->
-        <ProfileSection v-if="activeSection === 'profile'" />
-        <DownloadCenter v-if="activeSection === 'downloads'" />
+        <div class="relative">
+          <!-- Player Sections -->
+          <ProfileSection v-if="activeSection === 'profile'" />
+          <DownloadCenter v-if="activeSection === 'downloads'" />
 
-        <!-- Admin Sections -->
-        <ServerStatus v-if="activeSection === 'server-status' && isAdmin" />
-        <UserManagement v-if="activeSection === 'user-management' && isAdmin" />
-        <AuditLog v-if="activeSection === 'audit-log' && isAdmin" />
+          <!-- Admin Sections -->
+          <ServerStatus v-if="activeSection === 'server-status' && isAdmin" />
+          <UserManagement v-if="activeSection === 'user-management' && isAdmin" />
+          <AuditLog v-if="activeSection === 'audit-log' && isAdmin" />
+        </div>
       </div>
     </main>
   </div>
@@ -123,6 +143,7 @@ import {
 } from 'lucide-vue-next'
 import { sessionService, type UserInfo } from '@/services/session'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import Button from '@/components/ui/Button.vue'
 
 // Section components - lazy loaded for better performance
 const ProfileSection = defineAsyncComponent(() => import('@/components/dashboard/ProfileSection.vue'))
@@ -225,354 +246,4 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
-.dashboard-container {
-  display: flex;
-  min-height: 100vh;
-  background: #030303;
-}
 
-/* Sidebar Styles */
-.sidebar {
-  width: 260px;
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-  display: flex;
-  flex-direction: column;
-  transition: width 0.3s ease;
-  position: fixed;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  z-index: 100;
-}
-
-.sidebar-collapsed {
-  width: 72px;
-}
-
-.sidebar-header {
-  padding: 1.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.sidebar-logo {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.logo-icon {
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  flex-shrink: 0;
-}
-
-.logo-text {
-  font-size: 1.125rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.sidebar-toggle {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.sidebar-toggle:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-}
-
-/* Navigation */
-.sidebar-nav {
-  flex: 1;
-  padding: 1rem 0.75rem;
-  overflow-y: auto;
-}
-
-.nav-section {
-  margin-bottom: 1.5rem;
-}
-
-.nav-section-title {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: rgba(255, 255, 255, 0.4);
-  padding: 0 0.75rem;
-  margin-bottom: 0.5rem;
-}
-
-.nav-items {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  border-radius: 10px;
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.7);
-  cursor: pointer;
-  transition: all 0.2s;
-  width: 100%;
-  text-align: left;
-}
-
-.nav-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: white;
-}
-
-.nav-item-active {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
-  color: white;
-  border: 1px solid rgba(139, 92, 246, 0.3);
-}
-
-.nav-icon {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-}
-
-.nav-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-/* Sidebar Footer */
-.sidebar-footer {
-  padding: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
-.user-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  flex-shrink: 0;
-}
-
-.user-details {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.user-name {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: white;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.user-role {
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.logout-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.625rem;
-  border-radius: 8px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.logout-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: rgba(239, 68, 68, 0.3);
-}
-
-/* Main Content */
-.main-content {
-  flex: 1;
-  margin-left: 260px;
-  transition: margin-left 0.3s ease;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-.sidebar-collapsed + .main-content {
-  margin-left: 72px;
-}
-
-.content-header {
-  padding: 1.5rem 2rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: rgba(255, 255, 255, 0.02);
-  position: sticky;
-  top: 0;
-  z-index: 50;
-}
-
-.page-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: white;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.content-body {
-  flex: 1;
-  padding: 2rem;
-  overflow-y: auto;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .mobile-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1rem;
-    background: rgba(15, 23, 42, 0.95);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 100;
-  }
-
-  .hamburger-btn {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    padding: 0.5rem;
-    color: white;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .hamburger-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-  }
-
-  .mobile-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: white;
-  }
-
-  .mobile-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 199;
-  }
-
-  .sidebar {
-    width: 280px;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    z-index: 200;
-  }
-
-  .sidebar.sidebar-mobile-open {
-    transform: translateX(0);
-  }
-
-  .sidebar .sidebar-toggle {
-    display: none;
-  }
-
-  .main-content {
-    margin-left: 0;
-    padding-top: 60px;
-  }
-
-  .content-header {
-    padding: 1rem;
-  }
-
-  .content-body {
-    padding: 1rem;
-  }
-}
-
-/* Desktop - hide mobile header */
-@media (min-width: 769px) {
-  .mobile-header {
-    display: none;
-  }
-
-  .mobile-overlay {
-    display: none;
-  }
-}
-</style>

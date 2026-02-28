@@ -22,9 +22,11 @@
           <LanguageSwitcher class="text-white" />
           
           <!-- Mobile Menu Button -->
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             @click="toggleMobileMenu"
-            class="md:hidden flex items-center justify-center p-2 rounded-lg text-white hover:bg-white/10 border border-transparent transition-all duration-300"
+            class="md:hidden text-white"
             aria-label="Toggle mobile menu"
           >
             <svg
@@ -49,7 +51,7 @@
                 d="M6 18L18 6M6 6l12 12"
               />
             </svg>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -72,6 +74,7 @@
 import { inject, computed, ref, type Ref } from 'vue'
 import LanguageSwitcher from './LanguageSwitcher.vue'
 import AnimatedMenuBar from './AnimatedMenuBar.vue'
+import Button from '@/components/ui/Button.vue'
 
 interface AppConfig {
   webServerPrefix?: string
@@ -89,23 +92,6 @@ const toggleMobileMenu = () => {
 
 <style scoped>
 /* Navigation container - replaced by Tailwind classes */
-
-/* Gradient accent line at top */
-.nav-gradient-line {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, 
-    transparent 0%, 
-    rgba(59, 130, 246, 0.5) 20%, 
-    rgba(139, 92, 246, 0.5) 50%, 
-    rgba(236, 72, 153, 0.5) 80%, 
-    transparent 100%
-  );
-  opacity: 0.8;
-}
 
 /* Logo styling */
 .logo-link {

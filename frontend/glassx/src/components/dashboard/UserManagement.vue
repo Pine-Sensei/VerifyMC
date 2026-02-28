@@ -1,23 +1,25 @@
 <template>
-  <div class="user-management">
+  <div class="w-full space-y-6">
     <Tabs :tabs="tabs" :default-tab="activeTab" @tab-change="onTabChange">
       <template #default="{ activeTab }">
         <!-- Pending Users Tab -->
-        <div v-if="activeTab === 'review'" class="tab-content">
-          <div class="tab-header">
-            <h3 class="tab-title">{{ $t('admin.review.title') }}</h3>
-            <button
+        <div v-if="activeTab === 'review'" class="space-y-4 pt-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xl font-semibold text-white">{{ $t('admin.review.title') }}</h3>
+            <Button
               @click="loadPendingUsers"
               :disabled="loading"
-              class="refresh-btn"
+              variant="outline"
+              size="icon"
               :title="$t('common.refresh')"
             >
               <RefreshCw class="w-5 h-5" :class="{ 'animate-spin': loading }" />
-            </button>
+            </Button>
           </div>
 
-          <div class="table-container">
-            <Table class="min-w-[600px]">
+          <Card class="overflow-hidden">
+            <div class="overflow-x-auto">
+              <Table class="min-w-full">
               <TableHeader>
                 <TableRow>
                   <TableHead>{{ $t('admin.review.table.username') }}</TableHead>
@@ -25,7 +27,7 @@
                   <TableHead>{{ $t('admin.review.table.register_time') }}</TableHead>
                   <TableHead v-if="showQuestionnaireScoreColumn">{{ $t('admin.review.table.questionnaire_score') }}</TableHead>
                   <TableHead v-if="showQuestionnaireReasonColumn">{{ $t('admin.review.table.questionnaire_reason') }}</TableHead>
-                  <TableHead class="w-[150px]">{{ $t('admin.review.table.actions') }}</TableHead>
+                  <TableHead class="w-40">{{ $t('admin.review.table.actions') }}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -40,6 +42,7 @@
                       <Button
                         variant="outline"
                         size="sm"
+                        class="h-8 text-green-400 border-green-500/30 hover:bg-green-500/10 hover:text-green-300"
                         @click="approveUser(user)"
                         :disabled="loading || processingUsers.has(user.username)"
                       >
@@ -48,6 +51,7 @@
                       <Button
                         variant="outline"
                         size="sm"
+                        class="h-8 text-red-400 border-red-500/30 hover:bg-red-500/10 hover:text-red-300"
                         @click="openRejectDialog(user)"
                         :disabled="loading || processingUsers.has(user.username)"
                       >
@@ -63,39 +67,42 @@
                 </TableRow>
               </TableBody>
             </Table>
-          </div>
+            </div>
+          </Card>
         </div>
 
         <!-- All Users Tab -->
-        <div v-if="activeTab === 'users'" class="tab-content">
-          <div class="tab-header">
-            <h3 class="tab-title">{{ $t('admin.users.title') }}</h3>
-            <button
+        <div v-if="activeTab === 'users'" class="space-y-4 pt-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xl font-semibold text-white">{{ $t('admin.users.title') }}</h3>
+            <Button
               @click="loadAllUsers"
               :disabled="loading"
-              class="refresh-btn"
+              variant="outline"
+              size="icon"
               :title="$t('common.refresh')"
             >
               <RefreshCw class="w-5 h-5" :class="{ 'animate-spin': loading }" />
-            </button>
+            </Button>
           </div>
 
-          <div class="search-container">
+          <div class="max-w-md">
             <SearchBar
               v-model="searchQuery"
               :placeholder="$t('admin.users.search_placeholder')"
             />
           </div>
 
-          <div class="table-container">
-            <Table class="min-w-[600px] text-xs sm:text-sm">
-              <TableHeader>
+          <Card class="overflow-hidden">
+            <div class="overflow-x-auto">
+              <Table class="min-w-full text-xs sm:text-sm">
+                <TableHeader>
                 <TableRow>
                   <TableHead>{{ $t('admin.users.table.username') }}</TableHead>
                   <TableHead>{{ $t('admin.users.table.email') }}</TableHead>
                   <TableHead>{{ $t('admin.users.table.status') }}</TableHead>
                   <TableHead>{{ $t('admin.users.table.register_time') }}</TableHead>
-                  <TableHead class="w-[200px]">{{ $t('admin.users.table.actions') }}</TableHead>
+                  <TableHead class="w-48">{{ $t('admin.users.table.actions') }}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -110,40 +117,48 @@
                   <TableCell>{{ formatDate(user.regTime) }}</TableCell>
                   <TableCell>
                     <div class="flex items-center gap-2">
-                      <button
+                      <Button
                         @click="showPasswordDialog = true; selectedUser = user; newPassword = ''"
                         :disabled="loading"
-                        class="action-btn blue"
+                        variant="ghost"
+                        size="icon"
+                        class="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
                         :title="$t('admin.users.actions.change_password')"
                       >
                         <Key class="w-4 h-4" />
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         @click="showDeleteConfirm(user)"
                         :disabled="loading"
-                        class="action-btn red"
+                        variant="ghost"
+                        size="icon"
+                        class="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10"
                         :title="$t('admin.users.actions.delete')"
                       >
                         <Trash2 class="w-4 h-4" />
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         v-if="user.status !== 'banned'"
                         @click="showBanConfirm(user)"
                         :disabled="loading"
-                        class="action-btn red"
+                        variant="ghost"
+                        size="icon"
+                        class="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10"
                         :title="$t('admin.users.actions.ban')"
                       >
                         <Ban class="w-4 h-4" />
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         v-if="user.status === 'banned'"
                         @click="showUnbanConfirm(user)"
                         :disabled="loading"
-                        class="action-btn green"
+                        variant="ghost"
+                        size="icon"
+                        class="h-8 w-8 text-green-400 hover:text-green-300 hover:bg-green-500/10"
                         :title="$t('admin.users.actions.unban')"
                       >
                         <CheckCircle class="w-4 h-4" />
-                      </button>
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -154,7 +169,8 @@
                 </TableRow>
               </TableBody>
             </Table>
-          </div>
+            </div>
+          </Card>
 
           <Pagination
             :current-page="currentPage"
@@ -205,24 +221,26 @@
     />
 
     <!-- Reject Dialog -->
-    <div v-if="rejectDialog.show" class="modal-overlay">
-      <div class="modal-backdrop" @click="closeRejectDialog"></div>
-      <div class="modal-dialog">
-        <h3 class="modal-title">{{ $t('admin.review.reject_modal.title') }}</h3>
-        <div class="modal-content">
-          <Label for="rejectReason" class="modal-label">{{ $t('admin.review.reject_modal.reason_label') }}</Label>
-          <textarea
-            id="rejectReason"
-            v-model="rejectDialog.reason"
-            class="modal-textarea"
-            :placeholder="$t('admin.review.reject_modal.reason_placeholder')"
-          />
+    <div v-if="rejectDialog.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="fixed inset-0 bg-black/80 backdrop-blur-xl" @click="closeRejectDialog"></div>
+      <div class="relative w-full max-w-md bg-white/5 border border-white/10 rounded-xl p-6 shadow-2xl backdrop-blur-xl">
+        <h3 class="text-xl font-semibold text-white mb-5 text-center">{{ $t('admin.review.reject_modal.title') }}</h3>
+        <div class="space-y-4 mb-6">
+          <div>
+            <Label for="rejectReason" class="block text-sm font-medium text-white mb-2">{{ $t('admin.review.reject_modal.reason_label') }}</Label>
+            <textarea
+              id="rejectReason"
+              v-model="rejectDialog.reason"
+              class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/50 min-h-24 resize-y placeholder-white/30"
+              :placeholder="$t('admin.review.reject_modal.reason_placeholder')"
+            />
+          </div>
         </div>
-        <div class="modal-actions">
-          <Button variant="outline" @click="closeRejectDialog" class="btn-cancel">
+        <div class="flex justify-end gap-3">
+          <Button variant="outline" @click="closeRejectDialog">
             {{ $t('admin.review.reject_modal.cancel') }}
           </Button>
-          <Button @click="confirmReject" :disabled="rejectDialog.processing" class="btn-danger">
+          <Button @click="confirmReject" :disabled="rejectDialog.processing" variant="destructive">
             {{ $t('admin.review.reject_modal.confirm') }}
           </Button>
         </div>
@@ -230,25 +248,26 @@
     </div>
 
     <!-- Password Dialog -->
-    <div v-if="showPasswordDialog" class="modal-overlay">
-      <div class="modal-backdrop" @click="showPasswordDialog = false"></div>
-      <div class="modal-dialog">
-        <h3 class="modal-title">{{ $t('admin.users.change_password_modal.title') }}</h3>
-        <div class="modal-content">
-          <Label forId="newPassword" class="modal-label">{{ $t('admin.users.change_password_modal.new_password') }}</Label>
-          <input
-            id="newPassword"
-            v-model="newPassword"
-            type="password"
-            class="modal-input"
-            :placeholder="$t('admin.users.change_password_modal.password_placeholder')"
-          />
+    <div v-if="showPasswordDialog" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="fixed inset-0 bg-black/80 backdrop-blur-xl" @click="showPasswordDialog = false"></div>
+      <div class="relative w-full max-w-md bg-white/5 border border-white/10 rounded-xl p-6 shadow-2xl backdrop-blur-xl">
+        <h3 class="text-xl font-semibold text-white mb-5 text-center">{{ $t('admin.users.change_password_modal.title') }}</h3>
+        <div class="space-y-4 mb-6">
+          <div>
+            <Label forId="newPassword" class="block text-sm font-medium text-white mb-2">{{ $t('admin.users.change_password_modal.new_password') }}</Label>
+            <Input
+              id="newPassword"
+              v-model="newPassword"
+              type="password"
+              :placeholder="$t('admin.users.change_password_modal.password_placeholder')"
+            />
+          </div>
         </div>
-        <div class="modal-actions">
-          <Button variant="outline" @click="showPasswordDialog = false" class="btn-cancel">
+        <div class="flex justify-end gap-3">
+          <Button variant="outline" @click="showPasswordDialog = false">
             {{ $t('common.cancel') }}
           </Button>
-          <Button @click="confirmChangePassword" :disabled="!newPassword" class="btn-primary">
+          <Button @click="confirmChangePassword" :disabled="!newPassword" variant="default">
             {{ $t('common.save') }}
           </Button>
         </div>
@@ -268,6 +287,7 @@ import { useNotification } from '@/composables/useNotification'
 import { useAdminUsers } from '@/composables/useAdminUsers'
 import { apiService, type PendingUser } from '@/services/api'
 import { sessionService } from '@/services/session'
+import Card from '@/components/ui/Card.vue'
 import Tabs from '@/components/ui/Tabs.vue'
 import Table from '@/components/ui/Table.vue'
 import TableHeader from '@/components/ui/TableHeader.vue'
@@ -277,6 +297,7 @@ import TableHead from '@/components/ui/TableHead.vue'
 import TableCell from '@/components/ui/TableCell.vue'
 import Button from '@/components/ui/Button.vue'
 import Label from '@/components/ui/Label.vue'
+import Input from '@/components/ui/Input.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import SearchBar from '@/components/ui/SearchBar.vue'
 import Pagination from '@/components/ui/Pagination.vue'
@@ -355,7 +376,7 @@ const getStatusClass = (status: string) => {
     case 'banned':
       return `${baseClasses} bg-red-500/20 text-red-300`
     default:
-      return `${baseClasses} bg-gray-500/20 text-gray-300`
+      return `${baseClasses} bg-white/5 text-white/70`
   }
 }
 
@@ -635,254 +656,3 @@ onUnmounted(() => {
   }
 })
 </script>
-
-<style scoped>
-.user-management {
-  width: 100%;
-}
-
-.tab-content {
-  padding-top: 1rem;
-}
-
-.tab-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.tab-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: white;
-  margin: 0;
-}
-
-.refresh-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.refresh-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-}
-
-.refresh-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.search-container {
-  max-width: 400px;
-  margin-bottom: 1rem;
-}
-
-.table-container {
-  overflow-x: auto;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.action-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.action-btn.blue {
-  background: rgba(59, 130, 246, 0.1);
-  border-color: rgba(59, 130, 246, 0.3);
-  color: #3b82f6;
-}
-
-.action-btn.blue:hover {
-  background: rgba(59, 130, 246, 0.2);
-}
-
-.action-btn.red {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.3);
-  color: #ef4444;
-}
-
-.action-btn.red:hover {
-  background: rgba(239, 68, 68, 0.2);
-}
-
-.action-btn.green {
-  background: rgba(34, 197, 94, 0.1);
-  border-color: rgba(34, 197, 94, 0.3);
-  color: #22c55e;
-}
-
-.action-btn.green:hover {
-  background: rgba(34, 197, 94, 0.2);
-}
-
-.action-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Modal Styles */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 99999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-}
-
-.modal-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  z-index: 99998;
-}
-
-.modal-dialog {
-  position: relative;
-  background: rgba(15, 15, 15, 0.95);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border-radius: 16px;
-  padding: 1.5rem;
-  width: 100%;
-  max-width: 28rem;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
-  z-index: 99999;
-}
-
-.modal-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: white;
-  margin: 0 0 1.25rem 0;
-  text-align: center;
-}
-
-.modal-content {
-  margin-bottom: 1.25rem;
-}
-
-.modal-label {
-  display: block;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: white;
-  margin-bottom: 0.5rem;
-}
-
-.modal-textarea {
-  width: 100%;
-  padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  color: white;
-  font-size: 0.875rem;
-  resize: vertical;
-  min-height: 80px;
-}
-
-.modal-textarea::placeholder {
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.modal-textarea:focus {
-  outline: none;
-  border-color: rgba(139, 92, 246, 0.5);
-}
-
-.modal-input {
-  width: 100%;
-  padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  color: white;
-  font-size: 0.875rem;
-}
-
-.modal-input::placeholder {
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.modal-input:focus {
-  outline: none;
-  border-color: rgba(139, 92, 246, 0.5);
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-}
-
-.btn-cancel {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
-  color: white;
-}
-
-.btn-cancel:hover {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.btn-danger {
-  background: #ef4444;
-  border-color: #ef4444;
-  color: white;
-}
-
-.btn-danger:hover {
-  background: #dc2626;
-}
-
-.btn-primary {
-  background: #3b82f6;
-  border-color: #3b82f6;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #2563eb;
-}
-</style>

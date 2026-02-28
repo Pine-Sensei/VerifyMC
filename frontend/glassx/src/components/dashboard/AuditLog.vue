@@ -1,38 +1,47 @@
 <template>
-  <div class="audit-log">
-    <div class="section-header">
-      <h2 class="section-title">{{ $t('dashboard.audit_log.title') }}</h2>
-      <div class="header-actions">
-        <select v-model="actionFilter" class="filter-select">
-          <option value="">{{ $t('dashboard.audit_log.all_actions') }}</option>
-          <option value="approve">{{ $t('dashboard.audit_log.actions.approve') }}</option>
-          <option value="reject">{{ $t('dashboard.audit_log.actions.reject') }}</option>
-          <option value="ban">{{ $t('dashboard.audit_log.actions.ban') }}</option>
-          <option value="unban">{{ $t('dashboard.audit_log.actions.unban') }}</option>
-          <option value="delete">{{ $t('dashboard.audit_log.actions.delete') }}</option>
-          <option value="register">{{ $t('dashboard.audit_log.actions.register') }}</option>
-          <option value="login">{{ $t('dashboard.audit_log.actions.login') }}</option>
-          <option value="logout">{{ $t('dashboard.audit_log.actions.logout') }}</option>
-          <option value="password_change">{{ $t('dashboard.audit_log.actions.password_change') }}</option>
-          <option value="admin_access_denied">{{ $t('dashboard.audit_log.actions.admin_access_denied') }}</option>
+  <div class="w-full space-y-6">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <h2 class="text-2xl font-bold text-white">{{ $t('dashboard.audit_log.title') }}</h2>
+      <div class="flex items-center gap-3 w-full sm:w-auto">
+        <select
+          v-model="actionFilter"
+          class="flex-1 sm:flex-none px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/50 appearance-none cursor-pointer hover:bg-white/10 transition-colors"
+        >
+          <option value="" class="bg-neutral-900">{{ $t('dashboard.audit_log.all_actions') }}</option>
+          <option value="approve" class="bg-neutral-900">{{ $t('dashboard.audit_log.actions.approve') }}</option>
+          <option value="reject" class="bg-neutral-900">{{ $t('dashboard.audit_log.actions.reject') }}</option>
+          <option value="ban" class="bg-neutral-900">{{ $t('dashboard.audit_log.actions.ban') }}</option>
+          <option value="unban" class="bg-neutral-900">{{ $t('dashboard.audit_log.actions.unban') }}</option>
+          <option value="delete" class="bg-neutral-900">{{ $t('dashboard.audit_log.actions.delete') }}</option>
+          <option value="register" class="bg-neutral-900">{{ $t('dashboard.audit_log.actions.register') }}</option>
+          <option value="login" class="bg-neutral-900">{{ $t('dashboard.audit_log.actions.login') }}</option>
+          <option value="logout" class="bg-neutral-900">{{ $t('dashboard.audit_log.actions.logout') }}</option>
+          <option value="password_change" class="bg-neutral-900">{{ $t('dashboard.audit_log.actions.password_change') }}</option>
+          <option value="admin_access_denied" class="bg-neutral-900">{{ $t('dashboard.audit_log.actions.admin_access_denied') }}</option>
         </select>
-        <button @click="loadAuditLogs" :disabled="loading" class="refresh-btn">
+        <Button
+          @click="loadAuditLogs"
+          :disabled="loading"
+          variant="outline"
+          class="gap-2"
+        >
           <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" />
           {{ $t('common.refresh') }}
-        </button>
+        </Button>
       </div>
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading && !auditLogs.length" class="loading-state">
-      <div class="spinner"></div>
+    <div v-if="loading && !auditLogs.length" class="flex flex-col items-center justify-center py-16 text-white/60">
+      <RefreshCw class="w-10 h-10 animate-spin text-purple-500 mb-4" />
       <p>{{ $t('common.loading') }}</p>
     </div>
 
     <!-- Audit Logs Table -->
-    <div v-else class="table-container">
-      <Table>
-        <TableHeader>
+    <Card v-else class="overflow-hidden">
+      <div class="overflow-x-auto">
+        <Table>
+          <TableHeader>
           <TableRow>
             <TableHead>{{ $t('dashboard.audit_log.table.time') }}</TableHead>
             <TableHead>{{ $t('dashboard.audit_log.table.action') }}</TableHead>
@@ -43,32 +52,33 @@
         </TableHeader>
         <TableBody>
           <TableRow v-for="log in filteredLogs" :key="log.id || log.timestamp">
-            <TableCell class="time-cell">
+            <TableCell class="whitespace-nowrap text-white/70">
               {{ formatTime(log.timestamp) }}
             </TableCell>
             <TableCell>
-              <span :class="getActionClass(log.action)" class="action-badge">
+              <span :class="getActionClass(log.action)" class="inline-block">
                 {{ $t(`dashboard.audit_log.actions.${log.action}`) || log.action }}
               </span>
             </TableCell>
-            <TableCell class="operator-cell">{{ log.operator || 'System' }}</TableCell>
-            <TableCell class="target-cell">{{ log.target || '—' }}</TableCell>
-            <TableCell class="detail-cell">{{ log.detail || '—' }}</TableCell>
+            <TableCell class="font-medium text-white">{{ log.operator || 'System' }}</TableCell>
+            <TableCell class="font-medium text-white">{{ log.target || '—' }}</TableCell>
+            <TableCell class="max-w-xs truncate text-white/70" :title="log.detail || ''">{{ log.detail || '—' }}</TableCell>
           </TableRow>
           <TableRow v-if="filteredLogs.length === 0">
-            <TableCell colspan="5" class="empty-cell">
-              <div class="empty-state">
-                <FileText class="w-12 h-12" />
+            <TableCell colspan="5" class="h-32 text-center">
+              <div class="flex flex-col items-center justify-center text-white/40">
+                <FileText class="w-12 h-12 mb-3" />
                 <p>{{ $t('dashboard.audit_log.no_logs') }}</p>
               </div>
             </TableCell>
           </TableRow>
-        </TableBody>
-      </Table>
-    </div>
+          </TableBody>
+        </Table>
+      </div>
+    </Card>
 
     <!-- Pagination -->
-    <div v-if="totalPages > 1" class="pagination-container">
+    <div v-if="totalPages > 1" class="mt-6">
       <Pagination
         :current-page="currentPage"
         :total-pages="totalPages"
@@ -88,6 +98,8 @@ import { useI18n } from 'vue-i18n'
 import { RefreshCw, FileText } from 'lucide-vue-next'
 import { apiService, type AuditRecord } from '@/services/api'
 import { useNotification } from '@/composables/useNotification'
+import Card from '@/components/ui/Card.vue'
+import Button from '@/components/ui/Button.vue'
 import Table from '@/components/ui/Table.vue'
 import TableHeader from '@/components/ui/TableHeader.vue'
 import TableBody from '@/components/ui/TableBody.vue'
@@ -158,7 +170,7 @@ const getActionClass = (action: string): string => {
     case 'admin_access_denied':
       return `${baseClasses} bg-rose-500/20 text-rose-300`
     default:
-      return `${baseClasses} bg-gray-500/20 text-gray-300`
+      return `${baseClasses} bg-white/10 text-white/70`
   }
 }
 
@@ -196,182 +208,3 @@ onUnmounted(() => {
   }
 })
 </script>
-
-<style scoped>
-.audit-log {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.section-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: white;
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.filter-select {
-  padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  color: white;
-  font-size: 0.875rem;
-  cursor: pointer;
-}
-
-.filter-select:focus {
-  outline: none;
-  border-color: rgba(139, 92, 246, 0.5);
-}
-
-.filter-select option {
-  background: #1a1a1a;
-  color: white;
-}
-
-.refresh-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.refresh-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-}
-
-.refresh-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* Loading State */
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid rgba(255, 255, 255, 0.1);
-  border-top-color: #8b5cf6;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-bottom: 1rem;
-}
-
-/* Table */
-.table-container {
-  overflow-x: auto;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.time-cell {
-  white-space: nowrap;
-  font-size: 0.875rem;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.action-badge {
-  display: inline-block;
-}
-
-.operator-cell,
-.target-cell {
-  font-weight: 500;
-  color: white;
-}
-
-.detail-cell {
-  max-width: 300px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 0.875rem;
-}
-
-.empty-cell {
-  padding: 3rem !important;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.4);
-  text-align: center;
-}
-
-.empty-state p {
-  margin: 0.75rem 0 0 0;
-}
-
-/* Pagination */
-.pagination-container {
-  margin-top: 1.5rem;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .section-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .header-actions {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-
-  .filter-select {
-    flex: 1;
-    min-width: 150px;
-  }
-
-  .detail-cell {
-    max-width: 150px;
-  }
-}
-</style>

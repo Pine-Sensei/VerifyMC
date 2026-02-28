@@ -9,94 +9,74 @@
     <!-- Pagination controls -->
     <nav class="flex items-center space-x-2" :aria-label="$t('pagination.title') || 'Pagination'">
       <!-- Previous button -->
-      <button
+      <Button
         @click="goToPage(currentPage - 1)"
         :disabled="!hasPrev"
+        variant="ghost"
+        size="sm"
         :aria-label="$t('pagination.previous')"
         :aria-disabled="!hasPrev"
-        :class="[
-          'px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
-          hasPrev 
-            ? 'bg-white/10 text-white hover:bg-white/20 border border-white/20 hover:border-white/40' 
-            : 'bg-white/5 text-white/40 border border-white/10 cursor-not-allowed'
-        ]"
       >
         {{ $t('pagination.previous') }}
-      </button>
+      </Button>
       
       <!-- Page numbers -->
       <div class="flex items-center space-x-1" role="group" :aria-label="$t('pagination.page_numbers') || 'Page numbers'">
         <!-- First page -->
-        <button
+        <Button
           v-if="showFirstPage"
           @click="goToPage(1)"
+          :variant="currentPage === 1 ? 'default' : 'ghost'"
+          size="icon"
           :aria-label="$t('pagination.page', { page: 1 }) || `Page 1`"
           :aria-current="currentPage === 1 ? 'page' : undefined"
-          :class="[
-            'px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
-            currentPage === 1
-              ? 'bg-blue-500 text-white border border-blue-500'
-              : 'bg-white/10 text-white hover:bg-white/20 border border-white/20 hover:border-white/40'
-          ]"
         >
           1
-        </button>
+        </Button>
         
         <!-- Left ellipsis -->
         <span v-if="showLeftEllipsis" class="px-2 text-white/60" aria-hidden="true">...</span>
         
         <!-- Visible page numbers -->
-        <button
+        <Button
           v-for="page in visiblePages"
           :key="page"
           @click="goToPage(page)"
+          :variant="currentPage === page ? 'default' : 'ghost'"
+          size="icon"
           :aria-label="$t('pagination.page', { page }) || `Page ${page}`"
           :aria-current="currentPage === page ? 'page' : undefined"
-          :class="[
-            'px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
-            currentPage === page
-              ? 'bg-blue-500 text-white border border-blue-500'
-              : 'bg-white/10 text-white hover:bg-white/20 border border-white/20 hover:border-white/40'
-          ]"
         >
           {{ page }}
-        </button>
+        </Button>
         
         <!-- Right ellipsis -->
         <span v-if="showRightEllipsis" class="px-2 text-white/60" aria-hidden="true">...</span>
         
         <!-- Last page -->
-        <button
+        <Button
           v-if="showLastPage"
           @click="goToPage(totalPages)"
+          :variant="currentPage === totalPages ? 'default' : 'ghost'"
+          size="icon"
           :aria-label="$t('pagination.page', { page: totalPages }) || `Page ${totalPages}`"
           :aria-current="currentPage === totalPages ? 'page' : undefined"
-          :class="[
-            'px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
-            currentPage === totalPages
-              ? 'bg-blue-500 text-white border border-blue-500'
-              : 'bg-white/10 text-white hover:bg-white/20 border border-white/20 hover:border-white/40'
-          ]"
         >
           {{ totalPages }}
-        </button>
+        </Button>
       </div>
       
       <!-- Next button -->
-      <button
+      <Button
         @click="goToPage(currentPage + 1)"
         :disabled="!hasNext"
+        variant="ghost"
+        size="sm"
         :aria-label="$t('pagination.next')"
         :aria-disabled="!hasNext"
-        :class="[
-          'px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
-          hasNext 
-            ? 'bg-white/10 text-white hover:bg-white/20 border border-white/20 hover:border-white/40' 
-            : 'bg-white/5 text-white/40 border border-white/10 cursor-not-allowed'
-        ]"
       >
         {{ $t('pagination.next') }}
-      </button>
+      </Button>
     </nav>
     
     <!-- Page size selector -->
@@ -120,6 +100,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import Button from '@/components/ui/Button.vue'
 
 interface Props {
   currentPage: number

@@ -32,22 +32,6 @@ const serverName = computed(() => config.value?.webServerPrefix || 'VerifyMC')
   background: transparent;
 }
 
-.gradient-text {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.glass-button {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  padding: 8px 16px;
-  font-weight: 500;
-}
-
 /* 确保在移动端也能正确显示 */
 @supports (-webkit-touch-callout: none) {
   .home-page {

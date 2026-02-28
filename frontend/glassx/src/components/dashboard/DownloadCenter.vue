@@ -1,82 +1,81 @@
 <template>
-  <div class="download-center">
-    <div class="section-header">
-      <h2 class="section-title">{{ $t('dashboard.downloads.title') }}</h2>
-      <p class="section-description">{{ $t('dashboard.downloads.description') }}</p>
+  <div class="max-w-4xl mx-auto">
+    <div class="mb-8">
+      <h2 class="text-2xl font-bold text-white mb-2">{{ $t('dashboard.downloads.title') }}</h2>
+      <p class="text-white/60 m-0">{{ $t('dashboard.downloads.description') }}</p>
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
+    <div v-if="loading" class="flex flex-col items-center justify-center py-16 text-white/60">
+      <div class="w-10 h-10 border-4 border-white/10 border-t-purple-500 rounded-full animate-spin mb-4"></div>
       <p>{{ $t('common.loading') }}</p>
     </div>
 
     <!-- Resources Grid -->
-    <div v-else-if="resources.length > 0" class="resources-grid">
-      <div
+    <div v-else-if="resources.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <Card
         v-for="resource in resources"
         :key="resource.id"
-        class="resource-card"
+        class="p-6 flex flex-col h-full hover:border-blue-500/30 transition-all"
       >
-        <div class="resource-icon">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center text-purple-500 mb-4">
           <component :is="getResourceIcon(resource.icon)" class="w-8 h-8" />
         </div>
-        <div class="resource-info">
-          <h3 class="resource-name">{{ resource.name }}</h3>
-          <p class="resource-description">{{ resource.description }}</p>
-          <div class="resource-meta">
-            <span v-if="resource.version" class="meta-item">
+        <div class="flex-1 mb-4">
+          <h3 class="text-lg font-semibold text-white mb-2">{{ resource.name }}</h3>
+          <p class="text-sm text-white/60 mb-3 leading-relaxed">{{ resource.description }}</p>
+          <div class="flex gap-4">
+            <span v-if="resource.version" class="flex items-center gap-1.5 text-xs text-white/50">
               <Tag class="w-3 h-3" />
               {{ resource.version }}
             </span>
-            <span v-if="resource.size" class="meta-item">
+            <span v-if="resource.size" class="flex items-center gap-1.5 text-xs text-white/50">
               <HardDrive class="w-3 h-3" />
               {{ resource.size }}
             </span>
           </div>
         </div>
-        <a
-          :href="getSafeUrl(resource.url)"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="download-btn"
+        <Button 
+          variant="default" 
+          class="w-full mt-auto"
+          @click="openUrl(resource.url)"
         >
-          <Download class="w-4 h-4" />
+          <Download class="w-4 h-4 mr-2" />
           {{ $t('dashboard.downloads.download') }}
-        </a>
-      </div>
+        </Button>
+      </Card>
     </div>
 
     <!-- Empty State -->
-    <div v-else class="empty-state">
-      <div class="empty-icon">
+    <div v-else class="flex flex-col items-center justify-center py-16 text-center">
+      <div class="w-20 h-20 rounded-3xl bg-white/5 flex items-center justify-center text-white/30 mb-6">
         <Package class="w-16 h-16" />
       </div>
-      <h3>{{ $t('dashboard.downloads.no_resources') }}</h3>
-      <p>{{ $t('dashboard.downloads.no_resources_hint') }}</p>
+      <h3 class="text-xl font-semibold text-white mb-2">{{ $t('dashboard.downloads.no_resources') }}</h3>
+      <p class="text-white/50 m-0">{{ $t('dashboard.downloads.no_resources_hint') }}</p>
     </div>
 
     <!-- Instructions -->
-    <div class="instructions-card glass-card">
-      <h3 class="instructions-title">
+    <Card class="p-6">
+      <h3 class="flex items-center gap-2 text-lg font-semibold text-white mb-5">
         <HelpCircle class="w-5 h-5" />
         {{ $t('dashboard.downloads.instructions_title') }}
       </h3>
-      <div class="instructions-list">
-        <div class="instruction-item">
-          <span class="instruction-number">1</span>
-          <p>{{ $t('dashboard.downloads.instruction_1') }}</p>
+      <div class="flex flex-col gap-4">
+        <div class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white shrink-0">1</span>
+          <p class="text-white/70 text-sm leading-relaxed m-0">{{ $t('dashboard.downloads.instruction_1') }}</p>
         </div>
-        <div class="instruction-item">
-          <span class="instruction-number">2</span>
-          <p>{{ $t('dashboard.downloads.instruction_2') }}</p>
+        <div class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white shrink-0">2</span>
+          <p class="text-white/70 text-sm leading-relaxed m-0">{{ $t('dashboard.downloads.instruction_2') }}</p>
         </div>
-        <div class="instruction-item">
-          <span class="instruction-number">3</span>
-          <p>{{ $t('dashboard.downloads.instruction_3') }}</p>
+        <div class="flex items-start gap-3">
+          <span class="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white shrink-0">3</span>
+          <p class="text-white/70 text-sm leading-relaxed m-0">{{ $t('dashboard.downloads.instruction_3') }}</p>
         </div>
       </div>
-    </div>
+    </Card>
   </div>
 </template>
 
@@ -93,6 +92,8 @@ import {
   Monitor,
 } from 'lucide-vue-next'
 import { apiService, type DownloadResource } from '@/services/api'
+import Card from '@/components/ui/Card.vue'
+import Button from '@/components/ui/Button.vue'
 
 const isSafeUrl = (url: string): boolean => {
   try {
@@ -109,6 +110,13 @@ const isSafeUrl = (url: string): boolean => {
 const getSafeUrl = (url: string | undefined): string => {
   if (!url) return '#'
   return isSafeUrl(url) ? url : '#'
+}
+
+const openUrl = (url: string | undefined) => {
+  const safeUrl = getSafeUrl(url)
+  if (safeUrl !== '#') {
+    window.open(safeUrl, '_blank')
+  }
 }
 
 const loading = ref(true)
@@ -170,229 +178,3 @@ onMounted(() => {
   loadResources()
 })
 </script>
-
-<style scoped>
-.download-center {
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.section-header {
-  margin-bottom: 2rem;
-}
-
-.section-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: white;
-  margin: 0 0 0.5rem 0;
-}
-
-.section-description {
-  color: rgba(255, 255, 255, 0.6);
-  margin: 0;
-}
-
-/* Loading State */
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid rgba(255, 255, 255, 0.1);
-  border-top-color: #8b5cf6;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-bottom: 1rem;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Resources Grid */
-.resources-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.25rem;
-  margin-bottom: 2rem;
-}
-
-.resource-card {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  transition: all 0.2s;
-}
-
-.resource-card:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(139, 92, 246, 0.3);
-}
-
-.resource-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #8b5cf6;
-  margin-bottom: 1rem;
-}
-
-.resource-info {
-  flex: 1;
-  margin-bottom: 1rem;
-}
-
-.resource-name {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: white;
-  margin: 0 0 0.5rem 0;
-}
-
-.resource-description {
-  font-size: 0.875rem;
-  color: rgba(255, 255, 255, 0.6);
-  margin: 0 0 0.75rem 0;
-  line-height: 1.5;
-}
-
-.resource-meta {
-  display: flex;
-  gap: 1rem;
-}
-
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.download-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  color: white;
-  font-weight: 600;
-  font-size: 0.875rem;
-  text-decoration: none;
-  transition: all 0.2s;
-}
-
-.download-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
-}
-
-/* Empty State */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
-  text-align: center;
-}
-
-.empty-icon {
-  width: 80px;
-  height: 80px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.05);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.3);
-  margin-bottom: 1.5rem;
-}
-
-.empty-state h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: white;
-  margin: 0 0 0.5rem 0;
-}
-
-.empty-state p {
-  color: rgba(255, 255, 255, 0.5);
-  margin: 0;
-}
-
-/* Instructions Card */
-.glass-card {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 1.5rem;
-}
-
-.instructions-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: white;
-  margin: 0 0 1.25rem 0;
-}
-
-.instructions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.instruction-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-}
-
-.instruction-number {
-  width: 24px;
-  height: 24px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: white;
-  flex-shrink: 0;
-}
-
-.instruction-item p {
-  color: rgba(255, 255, 255, 0.7);
-  margin: 0;
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
-/* Responsive */
-@media (max-width: 640px) {
-  .resources-grid {
-    grid-template-columns: 1fr;
-  }
-}
-</style>

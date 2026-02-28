@@ -51,14 +51,14 @@
                   :name="`question_${question.id}`"
                   :value="option.id"
                   v-model="answers[question.id].selectedOptionIds[0]"
-                  class="w-4 h-4 text-blue-500"
+                  class="w-4 h-4 text-blue-500 accent-blue-500"
                 />
                 <input
                   v-else
                   type="checkbox"
                   :value="option.id"
                   v-model="answers[question.id].selectedOptionIds"
-                  class="w-4 h-4 text-blue-500"
+                  class="w-4 h-4 text-blue-500 accent-blue-500"
                 />
                 <span class="text-white/80">{{ option.text }}</span>
               </label>
@@ -71,15 +71,13 @@
                 :placeholder="question.input?.placeholder || $t('questionnaire.text_placeholder')"
                 :maxlength="question.input?.maxLength || undefined"
                 rows="4"
-                class="w-full rounded-lg border border-white/10 bg-white/5 p-3 text-white placeholder:text-white/40"
+                class="glass-input w-full"
               />
-              <input
+              <Input
                 v-else
-                type="text"
                 v-model="answers[question.id].textAnswer"
                 :placeholder="question.input?.placeholder || $t('questionnaire.text_placeholder')"
                 :maxlength="question.input?.maxLength || undefined"
-                class="w-full rounded-lg border border-white/10 bg-white/5 p-3 text-white placeholder:text-white/40"
               />
               <div class="text-xs text-white/50 mt-2">
                 {{ $t('questionnaire.length_hint', {
@@ -115,6 +113,7 @@ import { useI18n } from 'vue-i18n'
 import { useNotification } from '@/composables/useNotification'
 import { apiService } from '@/services/api'
 import type { Question, QuestionnaireAnswer, SubmitQuestionnaireResponse } from '@/services/api'
+import Input from './ui/Input.vue'
 
 const { t, locale } = useI18n()
 import Card from './ui/Card.vue'

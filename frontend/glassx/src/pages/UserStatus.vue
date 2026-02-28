@@ -4,20 +4,21 @@
     <nav class="relative z-10 mb-8">
       <div class="max-w-4xl mx-auto flex justify-between items-center">
         <div class="flex items-center space-x-3">
-          <div class="w-10 h-10 bg-white/[0.08] border border-white/10 rounded-xl flex items-center justify-center">
+          <div class="w-10 h-10 bg-white/10 border border-white/10 rounded-xl flex items-center justify-center">
             <Server class="w-6 h-6 text-white" />
           </div>
           <h1 class="text-2xl font-bold gradient-text" v-if="config?.webServerPrefix !== undefined">{{ config.webServerPrefix }}</h1>
         </div>
 
         <div class="flex items-center space-x-4">
-          <button
+          <Button
+            variant="ghost"
             @click="logout"
-            class="glass-button text-white hover:text-red-300 transition-colors duration-300 flex items-center space-x-2"
+            class="text-white hover:text-red-300 transition-colors duration-300 flex items-center space-x-2"
           >
             <LogOut class="w-4 h-4" />
             <span>{{ $t('nav.logout') }}</span>
-          </button>
+          </Button>
           <LanguageSwitcher />
         </div>
       </div>
@@ -28,13 +29,13 @@
       <div class="glass-card p-8 animate-scale-in">
         <!-- Header -->
         <div class="text-center mb-8">
-          <div class="w-16 h-16 bg-white/[0.06] border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <div class="w-16 h-16 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <User class="w-8 h-8 text-white" />
           </div>
           <h1 class="text-3xl font-bold gradient-text mb-2">
             {{ $t('user_status.title') }}
           </h1>
-          <p v-if="user" class="text-gray-300">
+          <p v-if="user" class="text-white/70">
             {{ user.username }}
           </p>
         </div>
@@ -42,7 +43,7 @@
         <!-- Loading State -->
         <div v-if="loading" class="text-center py-12">
           <div class="spinner mx-auto mb-4"></div>
-          <p class="text-gray-300">{{ $t('common.loading') }}</p>
+          <p class="text-white/70">{{ $t('common.loading') }}</p>
         </div>
 
         <!-- Status Display -->
@@ -61,7 +62,7 @@
                 <h3 class="text-xl font-bold text-white mb-1">
                   {{ $t(`user_status.status.${status.status}`) }}
                 </h3>
-                <p class="text-gray-300">
+                <p class="text-white/70">
                   {{ $t(`user_status.messages.${status.status}`) }}
                 </p>
               </div>
@@ -73,7 +74,7 @@
             <h4 class="text-lg font-semibold text-white mb-2">
               {{ $t('user_status.reason') }}
             </h4>
-            <p class="text-gray-300">
+            <p class="text-white/70">
               {{ status.reason }}
             </p>
           </div>
@@ -85,13 +86,13 @@
             </h4>
             <div class="grid md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-400 mb-1">
+                <label class="block text-sm font-medium text-white/60 mb-1">
                   {{ $t('register.form.username') }}
                 </label>
                 <p class="text-white">{{ user.username }}</p>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-400 mb-1">
+                <label class="block text-sm font-medium text-white/60 mb-1">
                   {{ $t('register.form.email') }}
                 </label>
                 <p class="text-white">{{ user.email }}</p>
@@ -101,21 +102,23 @@
 
           <!-- Actions -->
           <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <button
+            <Button
+              variant="outline"
               @click="refreshStatus"
               :disabled="refreshing"
-              class="glass-button text-white hover:text-blue-300 transition-colors duration-300 flex items-center justify-center space-x-2"
+              class="text-white hover:text-blue-300 transition-colors duration-300 flex items-center justify-center space-x-2"
             >
               <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': refreshing }" />
               <span>{{ $t('common.refresh') }}</span>
-            </button>
-            <router-link
-              to="/"
-              class="glass-button text-white hover:text-blue-300 transition-colors duration-300 flex items-center justify-center space-x-2"
+            </Button>
+            <Button
+              variant="outline"
+              @click="router.push('/')"
+              class="text-white hover:text-blue-300 transition-colors duration-300 flex items-center justify-center space-x-2"
             >
               <Home class="w-4 h-4" />
               <span>{{ $t('common.back') }}</span>
-            </router-link>
+            </Button>
           </div>
         </div>
 
@@ -127,15 +130,16 @@
           <h3 class="text-xl font-bold text-white mb-2">
             {{ $t('common.error') }}
           </h3>
-          <p class="text-gray-300 mb-6">
+          <p class="text-white/70 mb-6">
             {{ $t('errors.unknown') }}
           </p>
-          <button
+          <Button
+            variant="default"
             @click="loadStatus"
-            class="glass-button bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-2xl transition-all duration-300"
+            class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-2xl transition-all duration-300"
           >
             {{ $t('common.refresh') }}
-          </button>
+          </Button>
         </div>
       </div>
     </main>
@@ -169,6 +173,7 @@ import {
   Home,
   AlertCircle
 } from 'lucide-vue-next'
+import Button from '@/components/ui/Button.vue'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import Toast from '@/components/Toast.vue'
 import { apiService } from '@/services/api'
@@ -216,12 +221,12 @@ const statusCardClass = computed(() => {
     case 'rejected':
       return 'border-red-400 bg-red-900/20'
     default:
-      return 'border-gray-400 bg-gray-900/20'
+      return 'border-white/10 bg-white/10'
   }
 })
 
 const statusIconBg = computed(() => {
-  if (!status.value) return 'bg-gray-500'
+  if (!status.value) return 'bg-white/20'
 
   switch (status.value.status) {
     case 'pending':
@@ -231,7 +236,7 @@ const statusIconBg = computed(() => {
     case 'rejected':
       return 'bg-red-500'
     default:
-      return 'bg-gray-500'
+      return 'bg-white/20'
   }
 })
 

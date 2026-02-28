@@ -23,14 +23,16 @@
           </div>
           <div class="flex-1 min-w-0">
             <p class="text-sm font-medium text-white">{{ title }}</p>
-            <p v-if="message" class="text-sm text-gray-300 mt-1">{{ message }}</p>
+            <p v-if="message" class="text-sm text-white/70 mt-1">{{ message }}</p>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             @click="close"
-            class="flex-shrink-0 text-gray-400 hover:text-white transition-colors duration-200"
+            class="flex-shrink-0 text-white/40 hover:text-white transition-colors duration-200 h-6 w-6 rounded-full"
           >
             <X class="w-4 h-4" />
-          </button>
+          </Button>
         </div>
       </div>
   </Transition>
@@ -39,6 +41,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { CheckCircle, XCircle, AlertCircle, Info, X } from 'lucide-vue-next'
+import Button from '@/components/ui/Button.vue'
 
 interface Props {
   type?: 'success' | 'error' | 'warning' | 'info'

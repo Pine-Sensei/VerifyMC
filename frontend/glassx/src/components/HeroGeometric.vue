@@ -6,7 +6,7 @@
         <!-- Badge -->
         <div class="fade-up-item" style="--delay: 0s">
           <div
-            class="github-badge inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.05] border border-white/[0.1] mb-8 md:mb-12 backdrop-blur-sm">
+            class="github-badge inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-8 md:mb-12 backdrop-blur-sm">
             <a href="https://github.com/KiteMC/VerifyMC" target="_blank" rel="noopener noreferrer"
               class="inline-flex items-center gap-2 text-white/70 hover:text-white transition-all duration-300">
               <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">

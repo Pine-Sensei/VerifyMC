@@ -1,32 +1,33 @@
 <template>
   <div class="discord-link">
     <!-- Already linked state -->
-    <div v-if="linked" class="linked-state">
-      <div class="discord-badge">
-        <svg class="discord-icon" viewBox="0 0 127.14 96.36" fill="#5865F2">
+    <div v-if="linked" class="flex flex-col items-center gap-2">
+      <div class="inline-flex items-center gap-2 bg-[#5865F2]/20 border border-[#5865F2]/40 rounded-lg px-4 py-2">
+        <svg class="w-5 h-5" viewBox="0 0 127.14 96.36" fill="#5865F2">
           <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/>
         </svg>
-        <span class="discord-username">{{ discordUser?.globalName || discordUser?.username || 'Discord' }}</span>
-        <span class="linked-check">✓</span>
+        <span class="text-white font-medium">{{ discordUser?.globalName || discordUser?.username || 'Discord' }}</span>
+        <span class="text-green-400 font-bold">✓</span>
       </div>
-      <p class="linked-text">{{ $t('discord.linked') }}</p>
+      <p class="text-white/70 text-sm">{{ $t('discord.linked') }}</p>
     </div>
 
     <!-- Not linked state -->
-    <div v-else class="unlinked-state">
-      <button 
+    <div v-else class="flex flex-col gap-2">
+      <Button
         type="button"
+        variant="ghost"
         @click="startDiscordLink"
         :disabled="loading || !username"
-        class="discord-btn"
+        class="inline-flex items-center justify-center gap-2 bg-[#5865F2] text-white border-none rounded-lg px-6 py-3 text-base font-medium cursor-pointer transition-all hover:bg-[#4752c4] hover:-translate-y-px hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed h-auto"
       >
-        <svg v-if="!loading" class="discord-icon" viewBox="0 0 127.14 96.36" fill="currentColor">
+        <svg v-if="!loading" class="w-5 h-5" viewBox="0 0 127.14 96.36" fill="currentColor">
           <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/>
         </svg>
-        <div v-else class="spinner"></div>
+        <div v-else class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
         <span>{{ $t('discord.link_button') }}</span>
-      </button>
-      <p v-if="required" class="required-text">{{ $t('discord.required_hint') }}</p>
+      </Button>
+      <p v-if="required" class="text-white/60 text-xs text-center">{{ $t('discord.required_hint') }}</p>
     </div>
   </div>
 </template>
@@ -36,6 +37,7 @@ import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiService } from '@/services/api'
 import { useNotification } from '@/composables/useNotification'
+import Button from './ui/Button.vue'
 
 const props = defineProps<{
   username: string
@@ -171,99 +173,4 @@ onUnmounted(() => {
   }
 })
 </script>
-
-<style scoped>
-.discord-link {
-  margin: 0.5rem 0;
-}
-
-.linked-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.discord-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: rgba(88, 101, 242, 0.2);
-  border: 1px solid rgba(88, 101, 242, 0.4);
-  border-radius: 8px;
-  padding: 0.5rem 1rem;
-}
-
-.discord-icon {
-  width: 20px;
-  height: 20px;
-}
-
-.discord-username {
-  color: #fff;
-  font-weight: 500;
-}
-
-.linked-check {
-  color: #4ade80;
-  font-weight: bold;
-}
-
-.linked-text {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 0.875rem;
-}
-
-.unlinked-state {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.discord-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  background: #5865F2;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.discord-btn:hover:not(:disabled) {
-  background: #4752c4;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(88, 101, 242, 0.4);
-}
-
-.discord-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.required-text {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.75rem;
-  text-align: center;
-}
-
-.spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-</style>
 

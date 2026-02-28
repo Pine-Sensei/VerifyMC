@@ -10,7 +10,7 @@
         leave-to-class="opacity-0 translate-x-full scale-95"
         move-class="transition-all duration-300 ease-out"
       >
-        <div v-for="notification in notifications" :key="notification.id" class="notification-card"
+        <div v-for="notification in notifications" :key="notification.id" class="backdrop-blur-xl border border-white/10 bg-black/50 rounded-lg p-4 shadow-lg transition-all duration-300 ease-out transform translate-z-0 will-change-[transform,opacity]"
           :class="getNotificationClasses(notification.type)">
           <div class="flex items-start space-x-3">
             <div class="flex-shrink-0 mt-0.5">
@@ -23,10 +23,14 @@
               <p class="text-sm font-medium">{{ notification.title }}</p>
               <p v-if="notification.message" class="text-sm opacity-90 mt-1">{{ notification.message }}</p>
             </div>
-            <button @click="removeNotification(notification.id)"
-              class="flex-shrink-0 text-gray-400 hover:text-white transition-colors duration-200 mt-0.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              @click="removeNotification(notification.id)"
+              class="flex-shrink-0 text-white/40 hover:text-white transition-colors duration-200 mt-0.5 h-6 w-6 rounded-full"
+            >
               <X class="w-4 h-4" />
-            </button>
+            </Button>
           </div>
         </div>
       </TransitionGroup>
@@ -37,6 +41,7 @@
 <script setup lang="ts">
 import { ref, onUnmounted } from 'vue'
 import { CheckCircle, XCircle, AlertCircle, Info, X } from 'lucide-vue-next'
+import Button from '@/components/ui/Button.vue'
 
 export interface Notification {
   id: string
@@ -109,19 +114,6 @@ defineExpose({
 </script>
 
 <style scoped>
-.notification-card {
-  @apply backdrop-blur-xl border border-white/20 rounded-lg p-4 shadow-lg;
-  /* Simple rounded corners, not too large */
-  border-radius: 8px;
-  /* Glass effect */
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  /* Ensure smooth transitions */
-  transition: all 0.3s ease-out;
-  transform: translateZ(0);
-  will-change: transform, opacity;
-}
-
 /* Ensure TransitionGroup animations work properly */
 .v-enter-active,
 .v-leave-active {

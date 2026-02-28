@@ -26,8 +26,8 @@
       <Card
         class="p-6"
         :class="status?.online
-          ? 'bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20'
-          : 'bg-gradient-to-br from-red-500/10 to-red-500/5 border-red-500/20'"
+          ? 'bg-white/5 backdrop-blur-xl border border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.1)]'
+          : 'bg-white/5 backdrop-blur-xl border border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.1)]'"
       >
         <div class="flex items-center gap-3 mb-3">
           <div

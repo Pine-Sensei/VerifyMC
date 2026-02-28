@@ -2,9 +2,9 @@
   <div class="relative min-h-screen w-full">
     <div class="relative z-10 min-h-screen flex flex-col lg:flex-row">
       <!-- Left: Branding -->
-      <div class="hidden lg:flex lg:w-[420px] xl:w-[480px] flex-shrink-0 flex-col justify-center px-12 xl:px-16">
+      <div class="hidden lg:flex lg:w-2/5 flex-shrink-0 flex-col justify-center px-12 xl:px-16">
         <div class="space-y-6">
-          <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/[0.06] border border-white/10">
+          <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/5 border border-white/10">
             <svg class="w-7 h-7 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
             </svg>

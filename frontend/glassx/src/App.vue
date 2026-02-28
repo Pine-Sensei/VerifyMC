@@ -12,17 +12,17 @@
     <NotificationSystem ref="notificationSystemRef" />
 
     <!-- Enhanced Footer -->
-    <footer class="app-footer">
+    <footer class="relative w-full mt-8 bg-white/3 backdrop-blur-xl z-10">
       <!-- Gradient top border -->
-      <div class="footer-gradient-line"></div>
+      <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/30 via-purple-500/30 via-pink-500/30 to-transparent"></div>
 
-      <div class="footer-content">
-        <div class="footer-row">
-          <span class="footer-brand">VerifyMC by KiteMC Team 2025-{{ currentYear }}</span>
-          <span class="footer-divider">•</span>
-          <span class="footer-love">
+      <div class="p-6 text-center">
+        <div class="flex items-center justify-center gap-3 flex-wrap">
+          <span class="text-white/70 text-sm font-medium">VerifyMC by KiteMC Team 2025-{{ currentYear }}</span>
+          <span class="text-white/30">•</span>
+          <span class="flex items-center gap-1 text-white/50 text-sm">
             <span>Made with</span>
-            <span class="heart-icon">💖</span>
+            <span class="text-pink-300 animate-pulse">💖</span>
           </span>
         </div>
       </div>
@@ -120,75 +120,7 @@ html, body {
 /* ===========================================
    Enhanced Footer Styles
    =========================================== */
-.app-footer {
-  position: relative;
-  width: 100%;
-  margin-top: 2rem;
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  z-index: 10;
-}
-
-.footer-gradient-line {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(59, 130, 246, 0.3) 20%,
-    rgba(139, 92, 246, 0.3) 50%,
-    rgba(236, 72, 153, 0.3) 80%,
-    transparent 100%
-  );
-}
-
-.footer-content {
-  padding: 1.5rem 1rem;
-  text-align: center;
-}
-
-.footer-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.footer-brand {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.footer-divider {
-  color: rgba(255, 255, 255, 0.3);
-}
-
-.footer-love {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 0.875rem;
-}
-
-.heart-icon {
-  color: #f9a8d4;
-  animation: heartbeat 2s ease-in-out infinite;
-}
-
-@keyframes heartbeat {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
-}
+/* Footer styles removed in favor of Tailwind classes */
 
 /* ===========================================
    Global Glass Morphism Utilities

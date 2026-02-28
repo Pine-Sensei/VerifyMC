@@ -9,10 +9,10 @@
       <div class="relative">
         <div class="flex items-center justify-center gap-2 mb-6 text-xs md:text-sm">
           <div class="font-medium transition-colors" :class="currentStep === 'basic' ? 'text-blue-200' : 'text-white/60'">1. {{ $t('register.steps.basic') }}</div>
-          <div class="w-5 h-px bg-white/10"></div>
+          <div class="w-5 h-px bg-white/5"></div>
           <template v-if="questionnaireEnabled">
             <div class="font-medium transition-colors" :class="currentStep === 'questionnaire' ? 'text-blue-200' : 'text-white/60'">2. {{ $t('register.steps.questionnaire') }}</div>
-            <div class="w-5 h-px bg-white/10"></div>
+            <div class="w-5 h-px bg-white/5"></div>
             <div class="font-medium transition-colors" :class="currentStep === 'submit' ? 'text-blue-200' : 'text-white/60'">3. {{ $t('register.steps.submit') }}</div>
           </template>
           <div v-else class="font-medium transition-colors" :class="currentStep === 'submit' ? 'text-blue-200' : 'text-white/60'">2. {{ $t('register.steps.submit') }}</div>
@@ -23,22 +23,24 @@
             <div v-if="bedrockEnabled">
               <Label class="mb-2">{{ $t('register.form.platform') }}</Label>
               <div class="inline-flex w-full rounded-lg bg-white/5 border border-white/10 p-1 gap-1" role="radiogroup" :aria-label="$t('register.form.platform')">
-                <button
+                <Button
                   type="button"
-                  class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-white/20"
-                  :class="selectedPlatform === 'java' ? 'bg-white/10 text-white shadow-sm' : 'text-white/60 hover:bg-white/5'"
+                  variant="outline"
+                  class="flex-1 border-transparent focus:ring-offset-0"
+                  :class="selectedPlatform === 'java' ? 'bg-white/20 text-white shadow-sm hover:bg-white/20' : 'text-white/60 hover:bg-white/5 hover:text-white'"
                   @click="selectPlatform('java')"
                 >
                   {{ $t('register.form.platform_java') }}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-white/20"
-                  :class="selectedPlatform === 'bedrock' ? 'bg-white/10 text-white shadow-sm' : 'text-white/60 hover:bg-white/5'"
+                  variant="outline"
+                  class="flex-1 border-transparent focus:ring-offset-0"
+                  :class="selectedPlatform === 'bedrock' ? 'bg-white/20 text-white shadow-sm hover:bg-white/20' : 'text-white/60 hover:bg-white/5 hover:text-white'"
                   @click="selectPlatform('bedrock')"
                 >
                   {{ $t('register.form.platform_bedrock') }}
-                </button>
+                </Button>
               </div>
               <p v-if="selectedPlatform === 'bedrock'" class="mt-2 text-xs text-white/60">
                 {{ $t('register.form.platform_bedrock_prefix_hint', { prefix: bedrockPrefix }) }}
@@ -82,7 +84,7 @@
                 @blur="validatePassword"
               />
               <p v-if="errors.password" class="mt-1 text-sm text-red-400">{{ errors.password }}</p>
-              <p v-if="authmeConfig.passwordRegex" class="mt-1 text-xs text-gray-300">{{ $t('register.form.password_hint', { regex: authmeConfig.passwordRegex }) }}</p>
+              <p v-if="authmeConfig.passwordRegex" class="mt-1 text-xs text-white/50">{{ $t('register.form.password_hint', { regex: authmeConfig.passwordRegex }) }}</p>
             </div>
 
             <div v-if="emailEnabled">
@@ -120,13 +122,13 @@
                   :class="{ 'border-red-500 focus-visible:ring-red-500': errors.captcha }"
                   @blur="validateCaptcha"
                 />
-                <div class="cursor-pointer border border-white/20 rounded-lg overflow-hidden bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:border-white/30 transition-all duration-300 flex-shrink-0 shadow-lg" @click="refreshCaptcha" :title="$t('register.form.captcha_refresh')">
+                <div class="cursor-pointer border border-white/10 rounded-lg overflow-hidden bg-white/5 backdrop-blur-sm hover:bg-white/15 hover:border-white/25 transition-all duration-300 flex-shrink-0 shadow-lg" @click="refreshCaptcha" :title="$t('register.form.captcha_refresh')">
                   <img v-if="captchaImage" :src="captchaImage" alt="captcha" class="h-10 w-auto" />
                   <div v-else class="h-10 w-28 flex items-center justify-center text-white/60 text-sm">{{ $t('common.loading') }}</div>
                 </div>
               </div>
               <p v-if="errors.captcha" class="mt-1 text-sm text-red-400">{{ errors.captcha }}</p>
-              <p class="mt-1 text-xs text-gray-300">{{ $t('register.form.captcha_hint') }}</p>
+              <p class="mt-1 text-xs text-white/50">{{ $t('register.form.captcha_hint') }}</p>
             </div>
 
             <div v-if="discordEnabled" class="pt-2">
@@ -146,7 +148,7 @@
         </div>
 
         <div v-else class="space-y-4">
-          <div class="rounded-lg border border-white/15 bg-white/5 p-4 text-sm text-white/80">
+          <div class="rounded-lg border border-white/10 bg-white/5 p-4 text-sm text-white/80">
             <p class="mb-1"><strong>{{ $t('register.summary.username') }}:</strong> {{ getNormalizedUsername() }}</p>
             <p class="mb-1"><strong>{{ $t('register.summary.email') }}:</strong> {{ form.email }}</p>
             <p v-if="questionnaireResult"><strong>{{ $t('register.summary.questionnaire') }}:</strong> {{ questionnaireResult.passed ? $t('questionnaire.passed') : $t('questionnaire.failed') }} ({{ questionnaireResult.score }}/{{ questionnaireResult.passScore }})</p>
