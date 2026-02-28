@@ -1,9 +1,9 @@
 <template>
   <button
+    class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
     :class="[
-      'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 relative z-10',
-      buttonVariants[variant],
-      buttonSizes[size],
+      variants[variant],
+      sizes[size],
       className
     ]"
     v-bind="$attrs"
@@ -13,18 +13,20 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+
 interface Props {
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link'
   size?: 'default' | 'sm' | 'lg' | 'icon'
   className?: string
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   variant: 'default',
   size: 'default'
 })
 
-const buttonVariants = {
+const variants = {
   default: 'glass-button-primary shadow-lg',
   destructive: 'glass-button-danger',
   outline: 'glass-button bg-transparent hover:bg-white/10 border-white/10',
@@ -33,7 +35,7 @@ const buttonVariants = {
   link: 'text-blue-400 underline-offset-4 hover:underline'
 }
 
-const buttonSizes = {
+const sizes = {
   default: 'h-10 px-4 py-2',
   sm: 'h-9 rounded-md px-3',
   lg: 'h-11 rounded-md px-8',

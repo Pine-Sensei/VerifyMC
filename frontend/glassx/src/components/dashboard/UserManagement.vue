@@ -1,6 +1,6 @@
 <template>
   <div class="w-full space-y-6">
-    <Tabs :tabs="tabs" :default-tab="activeTab" @tab-change="onTabChange">
+    <Tabs :tabs="tabs" :default-tab="activeTab" @change="onTabChange">
       <template #default="{ activeTab }">
         <!-- Pending Users Tab -->
         <div v-if="activeTab === 'review'" class="space-y-4 pt-4">
@@ -282,7 +282,16 @@
 <script setup lang="ts">
 import { ref, computed, inject, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { RefreshCw, Key, Trash2, Ban, CheckCircle } from 'lucide-vue-next'
+import {
+  RefreshCw,
+  Key,
+  Trash2,
+  Ban,
+  CheckCircle,
+  Search,
+  Filter,
+  X,
+} from 'lucide-vue-next'
 import { useNotification } from '@/composables/useNotification'
 import { useAdminUsers } from '@/composables/useAdminUsers'
 import { apiService, type PendingUser } from '@/services/api'

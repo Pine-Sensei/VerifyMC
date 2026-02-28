@@ -1,13 +1,7 @@
 <template>
-  <Card :class="shouldShowPassword ? 'w-full max-w-xl' : 'w-full max-w-md'">
-    <CardHeader class="lg:hidden text-center">
-      <CardTitle>{{ $t('register.title') }}</CardTitle>
-      <CardDescription>{{ $t('register.subtitle') }}</CardDescription>
-    </CardHeader>
-
-    <CardContent>
-      <div class="relative">
-        <div class="flex items-center justify-center gap-2 mb-6 text-xs md:text-sm">
+  <div class="w-full max-w-xl flex flex-col items-center">
+    <div class="relative w-full max-w-md mb-6">
+        <div class="flex items-center justify-center gap-2 text-xs md:text-sm">
           <div class="font-medium transition-colors" :class="currentStep === 'basic' ? 'text-blue-200' : 'text-white/60'">1. {{ $t('register.steps.basic') }}</div>
           <div class="w-5 h-px bg-white/5"></div>
           <template v-if="questionnaireEnabled">
@@ -17,8 +11,17 @@
           </template>
           <div v-else class="font-medium transition-colors" :class="currentStep === 'submit' ? 'text-blue-200' : 'text-white/60'">2. {{ $t('register.steps.submit') }}</div>
         </div>
+    </div>
 
-        <form v-if="currentStep === 'basic'" @submit.prevent="goToQuestionnaire" class="space-y-5">
+    <Card :class="shouldShowPassword ? 'w-full max-w-xl' : 'w-full max-w-md'">
+    <CardHeader class="lg:hidden text-center">
+      <CardTitle>{{ $t('register.title') }}</CardTitle>
+      <CardDescription>{{ $t('register.subtitle') }}</CardDescription>
+    </CardHeader>
+
+    <CardContent>
+      <div class="relative">
+         <form v-if="currentStep === 'basic'" @submit.prevent="goToQuestionnaire" class="space-y-5">
           <div class="space-y-3">
             <div v-if="bedrockEnabled">
               <Label class="mb-2">{{ $t('register.form.platform') }}</Label>
@@ -166,6 +169,7 @@
       </div>
     </CardContent>
   </Card>
+</div>
 </template>
 
 <script setup lang="ts">

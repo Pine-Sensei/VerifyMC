@@ -105,7 +105,7 @@
       <div class="pt-20 lg:pt-8 px-4 lg:px-8 pb-8 flex-1">
         <div class="mb-6 flex items-center justify-between">
           <h1 class="text-2xl font-bold text-white">{{ currentSectionTitle }}</h1>
-          <div class="hidden lg:block">
+          <div class="hidden">
             <LanguageSwitcher />
           </div>
         </div>

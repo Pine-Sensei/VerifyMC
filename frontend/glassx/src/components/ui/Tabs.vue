@@ -5,10 +5,10 @@
       role="tablist"
       :aria-label="ariaLabel"
     >
-      <Button
+      <button
         v-for="(tab, index) in tabs"
         :key="tab.value"
-        variant="ghost"
+        type="button"
         :id="`tab-${tab.value}`"
         :role="'tab'"
         :aria-selected="activeTab === tab.value"
@@ -16,13 +16,13 @@
         :tabindex="activeTab === tab.value ? 0 : -1"
         @click="selectTab(tab.value)"
         @keydown="handleKeyDown($event, index)"
-        class="h-auto rounded-sm px-3 py-1.5 text-sm font-medium transition-all focus-visible:ring-white/50"
+        class="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
         :class="activeTab === tab.value 
-          ? 'bg-white/20 text-white shadow-sm hover:bg-white/20' 
-          : 'text-white/70 hover:text-white hover:bg-white/5'"
+          ? 'bg-white/20 text-white shadow-sm' 
+          : 'text-white/70 hover:bg-white/5 hover:text-white'"
       >
         {{ tab.label }}
-      </Button>
+      </button>
     </div>
     
     <div class="mt-2" role="tabpanel" :id="`tabpanel-${activeTab}`" :aria-labelledby="`tab-${activeTab}`">
@@ -32,8 +32,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, provide, nextTick } from 'vue'
-import Button from './Button.vue'
+import { ref, provide, nextTick, watch } from 'vue'
 
 interface Tab {
   value: string
@@ -44,6 +43,7 @@ interface Props {
   tabs: Tab[]
   defaultTab?: string
   ariaLabel?: string
+  modelValue?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -51,7 +51,16 @@ const props = withDefaults(defineProps<Props>(), {
   ariaLabel: 'Tabs'
 })
 
-const activeTab = ref(props.defaultTab || props.tabs[0]?.value || '')
+const emit = defineEmits(['update:modelValue', 'change'])
+
+const activeTab = ref(props.modelValue || props.defaultTab || props.tabs[0]?.value || '')
+
+// Watch for external changes
+watch(() => props.modelValue, (newValue) => {
+  if (newValue) {
+    activeTab.value = newValue
+  }
+})
 
 // Provide active tab to child components
 provide('activeTab', activeTab)
@@ -59,6 +68,8 @@ provide('activeTab', activeTab)
 // Select a tab
 const selectTab = (value: string) => {
   activeTab.value = value
+  emit('update:modelValue', value)
+  emit('change', value)
 }
 
 // Handle keyboard navigation
@@ -88,7 +99,7 @@ const handleKeyDown = (event: KeyboardEvent, currentIndex: number) => {
   }
 
   // Update active tab and focus the new tab
-  activeTab.value = tabs[newIndex].value
+  selectTab(tabs[newIndex].value)
   
   // Focus the new tab button
   nextTick(() => {
