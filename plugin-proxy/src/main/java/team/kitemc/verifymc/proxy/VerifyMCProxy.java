@@ -155,7 +155,8 @@ public class VerifyMCProxy extends Plugin implements Listener {
                 event.setCancelReason(new TextComponent(kickMessage));
                 
                 if (config.isDebug()) {
-                    getLogger().info("[DEBUG] Blocked player: " + playerName + " (not approved)");
+                    String reason = (status == null) ? "lookup failed" : "not approved";
+                    getLogger().info("[DEBUG] Blocked player: " + playerName + " (" + reason + ")");
                 }
             } else {
                 if (config.isDebug()) {
@@ -164,9 +165,12 @@ public class VerifyMCProxy extends Plugin implements Listener {
             }
         } catch (Exception e) {
             getLogger().log(Level.WARNING, "Failed to check whitelist for " + playerName, e);
-            
-            // On error, allow login by default (fail-open) to prevent lockout
-            // Can be changed to fail-close if needed
+
+            String kickMessage = config.getKickMessage()
+                .replace("{url}", config.getRegisterUrl())
+                .replace("&", "搂");
+            event.setCancelled(true);
+            event.setCancelReason(new TextComponent(kickMessage));
         }
     }
 }

@@ -148,7 +148,8 @@ public class VerifyMCVelocity {
                 event.setResult(PreLoginEvent.PreLoginComponentResult.denied(kickComponent));
 
                 if (config.isDebug()) {
-                    logger.info("[DEBUG] Blocked player: " + playerName + " (not approved)");
+                    String reason = (status == null) ? "lookup failed" : "not approved";
+                    logger.info("[DEBUG] Blocked player: {} ({})", playerName, reason);
                 }
             } else {
                 if (config.isDebug()) {
@@ -157,7 +158,10 @@ public class VerifyMCVelocity {
             }
         } catch (Exception e) {
             logger.warn("Failed to check whitelist for " + playerName, e);
-            // On error, allow login by default (fail-open)
+            String kickMessage = config.getKickMessage()
+                .replace("{url}", config.getRegisterUrl());
+            Component kickComponent = LegacyComponentSerializer.legacyAmpersand().deserialize(kickMessage);
+            event.setResult(PreLoginEvent.PreLoginComponentResult.denied(kickComponent));
         }
     }
 

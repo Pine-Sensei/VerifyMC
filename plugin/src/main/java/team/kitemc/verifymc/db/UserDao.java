@@ -75,10 +75,7 @@ public interface UserDao {
         if ("approved".equalsIgnoreCase(status)) {
             return getApprovedUsersWithPaginationAndSearch(page, size, search);
         }
-        if ("pending".equalsIgnoreCase(status)) {
-            return getPendingUsers();
-        }
-        return getUsersByStatus(status);
+        return getUsersByStatus(status, page, size, search);
     }
 
     default int getTotalUsers(String search, String status) {
@@ -88,7 +85,7 @@ public interface UserDao {
         if ("approved".equalsIgnoreCase(status)) {
             return getApprovedUserCountWithSearch(search);
         }
-        return getTotalUserCountWithSearch(search);
+        return getTotalUsersByStatus(status, search);
     }
 
     default boolean banUser(String username) {
@@ -104,6 +101,57 @@ public interface UserDao {
         return allUsers.stream()
             .filter(u -> status.equalsIgnoreCase((String) u.get("status")))
             .collect(java.util.stream.Collectors.toList());
+    }
+
+    default List<Map<String, Object>> getUsersByStatus(String status, int page, int size, String search) {
+        if (page < 1 || size <= 0) {
+            return java.util.Collections.emptyList();
+        }
+
+        String normalizedSearch = search == null ? "" : search.trim().toLowerCase();
+        List<Map<String, Object>> filtered = getAllUsers().stream()
+            .filter(u -> status.equalsIgnoreCase(String.valueOf(u.get("status"))))
+            .filter(u -> matchesSearch(u, normalizedSearch))
+            .sorted((a, b) -> Long.compare(getRegTimeAsLong(b.get("regTime")), getRegTimeAsLong(a.get("regTime"))))
+            .collect(java.util.stream.Collectors.toList());
+
+        int from = (page - 1) * size;
+        if (from >= filtered.size()) {
+            return java.util.Collections.emptyList();
+        }
+        int to = Math.min(from + size, filtered.size());
+        return filtered.subList(from, to);
+    }
+
+    default int getTotalUsersByStatus(String status, String search) {
+        String normalizedSearch = search == null ? "" : search.trim().toLowerCase();
+        return (int) getAllUsers().stream()
+            .filter(u -> status.equalsIgnoreCase(String.valueOf(u.get("status"))))
+            .filter(u -> matchesSearch(u, normalizedSearch))
+            .count();
+    }
+
+    default boolean matchesSearch(Map<String, Object> user, String normalizedSearch) {
+        if (normalizedSearch == null || normalizedSearch.isEmpty()) {
+            return true;
+        }
+        String username = String.valueOf(user.getOrDefault("username", "")).toLowerCase();
+        String email = String.valueOf(user.getOrDefault("email", "")).toLowerCase();
+        return username.contains(normalizedSearch) || email.contains(normalizedSearch);
+    }
+
+    default long getRegTimeAsLong(Object regTime) {
+        if (regTime instanceof Number) {
+            return ((Number) regTime).longValue();
+        }
+        if (regTime == null) {
+            return 0L;
+        }
+        try {
+            return Long.parseLong(String.valueOf(regTime));
+        } catch (NumberFormatException ignored) {
+            return 0L;
+        }
     }
 
     default boolean updatePassword(String username, String plainPassword) {

@@ -54,7 +54,7 @@ public class ApiClient {
         
         try {
             String encodedUsername = URLEncoder.encode(username, StandardCharsets.UTF_8);
-            String url = config.getBackendUrl() + "/api/check-whitelist?username=" + encodedUsername;
+            String url = config.getBackendUrl() + "/api/user/status?username=" + encodedUsername;
             
             if (config.isDebug()) {
                 logger.info("[DEBUG] API Request: " + url);
@@ -92,28 +92,37 @@ public class ApiClient {
                 // Parse response
                 JsonObject json = JsonParser.parseString(response.toString()).getAsJsonObject();
                 WhitelistStatus status = new WhitelistStatus();
-                
-                if (json.has("status") && !json.get("status").isJsonNull()) {
-                    status.setStatus(json.get("status").getAsString());
-                }
-                if (json.has("username") && !json.get("username").isJsonNull()) {
-                    status.setUsername(json.get("username").getAsString());
+
+                JsonObject data = null;
+                if (json.has("data") && json.get("data").isJsonObject()) {
+                    data = json.getAsJsonObject("data");
                 }
 
-                if (json.has("success") && json.get("success").getAsBoolean()) {
-                    // New protocol: backend returns explicit found field.
+                if (data != null) {
+                    if (data.has("status") && !data.get("status").isJsonNull()) {
+                        status.setStatus(data.get("status").getAsString());
+                    }
+                    if (data.has("username") && !data.get("username").isJsonNull()) {
+                        status.setUsername(data.get("username").getAsString());
+                    }
+                    if (data.has("registered") && !data.get("registered").isJsonNull()) {
+                        status.setFound(data.get("registered").getAsBoolean());
+                    } else {
+                        status.setFound(status.getStatus() != null && !"not_registered".equalsIgnoreCase(status.getStatus()));
+                    }
+                } else {
+                    // Backward compatibility for older flat response formats.
+                    if (json.has("status") && !json.get("status").isJsonNull()) {
+                        status.setStatus(json.get("status").getAsString());
+                    }
+                    if (json.has("username") && !json.get("username").isJsonNull()) {
+                        status.setUsername(json.get("username").getAsString());
+                    }
                     if (json.has("found") && !json.get("found").isJsonNull()) {
                         status.setFound(json.get("found").getAsBoolean());
                     } else {
-                        // Backward compatibility with old protocol.
-                        // If status is present and not "not_registered", conservatively infer found=true.
-                        // Otherwise, explicitly mark as not found.
-                        String responseStatus = status.getStatus();
-                        status.setFound(responseStatus != null && !"not_registered".equalsIgnoreCase(responseStatus));
+                        status.setFound(status.getStatus() != null && !"not_registered".equalsIgnoreCase(status.getStatus()));
                     }
-                } else {
-                    // success=false (or missing) should always be treated as not found.
-                    status.setFound(false);
                 }
                 
                 // Cache the result
