@@ -15,6 +15,7 @@
                 type="text"
                 :placeholder="$t('login.form.username_placeholder')"
                 v-model="form.username"
+                :state="errors.username ? 'error' : 'default'"
               />
             </div>
 
@@ -25,15 +26,16 @@
                 type="password"
                 :placeholder="$t('login.form.password_placeholder')"
                 v-model="form.password"
+                :state="errors.password ? 'error' : 'default'"
               />
             </div>
 
             <button
               type="submit"
               :disabled="loading"
-              class="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              class="btn-primary w-full min-h-11 px-4 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <div v-if="loading" class="spinner"></div>
+              <div v-if="loading" class="spinner" />
               <span>{{ loading ? $t('common.loading') : $t('login.form.submit') }}</span>
             </button>
           </div>
@@ -155,3 +157,20 @@ onUnmounted(() => {
   }
 })
 </script> 
+
+<style scoped>
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 999px;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+</style>

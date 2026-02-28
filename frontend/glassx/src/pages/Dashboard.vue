@@ -1,102 +1,85 @@
 <template>
   <div class="dashboard-container">
-    <!-- Mobile Header -->
-    <header class="mobile-header">
-      <button @click="toggleMobileMenu" class="hamburger-btn">
-        <Menu class="w-6 h-6" />
+    <header class="mobile-header glass-panel" v-if="mobileMenuOpen || isMobile">
+      <button @click="toggleMobileMenu" class="icon-btn" type="button" aria-label="Toggle menu">
+        <Menu class="w-5 h-5" />
       </button>
       <h1 class="mobile-title">{{ serverName }}</h1>
       <LanguageSwitcher />
     </header>
 
-    <!-- Mobile Overlay -->
     <div v-if="mobileMenuOpen" class="mobile-overlay" @click="closeMobileMenu"></div>
 
-    <!-- Sidebar -->
-    <aside class="sidebar" :class="{ 'sidebar-collapsed': sidebarCollapsed, 'sidebar-mobile-open': mobileMenuOpen }">
+    <aside class="sidebar glass-panel-strong" :class="{ 'sidebar-collapsed': sidebarCollapsed, 'sidebar-mobile-open': mobileMenuOpen }">
       <div class="sidebar-header">
         <div class="sidebar-logo">
           <div class="logo-icon">
-            <Server class="w-6 h-6" />
+            <Server class="w-5 h-5" />
           </div>
           <span v-if="!sidebarCollapsed" class="logo-text">{{ serverName }}</span>
         </div>
-        <button @click="toggleSidebar" class="sidebar-toggle">
+        <button @click="toggleSidebar" class="icon-btn" type="button" aria-label="Toggle sidebar">
           <ChevronLeft v-if="!sidebarCollapsed" class="w-4 h-4" />
           <ChevronRight v-else class="w-4 h-4" />
         </button>
       </div>
 
       <nav class="sidebar-nav">
-        <!-- Player Section -->
-        <div class="nav-section">
-          <div v-if="!sidebarCollapsed" class="nav-section-title">{{ $t('dashboard.sections.player') }}</div>
-          <div class="nav-items">
-            <button
-              v-for="item in playerMenuItems"
-              :key="item.id"
-              @click="setActiveSection(item.id)"
-              :class="['nav-item', { 'nav-item-active': activeSection === item.id }]"
-              :title="sidebarCollapsed ? item.label : ''"
-            >
-              <component :is="item.icon" class="nav-icon" />
-              <span v-if="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
-            </button>
-          </div>
-        </div>
+        <section class="nav-section">
+          <p v-if="!sidebarCollapsed" class="nav-section-title">{{ $t('dashboard.sections.player') }}</p>
+          <button
+            v-for="item in playerMenuItems"
+            :key="item.id"
+            @click="setActiveSection(item.id)"
+            :class="['nav-item', { 'nav-item-active': activeSection === item.id }]"
+            :title="sidebarCollapsed ? item.label : ''"
+            type="button"
+          >
+            <component :is="item.icon" class="nav-icon" />
+            <span v-if="!sidebarCollapsed">{{ item.label }}</span>
+          </button>
+        </section>
 
-        <!-- Admin Section -->
-        <div v-if="isAdmin" class="nav-section">
-          <div v-if="!sidebarCollapsed" class="nav-section-title">{{ $t('dashboard.sections.admin') }}</div>
-          <div class="nav-items">
-            <button
-              v-for="item in adminMenuItems"
-              :key="item.id"
-              @click="setActiveSection(item.id)"
-              :class="['nav-item', { 'nav-item-active': activeSection === item.id }]"
-              :title="sidebarCollapsed ? item.label : ''"
-            >
-              <component :is="item.icon" class="nav-icon" />
-              <span v-if="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
-            </button>
-          </div>
-        </div>
+        <section v-if="isAdmin" class="nav-section">
+          <p v-if="!sidebarCollapsed" class="nav-section-title">{{ $t('dashboard.sections.admin') }}</p>
+          <button
+            v-for="item in adminMenuItems"
+            :key="item.id"
+            @click="setActiveSection(item.id)"
+            :class="['nav-item', { 'nav-item-active': activeSection === item.id }]"
+            :title="sidebarCollapsed ? item.label : ''"
+            type="button"
+          >
+            <component :is="item.icon" class="nav-icon" />
+            <span v-if="!sidebarCollapsed">{{ item.label }}</span>
+          </button>
+        </section>
       </nav>
 
-      <!-- User Info -->
       <div class="sidebar-footer">
         <div class="user-info">
-          <div class="user-avatar">
-            <User class="w-5 h-5" />
-          </div>
-          <div v-if="!sidebarCollapsed" class="user-details">
-            <span class="user-name">{{ userInfo?.username || 'User' }}</span>
-            <span v-if="isAdmin" class="user-role">{{ $t('dashboard.roles.admin') }}</span>
-            <span v-else class="user-role">{{ $t('dashboard.roles.player') }}</span>
+          <div class="user-avatar"><User class="w-4 h-4" /></div>
+          <div v-if="!sidebarCollapsed">
+            <p class="user-name">{{ userInfo?.username || 'User' }}</p>
+            <p class="user-role">{{ isAdmin ? $t('dashboard.roles.admin') : $t('dashboard.roles.player') }}</p>
           </div>
         </div>
-        <button @click="handleLogout" class="logout-btn" :title="$t('nav.logout')">
+        <button class="btn-danger logout-btn" @click="handleLogout" type="button">
           <LogOut class="w-4 h-4" />
           <span v-if="!sidebarCollapsed">{{ $t('nav.logout') }}</span>
         </button>
       </div>
     </aside>
 
-    <!-- Main Content -->
-    <main class="main-content">
-      <div class="content-header">
-        <h1 class="page-title">{{ currentSectionTitle }}</h1>
-        <div class="header-actions">
-          <LanguageSwitcher />
-        </div>
+    <main class="main-content" :class="{ 'main-content-collapsed': sidebarCollapsed }">
+      <div class="content-header glass-panel">
+        <h2>{{ currentSectionTitle }}</h2>
+        <LanguageSwitcher class="desktop-language" />
       </div>
 
       <div class="content-body">
-        <!-- Player Sections -->
         <ProfileSection v-if="activeSection === 'profile'" />
         <DownloadCenter v-if="activeSection === 'downloads'" />
-
-        <!-- Admin Sections -->
         <ServerStatus v-if="activeSection === 'server-status' && isAdmin" />
         <UserManagement v-if="activeSection === 'user-management' && isAdmin" />
         <AuditLog v-if="activeSection === 'audit-log' && isAdmin" />
@@ -106,25 +89,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, inject, markRaw, defineAsyncComponent, type Ref } from 'vue'
+import { computed, defineAsyncComponent, inject, markRaw, onMounted, onUnmounted, ref, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
-  Server,
-  User,
-  LogOut,
+  Activity,
   ChevronLeft,
   ChevronRight,
   Download,
-  Activity,
-  Users,
   FileText,
+  LogOut,
   Menu,
+  Server,
+  User,
+  Users,
 } from 'lucide-vue-next'
-import { sessionService, type UserInfo } from '@/services/session'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import { sessionService, type UserInfo } from '@/services/session'
+import { useDashboardLayout } from '@/composables/useDashboardLayout'
 
-// Section components - lazy loaded for better performance
 const ProfileSection = defineAsyncComponent(() => import('@/components/dashboard/ProfileSection.vue'))
 const DownloadCenter = defineAsyncComponent(() => import('@/components/dashboard/DownloadCenter.vue'))
 const ServerStatus = defineAsyncComponent(() => import('@/components/dashboard/ServerStatus.vue'))
@@ -138,68 +121,38 @@ interface AppConfig {
 const { t } = useI18n()
 const router = useRouter()
 const config = inject<Ref<AppConfig>>('config', ref({}))
-
-const sidebarCollapsed = ref(false)
-const mobileMenuOpen = ref(false)
-const activeSection = ref('profile')
 const userInfo = ref<UserInfo | null>(null)
+const isMobile = ref(false)
+let removeResizeListener: (() => void) | null = null
 
 const serverName = computed(() => config.value?.webServerPrefix || 'VerifyMC')
 const isAdmin = computed(() => sessionService.isAdmin())
 
 const playerMenuItems = computed(() => [
-  {
-    id: 'profile',
-    label: t('dashboard.menu.profile'),
-    icon: markRaw(User),
-  },
-  {
-    id: 'downloads',
-    label: t('dashboard.menu.downloads'),
-    icon: markRaw(Download),
-  },
+  { id: 'profile', label: t('dashboard.menu.profile'), icon: markRaw(User) },
+  { id: 'downloads', label: t('dashboard.menu.downloads'), icon: markRaw(Download) },
 ])
 
 const adminMenuItems = computed(() => [
-  {
-    id: 'server-status',
-    label: t('dashboard.menu.server_status'),
-    icon: markRaw(Activity),
-  },
-  {
-    id: 'user-management',
-    label: t('dashboard.menu.user_management'),
-    icon: markRaw(Users),
-  },
-  {
-    id: 'audit-log',
-    label: t('dashboard.menu.audit_log'),
-    icon: markRaw(FileText),
-  },
+  { id: 'server-status', label: t('dashboard.menu.server_status'), icon: markRaw(Activity) },
+  { id: 'user-management', label: t('dashboard.menu.user_management'), icon: markRaw(Users) },
+  { id: 'audit-log', label: t('dashboard.menu.audit_log'), icon: markRaw(FileText) },
 ])
 
-const currentSectionTitle = computed(() => {
-  const allItems = [...playerMenuItems.value, ...adminMenuItems.value]
-  const item = allItems.find(i => i.id === activeSection.value)
-  return item?.label || ''
+const {
+  sidebarCollapsed,
+  mobileMenuOpen,
+  activeSection,
+  currentSectionTitle,
+  toggleSidebar,
+  toggleMobileMenu,
+  closeMobileMenu,
+  setActiveSection,
+} = useDashboardLayout({
+  defaultSection: 'profile',
+  playerMenuItems,
+  adminMenuItems,
 })
-
-const toggleSidebar = () => {
-  sidebarCollapsed.value = !sidebarCollapsed.value
-}
-
-const toggleMobileMenu = () => {
-  mobileMenuOpen.value = !mobileMenuOpen.value
-}
-
-const closeMobileMenu = () => {
-  mobileMenuOpen.value = false
-}
-
-const setActiveSection = (section: string) => {
-  activeSection.value = section
-  closeMobileMenu()
-}
 
 const handleLogout = () => {
   sessionService.clearToken()
@@ -207,20 +160,30 @@ const handleLogout = () => {
 }
 
 onMounted(() => {
-  // Check authentication
   if (!sessionService.isAuthenticated()) {
     sessionService.redirectToLogin()
     return
   }
 
-  // Load user info
   userInfo.value = sessionService.getUserInfo()
+  activeSection.value = isAdmin.value ? 'user-management' : 'profile'
 
-  // Set default section based on user role
-  if (isAdmin.value) {
-    activeSection.value = 'user-management'
-  } else {
-    activeSection.value = 'profile'
+  if (typeof window !== 'undefined') {
+    const checkMobile = () => {
+      isMobile.value = window.innerWidth <= 900
+      if (!isMobile.value) {
+        mobileMenuOpen.value = false
+      }
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    removeResizeListener = () => window.removeEventListener('resize', checkMobile)
+  }
+})
+
+onUnmounted(() => {
+  if (removeResizeListener) {
+    removeResizeListener()
   }
 })
 </script>
@@ -228,350 +191,239 @@ onMounted(() => {
 <style scoped>
 .dashboard-container {
   display: flex;
-  min-height: 100vh;
-  background: #030303;
+  min-height: calc(100vh - 5rem);
+  padding: 0 1rem 1rem;
 }
 
-/* Sidebar Styles */
+.mobile-header {
+  display: none;
+}
+
 .sidebar {
-  width: 260px;
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  width: 250px;
+  min-height: calc(100vh - 6rem);
+  position: fixed;
+  left: 1rem;
+  top: 4.8rem;
   display: flex;
   flex-direction: column;
-  transition: width 0.3s ease;
-  position: fixed;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  z-index: 100;
+  transition: width var(--motion-base) var(--ease-standard), transform var(--motion-base) var(--ease-standard);
 }
 
 .sidebar-collapsed {
-  width: 72px;
+  width: 74px;
 }
 
-.sidebar-header {
-  padding: 1.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+.sidebar-header,
+.sidebar-footer {
+  padding: 0.9rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  border-bottom: none;
 }
 
 .sidebar-logo {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.6rem;
 }
 
 .logo-icon {
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  border-radius: 12px;
-  display: flex;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.65rem;
+  background: linear-gradient(135deg, #60a5fa, #2563eb);
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  flex-shrink: 0;
 }
 
 .logo-text {
-  font-size: 1.125rem;
   font-weight: 700;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  white-space: nowrap;
-  overflow: hidden;
 }
 
-.sidebar-toggle {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.7);
-  display: flex;
+.icon-btn {
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  color: var(--color-text);
+  border-radius: 0.6rem;
+  background: rgba(15, 23, 42, 0.4);
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
 }
 
-.sidebar-toggle:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-/* Navigation */
 .sidebar-nav {
-  flex: 1;
-  padding: 1rem 0.75rem;
-  overflow-y: auto;
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow: auto;
 }
 
 .nav-section {
-  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
 .nav-section-title {
-  font-size: 0.75rem;
-  font-weight: 600;
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: rgba(255, 255, 255, 0.4);
-  padding: 0 0.75rem;
-  margin-bottom: 0.5rem;
-}
-
-.nav-items {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  letter-spacing: 0.08em;
+  padding: 0 0.6rem;
 }
 
 .nav-item {
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  border-radius: 0.68rem;
+  padding: 0.55rem 0.65rem;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  border-radius: 10px;
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.7);
-  cursor: pointer;
-  transition: all 0.2s;
-  width: 100%;
+  gap: 0.55rem;
   text-align: left;
 }
 
+.nav-item-active,
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: white;
-}
-
-.nav-item-active {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
-  color: white;
-  border: 1px solid rgba(139, 92, 246, 0.3);
+  color: var(--color-text);
+  background: rgba(59, 130, 246, 0.2);
 }
 
 .nav-icon {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-}
-
-.nav-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-/* Sidebar Footer */
-.sidebar-footer {
-  padding: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  width: 1rem;
+  height: 1rem;
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
 }
 
 .user-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  display: flex;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 0.6rem;
+  background: rgba(96, 165, 250, 0.2);
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  flex-shrink: 0;
-}
-
-.user-details {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
 }
 
 .user-name {
-  font-size: 0.875rem;
+  margin: 0;
+  font-size: 0.84rem;
   font-weight: 600;
-  color: white;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .user-role {
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+  font-size: 0.73rem;
+  color: var(--color-text-muted);
 }
 
 .logout-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
   width: 100%;
-  padding: 0.625rem;
-  border-radius: 8px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
+  min-height: 2rem;
 }
 
-.logout-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: rgba(239, 68, 68, 0.3);
-}
-
-/* Main Content */
 .main-content {
   flex: 1;
-  margin-left: 260px;
-  transition: margin-left 0.3s ease;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
+  margin-left: 266px;
+  transition: margin-left var(--motion-base) var(--ease-standard);
 }
 
-.sidebar-collapsed + .main-content {
-  margin-left: 72px;
+.main-content-collapsed {
+  margin-left: 90px;
 }
 
 .content-header {
-  padding: 1.5rem 2rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(255, 255, 255, 0.02);
-  position: sticky;
-  top: 0;
-  z-index: 50;
+  border-radius: var(--radius-lg);
 }
 
-.page-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: white;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+.content-header h2 {
+  margin: 0;
+  font-size: 1.15rem;
 }
 
 .content-body {
-  flex: 1;
-  padding: 2rem;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+.mobile-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.58);
+  z-index: calc(var(--z-overlay) - 1);
+}
+
+@media (max-width: 900px) {
+  .dashboard-container {
+    padding: 0 0.5rem 0.8rem;
+  }
+
   .mobile-header {
     display: flex;
+    position: fixed;
+    top: 4.6rem;
+    left: 0.5rem;
+    right: 0.5rem;
+    z-index: var(--z-overlay);
+    height: 3.1rem;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem;
-    background: rgba(15, 23, 42, 0.95);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 100;
-  }
-
-  .hamburger-btn {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
     padding: 0.5rem;
-    color: white;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .hamburger-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius-md);
   }
 
   .mobile-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: white;
-  }
-
-  .mobile-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 199;
+    margin: 0;
+    font-size: 0.95rem;
   }
 
   .sidebar {
-    width: 280px;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    z-index: 200;
+    z-index: var(--z-overlay);
+    left: 0.5rem;
+    transform: translateX(-120%);
+    top: 8.2rem;
+    min-height: calc(100vh - 9rem);
   }
 
   .sidebar.sidebar-mobile-open {
     transform: translateX(0);
   }
 
-  .sidebar .sidebar-toggle {
-    display: none;
-  }
-
-  .main-content {
+  .main-content,
+  .main-content-collapsed {
     margin-left: 0;
-    padding-top: 60px;
+    margin-top: 3.6rem;
   }
 
-  .content-header {
-    padding: 1rem;
-  }
-
-  .content-body {
-    padding: 1rem;
-  }
-}
-
-/* Desktop - hide mobile header */
-@media (min-width: 769px) {
-  .mobile-header {
-    display: none;
-  }
-
-  .mobile-overlay {
+  .desktop-language {
     display: none;
   }
 }
