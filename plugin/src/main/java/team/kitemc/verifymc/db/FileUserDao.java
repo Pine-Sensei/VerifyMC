@@ -38,9 +38,10 @@ public class FileUserDao implements UserDao {
         if (debug && plugin != null) plugin.getLogger().info("[DEBUG] FileUserDao: " + msg);
     }
     
-    private Long getRegTimeAsLong(Object regTimeValue) {
+    @Override
+    public long getRegTimeAsLong(Object regTimeValue) {
         if (regTimeValue == null) {
-            return null;
+            return 0L;
         }
         if (regTimeValue instanceof Long) {
             return (Long) regTimeValue;
