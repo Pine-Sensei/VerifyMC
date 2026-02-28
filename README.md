@@ -1,12 +1,12 @@
-# 🛡️ VerifyMC
+# ✅ VerifyMC
 
-[简体中文](README_zh.md) | English | [📚 Official Documentation](https://kitemc.com/docs/VerifyMC/)
+[简体中文](README_zh.md) | English | [📚 Official Documentation](https://kitemc.com/docs/VerifyMC/) | [🚀 Release Notes](release_notes_zh.md)
 
 ---
 
 ## 🚀 Introduction
 
-**VerifyMC** is an ultra-lightweight, powerful whitelist management plugin for Minecraft servers. It supports web-based registration, auto/manual review, banning, theme switching, AuthMe integration, and high customizability, helping you secure and manage your server community with ease.
+**VerifyMC** is a powerful whitelist management plugin for Minecraft servers. It supports web-based registration, auto/manual review, banning, theme switching, AuthMe integration, and high customizability, helping you secure and manage your server community with ease.
 
 ---
 
@@ -23,16 +23,17 @@
 9. 📧 **User Notifications**: Automatic email notifications for whitelist approval/rejection.
 10. 🌐 **Multi-language Support**: Both web UI and plugin messages support English and Chinese.
 11. ⚙️ **Highly Customizable**: Set max accounts per email, player ID regex, and more.
-12. 🪶 **Lightweight**: Plugin jar is under 6MB, integrates multiple features, and runs efficiently.
-13. 🔄 **Auto Update & Backup**: Config files auto-upgrade, with full backup before each update.
-14. 🧩 **Flexible Whitelist Modes**: Supports Bukkit native whitelist sync, plugin self-management, and MySQL storage.
-15. 💾 **MySQL & Data File Storage**: Easily switch between local file and MySQL storage; supports automatic migration.
-16. 📝 **Audit Log Multi-Storage**: Audit logs can be stored in file or MySQL.
-17. 🌍 **Custom Internationalization**: Auto-loads any messages_xx.properties file; users can add any language.
-18. 🔐 **AuthMe Integration**: Seamless integration with AuthMe plugin for password management and auto-registration.
-19. 🎮 **Bedrock Support**: Geyser/Floodgate player prefix support for cross-platform servers.
-20. 🔗 **Proxy Support**: BungeeCord/Velocity proxy plugin for network-level whitelist enforcement.
-21. 🤖 **LLM Essay Scoring**: AI-powered auto-scoring for text questionnaire answers via DeepSeek/Google, with circuit breaker and concurrency control.
+12. 🔄 **Auto Update & Backup**: Config files auto-upgrade, with full backup before each update.
+13. 🧩 **Flexible Whitelist Modes**: Supports Bukkit native whitelist sync, plugin self-management, and MySQL storage.
+14. 💾 **MySQL & Data File Storage**: Easily switch between local file and MySQL storage; supports automatic migration.
+15. 📝 **Audit Log Multi-Storage**: Audit logs can be stored in file or MySQL.
+16. 🌍 **Custom Internationalization**: Auto-loads any messages_xx.properties file; users can add any language.
+17. 🔐 **AuthMe Integration**: Seamless integration with AuthMe plugin for password management and auto-registration.
+18. 🎮 **Bedrock Support**: Geyser/Floodgate player prefix support for cross-platform servers.
+19. 🔗 **Proxy Support**: BungeeCord/Velocity proxy plugin for network-level whitelist enforcement.
+20. 🤖 **LLM Essay Scoring**: AI-powered auto-scoring for text questionnaire answers via DeepSeek/Google, with circuit breaker and concurrency control.
+21. 🛠️ **In-Game Commands**: Comprehensive `/vmc` command suite for managing whitelist applications directly in-game.
+22. 🛡️ **Enhanced Security**: SHA-256 + Salt password hashing.
 
 ---
 
@@ -89,7 +90,7 @@ cd plugin
 mvn clean package
 ```
 
-Output jar: `plugin/target/verifymc-<version>.jar`
+Output jar: `plugin/target/verifymc-1.6.3.jar`
 
 ---
 

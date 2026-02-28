@@ -1,4 +1,12 @@
-[English](https://github.com/KiteMC/VerifyMC/releases/tag/v1.6.0) | 简体中文 | [官方文档](https://kitemc.com/docs/verifymc/)
+[English](https://github.com/KiteMC/VerifyMC/releases/tag/v1.6.3) | 简体中文 | [官方文档](https://kitemc.com/docs/verifymc/)
+
+# VerifyMC v1.6.3 更新日志
+
+## 优化与修复
+
+- 修复了一些已知问题
+- 优化了插件性能和稳定性
+- 更新了部分依赖库版本
 
 # VerifyMC v1.6.0 更新日志
 
