@@ -1,140 +1,389 @@
 <template>
-  <section class="hero-wrap">
-    <div class="hero-card glass-panel-strong">
-      <a href="https://github.com/KiteMC/VerifyMC" target="_blank" rel="noopener noreferrer" class="hero-badge">
-        GitHub
-      </a>
+  <div class="relative min-h-screen w-full flex items-center justify-center overflow-hidden">
+    <!-- Main content -->
+    <div class="relative z-10 container mx-auto px-4 md:px-6">
+      <div class="max-w-3xl mx-auto text-center">
+        <!-- Badge -->
+        <div class="fade-up-item" style="--delay: 0s">
+          <div
+            class="github-badge inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.05] border border-white/[0.1] mb-8 md:mb-12 backdrop-blur-sm">
+            <a href="https://github.com/KiteMC/VerifyMC" target="_blank" rel="noopener noreferrer"
+              class="inline-flex items-center gap-2 text-white/70 hover:text-white transition-all duration-300">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path
+                  d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+              </svg>
+              <span class="text-sm font-medium tracking-wide">GitHub</span>
+            </a>
+          </div>
+        </div>
 
-      <h1 class="hero-title">
-        <span class="hero-title-muted">{{ displayTitle1 }}</span>
-        <span class="hero-title-brand">{{ displayTitle2 }}</span>
-      </h1>
+        <!-- 标题 -->
+        <div class="fade-up-item" style="--delay: 0.2s">
+          <h1 class="text-4xl sm:text-6xl md:text-8xl font-bold mb-6 md:mb-8 tracking-tight">
+            <span class="bg-clip-text text-transparent bg-gradient-to-b from-white to-white/80">{{ displayTitle1
+            }}</span>
+            <br />
+            <span
+              class="bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white/90 to-rose-300 font-pacifico">
+              {{ displayTitle2 }}
+            </span>
+          </h1>
+        </div>
 
-      <p class="hero-description">{{ announcement || $t('home.description') }}</p>
+        <!-- 描述文字 -->
+        <div class="fade-up-item" style="--delay: 0.4s">
+          <p v-if="announcement"
+            class="text-base sm:text-lg md:text-xl text-white/40 mb-8 leading-relaxed font-light tracking-wide max-w-xl mx-auto px-4">
+            {{ announcement }}
+          </p>
+          <p v-else
+            class="text-base sm:text-lg md:text-xl text-white/40 mb-8 leading-relaxed font-light tracking-wide max-w-xl mx-auto px-4">
+            {{ $t('home.description') }}
+          </p>
+        </div>
 
-      <div class="hero-actions">
-        <router-link v-if="!isAdminLoggedIn" to="/register" class="btn-primary hero-btn">
-          {{ $t('home.cta.register') }}
-        </router-link>
-        <router-link :to="secondaryAction.href" class="btn-secondary hero-btn">
-          {{ secondaryAction.label }}
-        </router-link>
+        <!-- Action buttons -->
+        <div class="fade-up-item" style="--delay: 0.6s">
+          <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <router-link v-if="!isAdminLoggedIn" to="/register" class="register-button group">
+              <span class="button-glow"></span>
+              <span class="button-content">
+                <svg class="w-5 h-5 transition-transform duration-300 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                </svg>
+                <span>{{ $t('home.cta.register') }}</span>
+              </span>
+              <span class="button-shine"></span>
+            </router-link>
+
+            <router-link :to="secondaryAction.href" class="glass-button group">
+              <svg class="w-5 h-5 transition-transform duration-300 group-hover:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                </path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              </svg>
+              <span>{{ secondaryAction.label }}</span>
+            </router-link>
+          </div>
+        </div>
       </div>
     </div>
-  </section>
+
+    <!-- 底部渐变遮罩 (softened to let fixed background show) -->
+    <div class="absolute inset-0 bg-gradient-to-t from-[#030303]/60 via-transparent to-transparent pointer-events-none" />
+  </div>
 </template>
 
 <script setup lang="ts">
-import { computed, inject, ref, type Ref } from 'vue'
+import { inject, computed, watch, ref, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { sessionService } from '@/services/session'
+
+const { t } = useI18n()
 
 interface AppConfig {
   webServerPrefix?: string
   announcement?: string
 }
 
+const config = inject<Ref<AppConfig>>('config', ref({}))
+
 interface Props {
+  badge?: string
   title1?: string
   title2?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  badge: 'VerifyMC',
   title1: 'Welcome to join',
-  title2: 'VerifyMC',
+  title2: 'VerifyMC'
 })
 
-const config = inject<Ref<AppConfig>>('config', ref({}))
-const { t } = useI18n()
+// 使用配置中的服务器名称
+const serverName = computed(() => config.value?.webServerPrefix)
 
-const displayTitle1 = computed(() => props.title1 || t('home.welcome'))
-const displayTitle2 = computed(() => config.value?.webServerPrefix || props.title2)
-const announcement = computed(() => config.value?.announcement || '')
-const isAdminLoggedIn = computed(() => sessionService.isAuthenticated())
+const displayTitle1 = computed(() => {
+  return props.title1 || t('home.welcome')
+})
+
+const displayTitle2 = computed(() => serverName.value)
+
+// 获取announcement
+const announcement = computed(() => {
+  return config.value?.announcement || ''
+})
+
+const isAdminLoggedIn = computed(() => {
+  return sessionService.isAuthenticated()
+})
 
 const secondaryAction = computed(() => {
   if (isAdminLoggedIn.value) {
-    return { href: '/admin', label: t('nav.admin') }
+    return {
+      href: '/admin',
+      label: t('nav.admin')
+    }
   }
-  return { href: '/login', label: t('nav.login') }
+
+  return {
+    href: '/login',
+    label: t('nav.login')
+  }
 })
+
+// 监听配置变化
+watch(() => config.value?.webServerPrefix, (newPrefix) => {
+  if (newPrefix) {
+    // Config loaded
+  }
+}, { immediate: true })
 </script>
 
 <style scoped>
-.hero-wrap {
-  width: 100%;
-  padding: 1rem;
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
+
+.font-pacifico {
+  font-family: 'Pacifico', cursive;
 }
 
-.hero-card {
-  max-width: 880px;
-  margin: 0 auto;
-  padding: clamp(1.4rem, 4vw, 3rem);
-  text-align: center;
+/* Floating orbs for ambient effect */
+.floating-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.4;
+  animation: float 20s ease-in-out infinite;
 }
 
-.hero-badge {
+.orb-1 {
+  width: 400px;
+  height: 400px;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  top: -10%;
+  left: -5%;
+  animation-delay: 0s;
+}
+
+.orb-2 {
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
+  bottom: 10%;
+  right: -5%;
+  animation-delay: -7s;
+}
+
+.orb-3 {
+  width: 250px;
+  height: 250px;
+  background: linear-gradient(135deg, #06b6d4, #3b82f6);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation-delay: -14s;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(30px, -30px) scale(1.05);
+  }
+  50% {
+    transform: translate(-20px, 20px) scale(0.95);
+  }
+  75% {
+    transform: translate(20px, 30px) scale(1.02);
+  }
+}
+
+/* GitHub badge styling */
+.github-badge {
+  transition: all 0.3s ease;
+}
+
+.github-badge:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+/* Content animation */
+.fade-up-item {
+  opacity: 0;
+  transform: translateY(30px);
+  animation: fadeUp 1s cubic-bezier(0.25, 0.4, 0.25, 1) forwards;
+  animation-delay: calc(0.5s + var(--delay));
+}
+
+@keyframes fadeUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Register button with glow effect */
+.register-button {
+  position: relative;
   display: inline-flex;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  border-radius: 999px;
-  padding: 0.35rem 0.8rem;
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
-}
-
-.hero-title {
-  margin: 1rem 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  line-height: 1.05;
-}
-
-.hero-title-muted {
-  font-size: clamp(1.8rem, 6vw, 3.2rem);
-  color: #dbeafe;
-}
-
-.hero-title-brand {
-  font-size: clamp(2.2rem, 8vw, 4.2rem);
-  background: linear-gradient(135deg, #93c5fd, #22d3ee 45%, #bfdbfe);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.hero-description {
-  max-width: 44rem;
-  margin: 0 auto;
-  color: var(--color-text-muted);
-  line-height: 1.6;
-}
-
-.hero-actions {
-  margin-top: 1.5rem;
-  display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  padding: 0.875rem 2rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  border-radius: 12px;
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    0 4px 15px rgba(59, 130, 246, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-.hero-btn {
-  min-width: 9.5rem;
-  min-height: 2.5rem;
-  padding: 0.55rem 1rem;
+.register-button .button-glow {
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899, #3b82f6);
+  background-size: 300% 300%;
+  border-radius: 14px;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  animation: gradient-rotate 3s ease infinite;
 }
 
-@media (max-width: 640px) {
-  .hero-card {
-    text-align: left;
+@keyframes gradient-rotate {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.register-button:hover .button-glow {
+  opacity: 1;
+}
+
+.register-button .button-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.register-button .button-shine {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  z-index: 2;
+}
+
+.register-button:hover .button-shine {
+  animation: shine 0.6s ease forwards;
+}
+
+@keyframes shine {
+  to {
+    left: 100%;
+  }
+}
+
+.register-button:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 8px 30px rgba(59, 130, 246, 0.5),
+    0 0 40px rgba(139, 92, 246, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Glass button styling */
+.glass-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 2rem;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  color: #fff;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #93c5fd;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+/* Mobile adaptation */
+@media (max-width: 768px) {
+  .fade-up-item h1 {
+    font-size: 2.5rem;
   }
 
-  .hero-actions {
-    justify-content: stretch;
+  .fade-up-item p {
+    font-size: 1rem;
   }
 
-  .hero-btn {
+  .floating-orb {
+    display: none;
+  }
+
+  .register-button,
+  .glass-button {
     width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .fade-up-item {
+    animation: none;
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .floating-orb {
+    animation: none;
+  }
+
+  .register-button .button-shine {
+    display: none;
+  }
+
+  .register-button .button-glow {
+    animation: none;
+  }
+}
+
+/* iOS Safari support */
+@supports (-webkit-touch-callout: none) {
+  .relative.min-h-screen {
+    min-height: -webkit-fill-available;
   }
 }
 </style>

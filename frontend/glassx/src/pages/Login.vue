@@ -1,25 +1,11 @@
 <template>
-  <section class="login-page">
-    <div class="login-shell glass-panel-strong">
+  <div class="relative min-h-svh w-full flex items-center justify-center p-6 md:p-10">
+    <div class="relative z-10 w-full max-w-sm">
       <LoginForm />
     </div>
-  </section>
+  </div>
 </template>
 
 <script setup lang="ts">
 import LoginForm from '@/components/LoginForm.vue'
 </script>
-
-<style scoped>
-.login-page {
-  min-height: calc(100vh - 5rem);
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-}
-
-.login-shell {
-  width: min(420px, 100%);
-  padding: 1.2rem;
-}
-</style>

@@ -4,21 +4,22 @@
     :type="type"
     :value="modelValue"
     @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
-    :class="['glass-input', stateClasses[state], className]"
+    :class="[
+      'flex h-10 w-full rounded-md border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-base text-white placeholder:text-white/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
+      className
+    ]"
     v-bind="$attrs"
   />
 </template>
 
 <script setup lang="ts">
 type InputType = 'text' | 'password' | 'email' | 'number' | 'tel' | 'url' | 'search' | 'date' | 'time' | 'datetime-local'
-type InputState = 'default' | 'error' | 'disabled'
 
 interface Props {
   id?: string
   type?: InputType
   className?: string
   modelValue?: string
-  state?: InputState
 }
 
 interface Emits {
@@ -28,15 +29,8 @@ interface Emits {
 withDefaults(defineProps<Props>(), {
   id: undefined,
   type: 'text',
-  modelValue: '',
-  state: 'default',
+  modelValue: ''
 })
 
 defineEmits<Emits>()
-
-const stateClasses = {
-  default: '',
-  error: 'border-red-400/60 focus:border-red-400/70 focus:shadow-[0_0_0_3px_rgba(239,68,68,0.22)]',
-  disabled: 'opacity-60 cursor-not-allowed',
-}
-</script>
+</script> 
