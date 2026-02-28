@@ -1,7 +1,7 @@
 <template>
   <div
     :class="[
-      'rounded-lg border bg-card text-card-foreground shadow-sm',
+      'glass-card text-white',
       className
     ]"
     v-bind="$attrs"
@@ -16,19 +16,4 @@ interface Props {
 }
 
 defineProps<Props>()
-</script>
-
-<style scoped>
-.bg-card {
-  background-color: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-}
-
-.text-card-foreground {
-  color: white;
-}
-
-.border {
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-</style> 
+</script> 

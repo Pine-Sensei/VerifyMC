@@ -1,5 +1,5 @@
 <template>
-  <nav class="nav-container">
+  <nav class="fixed top-0 left-0 right-0 z-40 w-full bg-white/5 backdrop-blur-xl border-b border-white/10">
     <!-- Gradient accent line -->
     <div class="nav-gradient-line"></div>
     
@@ -24,7 +24,7 @@
           <!-- Mobile Menu Button -->
           <button
             @click="toggleMobileMenu"
-            class="mobile-menu-btn"
+            class="md:hidden flex items-center justify-center p-2 rounded-lg text-white hover:bg-white/10 border border-transparent transition-all duration-300"
             aria-label="Toggle mobile menu"
           >
             <svg
@@ -57,7 +57,7 @@
       <transition name="slide-fade">
         <div
           v-show="mobileMenuOpen"
-          class="mobile-menu"
+          class="md:hidden border-t border-white/10 bg-white/5 backdrop-blur-xl"
         >
           <div class="px-3 pt-3 pb-4 space-y-2">
             <AnimatedMenuBar class="flex-col space-y-2" />
@@ -88,18 +88,7 @@ const toggleMobileMenu = () => {
 </script>
 
 <style scoped>
-/* Navigation container */
-.nav-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 40;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
+/* Navigation container - replaced by Tailwind classes */
 
 /* Gradient accent line at top */
 .nav-gradient-line {
@@ -144,46 +133,6 @@ const toggleMobileMenu = () => {
   background-clip: text;
 }
 
-/* Mobile menu button */
-.mobile-menu-btn {
-  display: none;
-  padding: 0.5rem;
-  border-radius: 8px;
-  color: #fff;
-  background: transparent;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.mobile-menu-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-@media (max-width: 768px) {
-  .mobile-menu-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-}
-
-/* Mobile menu */
-.mobile-menu {
-  display: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-}
-
-@media (max-width: 768px) {
-  .mobile-menu {
-    display: block;
-  }
-}
-
 /* Slide animation for mobile menu */
 .slide-fade-enter-active {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -203,10 +152,6 @@ const toggleMobileMenu = () => {
 @media (prefers-reduced-motion: reduce) {
   .slide-fade-enter-active,
   .slide-fade-leave-active {
-    transition: none;
-  }
-  
-  .mobile-menu-btn svg {
     transition: none;
   }
 }

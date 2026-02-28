@@ -28,6 +28,11 @@ export default {
       backdropBlur: {
         xs: "2px",
       },
+      backdropSaturate: {
+        '150': '1.5',
+        '180': '1.8',
+        '200': '2.0',
+      },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
       },

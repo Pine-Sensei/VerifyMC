@@ -1,127 +1,169 @@
 <template>
-  <div class="registration-card" :class="shouldShowPassword ? 'w-full max-w-xl' : 'w-full max-w-md'">
-    <div class="relative">
-      <div class="text-center mb-8 lg:hidden">
-        <h2 class="text-2xl font-bold text-white mb-2 tracking-tight">{{ $t('register.title') }}</h2>
-        <p class="text-white/60 text-sm">{{ $t('register.subtitle') }}</p>
-      </div>
+  <Card :class="shouldShowPassword ? 'w-full max-w-xl' : 'w-full max-w-md'">
+    <CardHeader class="lg:hidden text-center">
+      <CardTitle>{{ $t('register.title') }}</CardTitle>
+      <CardDescription>{{ $t('register.subtitle') }}</CardDescription>
+    </CardHeader>
 
-      <div class="relative z-10 flex items-center justify-center gap-2 mb-6 text-xs md:text-sm">
-        <div class="step-chip" :class="currentStep === 'basic' ? 'step-chip-active' : ''">1. {{ $t('register.steps.basic') }}</div>
-        <div class="step-separator"></div>
-        <template v-if="questionnaireEnabled">
-          <div class="step-chip" :class="currentStep === 'questionnaire' ? 'step-chip-active' : ''">2. {{ $t('register.steps.questionnaire') }}</div>
-          <div class="step-separator"></div>
-          <div class="step-chip" :class="currentStep === 'submit' ? 'step-chip-active' : ''">3. {{ $t('register.steps.submit') }}</div>
-        </template>
-        <div v-else class="step-chip" :class="currentStep === 'submit' ? 'step-chip-active' : ''">2. {{ $t('register.steps.submit') }}</div>
-      </div>
+    <CardContent>
+      <div class="relative">
+        <div class="flex items-center justify-center gap-2 mb-6 text-xs md:text-sm">
+          <div class="font-medium transition-colors" :class="currentStep === 'basic' ? 'text-blue-200' : 'text-white/60'">1. {{ $t('register.steps.basic') }}</div>
+          <div class="w-5 h-px bg-white/10"></div>
+          <template v-if="questionnaireEnabled">
+            <div class="font-medium transition-colors" :class="currentStep === 'questionnaire' ? 'text-blue-200' : 'text-white/60'">2. {{ $t('register.steps.questionnaire') }}</div>
+            <div class="w-5 h-px bg-white/10"></div>
+            <div class="font-medium transition-colors" :class="currentStep === 'submit' ? 'text-blue-200' : 'text-white/60'">3. {{ $t('register.steps.submit') }}</div>
+          </template>
+          <div v-else class="font-medium transition-colors" :class="currentStep === 'submit' ? 'text-blue-200' : 'text-white/60'">2. {{ $t('register.steps.submit') }}</div>
+        </div>
 
-      <form v-if="currentStep === 'basic'" @submit.prevent="goToQuestionnaire" class="space-y-5 relative z-10">
-        <div class="space-y-3">
-          <div v-if="bedrockEnabled">
-            <label class="block text-sm font-medium text-white mb-2">{{ $t('register.form.platform') }}</label>
-            <div class="platform-toggle" role="radiogroup" :aria-label="$t('register.form.platform')">
-              <button
-                type="button"
-                class="platform-option"
-                :class="selectedPlatform === 'java' ? 'platform-option-active' : ''"
-                @click="selectPlatform('java')"
-              >
-                {{ $t('register.form.platform_java') }}
-              </button>
-              <button
-                type="button"
-                class="platform-option"
-                :class="selectedPlatform === 'bedrock' ? 'platform-option-active' : ''"
-                @click="selectPlatform('bedrock')"
-              >
-                {{ $t('register.form.platform_bedrock') }}
-              </button>
-            </div>
-            <p v-if="selectedPlatform === 'bedrock'" class="mt-2 text-xs text-white/60">
-              {{ $t('register.form.platform_bedrock_prefix_hint', { prefix: bedrockPrefix }) }}
-            </p>
-          </div>
-
-          <div>
-            <label for="username" class="block text-sm font-medium text-white mb-1">{{ $t('register.form.username') }}</label>
-            <input id="username" v-model="form.username" type="text" :placeholder="$t('register.form.username_placeholder')" class="glass-input" :class="{ 'glass-input-error': errors.username }" @blur="validateUsername" />
-            <p v-if="errors.username" class="mt-1 text-sm text-red-400">{{ errors.username }}</p>
-          </div>
-
-          <div>
-            <label for="email" class="block text-sm font-medium text-white mb-1">{{ $t('register.form.email') }}</label>
-            <input id="email" v-model="form.email" type="email" :placeholder="$t('register.form.email_placeholder')" class="glass-input" :class="{ 'glass-input-error': errors.email }" @blur="validateEmail" />
-            <p v-if="errors.email" class="mt-1 text-sm text-red-400">{{ errors.email }}</p>
-          </div>
-
-          <div v-if="shouldShowPassword">
-            <label for="password" class="block text-sm font-medium text-white mb-1">{{ $t('register.form.password') }}</label>
-            <input id="password" v-model="form.password" type="password" :placeholder="$t('register.form.password_placeholder')" class="glass-input" :class="{ 'glass-input-error': errors.password }" @blur="validatePassword" />
-            <p v-if="errors.password" class="mt-1 text-sm text-red-400">{{ errors.password }}</p>
-            <p v-if="authmeConfig.passwordRegex" class="mt-1 text-xs text-gray-300">{{ $t('register.form.password_hint', { regex: authmeConfig.passwordRegex }) }}</p>
-          </div>
-
-          <div v-if="emailEnabled">
-            <label for="code" class="block text-sm font-medium text-white mb-1">{{ $t('register.form.code') }}</label>
-            <div class="flex flex-col sm:flex-row gap-2">
-              <input id="code" v-model="form.code" type="text" :placeholder="$t('register.form.code_placeholder')" class="glass-input" :class="{ 'glass-input-error': errors.code }" @blur="validateCode" />
-              <button type="button" @click="sendCode" :disabled="sending || !form.email || cooldownSeconds > 0" class="glass-button-secondary">
-                {{ sending ? $t('register.sending') : cooldownSeconds > 0 ? `${cooldownSeconds}s` : $t('register.sendCode') }}
-              </button>
-            </div>
-            <p v-if="errors.code" class="mt-1 text-sm text-red-400">{{ errors.code }}</p>
-          </div>
-
-          <div v-if="captchaEnabled">
-            <label for="captcha" class="block text-sm font-medium text-white mb-1">{{ $t('register.form.captcha') }}</label>
-            <div class="flex flex-col sm:flex-row gap-2 items-center">
-              <input id="captcha" v-model="form.captchaAnswer" type="text" :placeholder="$t('register.form.captcha_placeholder')" class="glass-input" :class="{ 'glass-input-error': errors.captcha }" @blur="validateCaptcha" />
-              <div class="captcha-image-container cursor-pointer border border-white/20 rounded-lg overflow-hidden bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:border-white/30 transition-all duration-300 flex-shrink-0 shadow-lg" @click="refreshCaptcha" :title="$t('register.form.captcha_refresh')">
-                <img v-if="captchaImage" :src="captchaImage" alt="captcha" class="h-11 w-auto" />
-                <div v-else class="h-11 w-28 flex items-center justify-center text-white/60 text-sm">{{ $t('common.loading') }}</div>
+        <form v-if="currentStep === 'basic'" @submit.prevent="goToQuestionnaire" class="space-y-5">
+          <div class="space-y-3">
+            <div v-if="bedrockEnabled">
+              <Label class="mb-2">{{ $t('register.form.platform') }}</Label>
+              <div class="inline-flex w-full rounded-lg bg-white/5 border border-white/10 p-1 gap-1" role="radiogroup" :aria-label="$t('register.form.platform')">
+                <button
+                  type="button"
+                  class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-white/20"
+                  :class="selectedPlatform === 'java' ? 'bg-white/10 text-white shadow-sm' : 'text-white/60 hover:bg-white/5'"
+                  @click="selectPlatform('java')"
+                >
+                  {{ $t('register.form.platform_java') }}
+                </button>
+                <button
+                  type="button"
+                  class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-white/20"
+                  :class="selectedPlatform === 'bedrock' ? 'bg-white/10 text-white shadow-sm' : 'text-white/60 hover:bg-white/5'"
+                  @click="selectPlatform('bedrock')"
+                >
+                  {{ $t('register.form.platform_bedrock') }}
+                </button>
               </div>
+              <p v-if="selectedPlatform === 'bedrock'" class="mt-2 text-xs text-white/60">
+                {{ $t('register.form.platform_bedrock_prefix_hint', { prefix: bedrockPrefix }) }}
+              </p>
             </div>
-            <p v-if="errors.captcha" class="mt-1 text-sm text-red-400">{{ errors.captcha }}</p>
-            <p class="mt-1 text-xs text-gray-300">{{ $t('register.form.captcha_hint') }}</p>
+
+            <div>
+              <Label for="username" class="mb-1">{{ $t('register.form.username') }}</Label>
+              <Input
+                id="username"
+                v-model="form.username"
+                type="text"
+                :placeholder="$t('register.form.username_placeholder')"
+                :class="{ 'border-red-500 focus-visible:ring-red-500': errors.username }"
+                @blur="validateUsername"
+              />
+              <p v-if="errors.username" class="mt-1 text-sm text-red-400">{{ errors.username }}</p>
+            </div>
+
+            <div>
+              <Label for="email" class="mb-1">{{ $t('register.form.email') }}</Label>
+              <Input
+                id="email"
+                v-model="form.email"
+                type="email"
+                :placeholder="$t('register.form.email_placeholder')"
+                :class="{ 'border-red-500 focus-visible:ring-red-500': errors.email }"
+                @blur="validateEmail"
+              />
+              <p v-if="errors.email" class="mt-1 text-sm text-red-400">{{ errors.email }}</p>
+            </div>
+
+            <div v-if="shouldShowPassword">
+              <Label for="password" class="mb-1">{{ $t('register.form.password') }}</Label>
+              <Input
+                id="password"
+                v-model="form.password"
+                type="password"
+                :placeholder="$t('register.form.password_placeholder')"
+                :class="{ 'border-red-500 focus-visible:ring-red-500': errors.password }"
+                @blur="validatePassword"
+              />
+              <p v-if="errors.password" class="mt-1 text-sm text-red-400">{{ errors.password }}</p>
+              <p v-if="authmeConfig.passwordRegex" class="mt-1 text-xs text-gray-300">{{ $t('register.form.password_hint', { regex: authmeConfig.passwordRegex }) }}</p>
+            </div>
+
+            <div v-if="emailEnabled">
+              <Label for="code" class="mb-1">{{ $t('register.form.code') }}</Label>
+              <div class="flex flex-col sm:flex-row gap-2">
+                <Input
+                  id="code"
+                  v-model="form.code"
+                  type="text"
+                  :placeholder="$t('register.form.code_placeholder')"
+                  :class="{ 'border-red-500 focus-visible:ring-red-500': errors.code }"
+                  @blur="validateCode"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  @click="sendCode"
+                  :disabled="sending || !form.email || cooldownSeconds > 0"
+                  class="whitespace-nowrap"
+                >
+                  {{ sending ? $t('register.sending') : cooldownSeconds > 0 ? `${cooldownSeconds}s` : $t('register.sendCode') }}
+                </Button>
+              </div>
+              <p v-if="errors.code" class="mt-1 text-sm text-red-400">{{ errors.code }}</p>
+            </div>
+
+            <div v-if="captchaEnabled">
+              <Label for="captcha" class="mb-1">{{ $t('register.form.captcha') }}</Label>
+              <div class="flex flex-col sm:flex-row gap-2 items-center">
+                <Input
+                  id="captcha"
+                  v-model="form.captchaAnswer"
+                  type="text"
+                  :placeholder="$t('register.form.captcha_placeholder')"
+                  :class="{ 'border-red-500 focus-visible:ring-red-500': errors.captcha }"
+                  @blur="validateCaptcha"
+                />
+                <div class="cursor-pointer border border-white/20 rounded-lg overflow-hidden bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:border-white/30 transition-all duration-300 flex-shrink-0 shadow-lg" @click="refreshCaptcha" :title="$t('register.form.captcha_refresh')">
+                  <img v-if="captchaImage" :src="captchaImage" alt="captcha" class="h-10 w-auto" />
+                  <div v-else class="h-10 w-28 flex items-center justify-center text-white/60 text-sm">{{ $t('common.loading') }}</div>
+                </div>
+              </div>
+              <p v-if="errors.captcha" class="mt-1 text-sm text-red-400">{{ errors.captcha }}</p>
+              <p class="mt-1 text-xs text-gray-300">{{ $t('register.form.captcha_hint') }}</p>
+            </div>
+
+            <div v-if="discordEnabled" class="pt-2">
+              <Label class="mb-2">Discord {{ discordRequired ? '*' : '' }}</Label>
+              <DiscordLink :username="getNormalizedUsername()" :required="discordRequired" @linked="onDiscordLinked" @unlinked="onDiscordUnlinked" />
+              <p v-if="errors.discord" class="mt-1 text-sm text-red-400">{{ errors.discord }}</p>
+            </div>
           </div>
 
-          <div v-if="discordEnabled" class="pt-2">
-            <label class="block text-sm font-medium text-white mb-2">Discord {{ discordRequired ? '*' : '' }}</label>
-            <DiscordLink :username="getNormalizedUsername()" :required="discordRequired" @linked="onDiscordLinked" @unlinked="onDiscordUnlinked" />
-            <p v-if="errors.discord" class="mt-1 text-sm text-red-400">{{ errors.discord }}</p>
-          </div>
+          <Button type="submit" :disabled="!isBasicStepValid" class="w-full">
+            <span>{{ questionnaireEnabled ? $t('register.actions.next_questionnaire') : $t('register.steps.submit') }}</span>
+          </Button>
+        </form>
+
+        <div v-else-if="currentStep === 'questionnaire'">
+          <QuestionnaireForm @back="currentStep = 'basic'" @skip="onQuestionnaireSkipped" @passed="onQuestionnairePassed" />
         </div>
 
-        <button type="submit" :disabled="!isBasicStepValid" class="submit-button">
-          <span>{{ questionnaireEnabled ? $t('register.actions.next_questionnaire') : $t('register.steps.submit') }}</span>
-          <div class="button-shine"></div>
-        </button>
-      </form>
+        <div v-else class="space-y-4">
+          <div class="rounded-lg border border-white/15 bg-white/5 p-4 text-sm text-white/80">
+            <p class="mb-1"><strong>{{ $t('register.summary.username') }}:</strong> {{ getNormalizedUsername() }}</p>
+            <p class="mb-1"><strong>{{ $t('register.summary.email') }}:</strong> {{ form.email }}</p>
+            <p v-if="questionnaireResult"><strong>{{ $t('register.summary.questionnaire') }}:</strong> {{ questionnaireResult.passed ? $t('questionnaire.passed') : $t('questionnaire.failed') }} ({{ questionnaireResult.score }}/{{ questionnaireResult.passScore }})</p>
+          </div>
 
-      <div v-else-if="currentStep === 'questionnaire'" class="relative z-10">
-        <QuestionnaireForm @back="currentStep = 'basic'" @skip="onQuestionnaireSkipped" @passed="onQuestionnairePassed" />
+          <div class="rounded-lg border border-white/10 bg-white/5 p-6 text-center">
+            <div v-if="loading" class="flex flex-col items-center gap-3 text-white/70">
+              <div class="h-6 w-6 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+              <p>{{ $t('common.loading') }}</p>
+            </div>
+            <p v-else-if="registrationSubmitted" class="text-green-300 font-medium">{{ registrationSuccessMessage }}</p>
+            <p v-else class="text-red-300 font-medium">{{ $t('register.failed') }}</p>
+          </div>
+        </div>
       </div>
-
-      <div v-else class="space-y-4 relative z-10">
-        <div class="rounded-lg border border-white/15 bg-white/5 p-4 text-sm text-white/80">
-          <p class="mb-1"><strong>{{ $t('register.summary.username') }}:</strong> {{ getNormalizedUsername() }}</p>
-          <p class="mb-1"><strong>{{ $t('register.summary.email') }}:</strong> {{ form.email }}</p>
-          <p v-if="questionnaireResult"><strong>{{ $t('register.summary.questionnaire') }}:</strong> {{ questionnaireResult.passed ? $t('questionnaire.passed') : $t('questionnaire.failed') }} ({{ questionnaireResult.score }}/{{ questionnaireResult.passScore }})</p>
-        </div>
-
-        <div class="rounded-lg border border-white/10 bg-white/5 p-6 text-center">
-          <div v-if="loading" class="flex flex-col items-center gap-3 text-white/70">
-            <div class="spinner"></div>
-            <p>{{ $t('common.loading') }}</p>
-          </div>
-          <p v-else-if="registrationSubmitted" class="text-green-300 font-medium">{{ registrationSuccessMessage }}</p>
-          <p v-else class="text-red-300 font-medium">{{ $t('register.failed') }}</p>
-        </div>
-      </div>
-    </div>
-  </div>
+    </CardContent>
+  </Card>
 </template>
 
 <script setup lang="ts">
@@ -132,6 +174,15 @@ import { useNotification } from '@/composables/useNotification'
 import DiscordLink from '@/components/DiscordLink.vue'
 import QuestionnaireForm from '@/components/QuestionnaireForm.vue'
 import type { ConfigResponse, QuestionnaireSubmission, RegisterRequest } from '@/services/api'
+
+import Card from './ui/Card.vue'
+import CardHeader from './ui/CardHeader.vue'
+import CardTitle from './ui/CardTitle.vue'
+import CardDescription from './ui/CardDescription.vue'
+import CardContent from './ui/CardContent.vue'
+import Button from './ui/Button.vue'
+import Input from './ui/Input.vue'
+import Label from './ui/Label.vue'
 
 const { t, locale } = useI18n()
 const { success, error } = useNotification()
@@ -450,32 +501,4 @@ const handleSubmit = async () => {
     loading.value = false
   }
 }
-
-
 </script>
-
-<style scoped>
-.registration-card { position: relative; }
-.glass-input { width: 100%; padding: .625rem .875rem; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: #fff; font-size: .875rem; transition: all .2s ease; outline: none; }
-.glass-input::placeholder { color: rgba(255,255,255,.3); }
-.glass-input:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.2); }
-.glass-input:focus { background: rgba(255,255,255,.1); border-color: rgba(99,102,241,.4); box-shadow: 0 0 0 2px rgba(99,102,241,.1); }
-.glass-input-error { border-color: rgba(239,68,68,.5)!important; }
-.glass-input-error:focus { border-color: rgba(239,68,68,.6)!important; box-shadow: 0 0 0 2px rgba(239,68,68,.08)!important; }
-.glass-button-secondary { padding: .625rem 1.125rem; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15); border-radius: 8px; color: #fff; font-weight: 500; font-size: .875rem; white-space: nowrap; cursor: pointer; transition: all .2s ease; }
-.glass-button-secondary:hover:not(:disabled) { background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.25); }
-.glass-button-secondary:disabled { opacity: .5; cursor: not-allowed; }
-.submit-button { position: relative; width: 100%; padding: .75rem 1.5rem; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border: none; border-radius: 8px; color: #fff; font-weight: 600; font-size: .875rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: .5rem; overflow: hidden; transition: all .2s ease; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
-.submit-button:hover:not(:disabled) { filter: brightness(1.1); box-shadow: 0 2px 8px rgba(79,70,229,.3); }
-.submit-button:disabled { opacity: .4; cursor: not-allowed; filter: none; }
-.button-shine { display: none; }
-.spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg);} }
-.step-chip { color: rgba(255,255,255,.35); font-size: .75rem; letter-spacing: .02em; }
-.step-chip-active { color: rgba(165,148,249,.9); }
-.step-separator { width: 20px; height: 1px; background: rgba(255,255,255,.12); }
-.platform-toggle { display: inline-flex; width: 100%; border-radius: 8px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); padding: 3px; gap: 2px; }
-.platform-option { flex: 1; border: none; background: transparent; color: rgba(255,255,255,.5); border-radius: 6px; padding: .5rem .75rem; cursor: pointer; transition: all .2s ease; font-weight: 500; font-size: .875rem; }
-.platform-option:hover { color: rgba(255,255,255,.8); }
-.platform-option-active { background: rgba(255,255,255,.1); color: #fff; }
-</style>

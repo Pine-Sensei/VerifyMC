@@ -8,8 +8,15 @@
   }
 
   body {
-    @apply min-h-screen;
-    background: #030303;
+    @apply min-h-screen text-white overflow-x-hidden;
+    background-color: #0f0c29;
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+      radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
+      radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%),
+      radial-gradient(at 80% 100%, hsla(242,100%,15%,1) 0, transparent 50%),
+      radial-gradient(at 0% 100%, hsla(300,100%,10%,1) 0, transparent 50%);
+    background-attachment: fixed;
     font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -21,6 +28,14 @@
 }
 
 @layer components {
+  .glass-panel {
+    @apply bg-white/5 border border-white/10;
+    /* Extra properties for enhanced glass effect */
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
   .glass-card {
     background: rgba(255, 255, 255, 0.15);
     backdrop-filter: blur(20px) saturate(180%);
@@ -45,19 +60,16 @@
   }
 
   .glass-button {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 16px;
-    padding: 12px 24px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    transform: translateZ(0);
-    will-change: background-color, box-shadow, transform;
-    position: relative;
-    overflow: hidden;
+    @apply relative overflow-hidden rounded-xl px-6 py-3 transition-all duration-300 ease-out flex items-center justify-center gap-2;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    color: white;
+    font-weight: 500;
   }
-  
+
   .glass-button::before {
     content: '';
     position: absolute;
@@ -65,20 +77,60 @@
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
     transition: left 0.5s;
   }
-  
+
   .glass-button:hover::before {
     left: 100%;
   }
-  
+
   .glass-button:hover {
-    background: rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    box-shadow: 0 8px 25px 0 rgba(31, 38, 135, 0.4),
-                0 0 0 1px rgba(255, 255, 255, 0.1) inset;
-    transform: translateY(-1px) translateZ(0);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+  }
+
+  .glass-button:active {
+    transform: translateY(0);
+  }
+
+  /* Variants */
+  .glass-button-primary {
+    @apply glass-button;
+    background: rgba(59, 130, 246, 0.2); /* blue-500/20 */
+    border-color: rgba(59, 130, 246, 0.3);
+  }
+
+  .glass-button-primary:hover {
+    background: rgba(59, 130, 246, 0.3);
+    border-color: rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+  }
+
+  .glass-button-success {
+    @apply glass-button;
+    background: rgba(16, 185, 129, 0.2); /* emerald-500/20 */
+    border-color: rgba(16, 185, 129, 0.3);
+  }
+
+  .glass-button-success:hover {
+    background: rgba(16, 185, 129, 0.3);
+    border-color: rgba(16, 185, 129, 0.5);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+  }
+
+  .glass-button-danger {
+    @apply glass-button;
+    background: rgba(239, 68, 68, 0.2); /* red-500/20 */
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  .glass-button-danger:hover {
+    background: rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.5);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
   }
 
   .glass-input {

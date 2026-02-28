@@ -1,7 +1,7 @@
 <template>
   <button
     :class="[
-      'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 relative z-10',
+      'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 relative z-10',
       buttonVariants[variant],
       buttonSizes[size],
       className
@@ -25,11 +25,11 @@ withDefaults(defineProps<Props>(), {
 })
 
 const buttonVariants = {
-  default: 'bg-blue-600 text-white hover:bg-blue-700',
-  destructive: 'bg-red-600 text-white hover:bg-red-700',
-  outline: 'border border-white/20 bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white',
-  secondary: 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20',
-  ghost: 'hover:bg-white/10 text-white',
+  default: 'glass-button-primary shadow-lg',
+  destructive: 'glass-button-danger',
+  outline: 'glass-button bg-transparent hover:bg-white/10 border-white/20',
+  secondary: 'glass-button',
+  ghost: 'glass-button border-transparent bg-transparent hover:bg-white/5 shadow-none',
   link: 'text-blue-400 underline-offset-4 hover:underline'
 }
 

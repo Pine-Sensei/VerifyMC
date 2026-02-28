@@ -1,6 +1,6 @@
 <template>
   <nav 
-    class="menu-nav"
+    class="relative overflow-hidden p-1 md:p-2 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 shadow-2xl"
     @mouseenter="isNavHovered = true"
     @mouseleave="isNavHovered = false"
   >
@@ -137,17 +137,7 @@ const isActive = (href: string) => {
 </script>
 
 <style scoped>
-.menu-nav {
-  padding: 0.5rem;
-  border-radius: 1rem;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.08));
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-  position: relative;
-  overflow: hidden;
-}
+/* .menu-nav style replaced by Tailwind classes */
 
 .nav-glow-bg {
   position: absolute;
@@ -267,22 +257,6 @@ const isActive = (href: string) => {
   height: 1.25rem;
 }
 
-.text-blue-500 {
-  color: #3b82f6 !important;
-}
-
-.text-orange-500 {
-  color: #f97316 !important;
-}
-
-.text-green-500 {
-  color: #22c55e !important;
-}
-
-.text-red-500 {
-  color: #ef4444 !important;
-}
-
 .menu-label {
   font-weight: 500;
   font-size: 0.875rem;
@@ -290,9 +264,7 @@ const isActive = (href: string) => {
 }
 
 @media (max-width: 768px) {
-  .menu-nav {
-    padding: 0.25rem;
-  }
+  /* .menu-nav padding handled by Tailwind classes */
   
   .menu-items-list {
     flex-direction: column;
