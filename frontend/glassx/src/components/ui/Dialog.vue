@@ -2,7 +2,7 @@
   <!-- Fixed positioning modal overlay - ensures proper centering relative to viewport -->
   <div
     v-if="show"
-    class="fixed inset-0 z-50 flex items-center justify-center p-4"
+    class="fixed inset-0 z-[60] flex items-center justify-center p-4"
     role="dialog"
     aria-modal="true"
     :aria-labelledby="titleId"
@@ -12,9 +12,10 @@
     
     <!-- Dialog container -->
     <div 
-      class="relative w-full bg-white/5 border border-white/10 rounded-xl p-6 shadow-2xl backdrop-blur-xl flex flex-col max-h-[90vh]" 
+      class="relative w-full bg-white/5 border border-white/10 rounded-xl p-6 shadow-2xl backdrop-blur-xl flex flex-col max-h-[90vh] outline-none" 
       :class="maxWidth"
       ref="dialogRef"
+      tabindex="-1"
     >
       <!-- Header -->
       <div class="flex items-center justify-between mb-4 flex-shrink-0">
@@ -96,11 +97,19 @@ watch(() => props.show, async (newShow) => {
     // Focus the dialog container or the first focusable element inside
     await nextTick()
     
-    // Try to focus the first input or button in the dialog
-    const focusable = dialogRef.value?.querySelector('input, textarea, button:not([aria-label="Close"])') as HTMLElement
+    // Check for an element with autofocus attribute first
+    const autoFocusElement = dialogRef.value?.querySelector('[autofocus]') as HTMLElement
+    if (autoFocusElement) {
+      autoFocusElement.focus()
+      return
+    }
+
+    // Try to focus the first input or button in the dialog (excluding close button)
+    const focusable = dialogRef.value?.querySelector('input, textarea, select, button:not([aria-label="Close"]):not([title="Close"])') as HTMLElement
     if (focusable) {
       focusable.focus()
     } else {
+      // Fallback: focus the dialog container itself (make sure it has tabindex="-1")
       dialogRef.value?.focus()
     }
   } else {
