@@ -161,7 +161,7 @@
     "login_success": "Login successful, redirecting...",
     "tabs": {
       "review": "Pending Review",
-      "users": "User Management"
+      "users": "All Users"
     },
     "review": {
       "title": "Review Panel",

@@ -38,7 +38,7 @@
 
     <!-- Audit Logs Table -->
     <Card v-else class="overflow-hidden">
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto p-1">
         <Table>
           <TableHeader>
           <TableRow>

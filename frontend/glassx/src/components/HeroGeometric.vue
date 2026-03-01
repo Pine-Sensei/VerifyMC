@@ -15,6 +15,9 @@
               </svg>
               <span class="text-sm font-medium tracking-wide">GitHub</span>
             </a>
+            <div class="px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-medium text-white/90">
+              v1.6.5
+            </div>
           </div>
         </div>
 

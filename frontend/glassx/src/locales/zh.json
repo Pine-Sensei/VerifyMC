@@ -161,7 +161,7 @@
     "login_success": "登录成功，正在跳转...",
     "tabs": {
       "review": "待审核",
-      "users": "用户管理"
+      "users": "全部用户"
     },
     "review": {
       "title": "审核面板",

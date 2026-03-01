@@ -1,7 +1,7 @@
 <template>
   <div class="w-full space-y-4">
     <!-- Tag Navigation -->
-    <div class="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-hide">
+    <div class="flex items-center space-x-2 overflow-x-auto pb-2 pt-1 scrollbar-hide">
       <button
         v-for="tag in tags"
         :key="tag.id"

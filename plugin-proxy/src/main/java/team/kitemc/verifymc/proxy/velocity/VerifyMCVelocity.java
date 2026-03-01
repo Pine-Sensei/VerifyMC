@@ -30,7 +30,7 @@ import team.kitemc.verifymc.proxy.ProxyVersionCheckService;
 @Plugin(
     id = "verifymc-proxy",
     name = "VerifyMC-Proxy",
-    version = "1.6.4",
+    version = "1.6.5",
     description = "VerifyMC proxy plugin for Velocity",
     authors = {"KiteMC"}
 )

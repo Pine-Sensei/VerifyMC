@@ -14,7 +14,7 @@
     </div>
 
     <Card class="overflow-hidden">
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto p-1">
         <Table class="min-w-full">
           <TableHeader>
             <TableRow>

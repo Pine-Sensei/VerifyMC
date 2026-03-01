@@ -8,14 +8,14 @@
     leave-to-class="opacity-0 translate-y-2 scale-95"
   >
     <div
-      v-if="visible"
-      class="max-w-sm w-full"
-    >
+        v-if="visible"
+        class="max-w-sm w-full"
+      >
         <div
-          class="glass-card p-4 flex items-center space-x-3"
+          class="glass-card p-4 flex items-start space-x-3 relative pr-12"
           :class="toastClasses"
         >
-          <div class="flex-shrink-0">
+          <div class="flex-shrink-0 mt-0.5">
             <CheckCircle v-if="type === 'success'" class="w-5 h-5 text-green-400" />
             <XCircle v-else-if="type === 'error'" class="w-5 h-5 text-red-400" />
             <AlertCircle v-else-if="type === 'warning'" class="w-5 h-5 text-yellow-400" />
@@ -29,11 +29,11 @@
             variant="ghost"
             size="icon"
             @click="close"
-            class="flex-shrink-0 text-white/70 hover:text-white transition-colors duration-200 h-6 w-6 rounded-full"
+            class="absolute top-2 right-2 flex-shrink-0 text-white/70 hover:text-white transition-colors duration-200 h-8 w-8 rounded-full"
             :aria-label="$t('common.close') || 'Close'"
             :title="$t('common.close') || 'Close'"
           >
-            <X class="w-4 h-4" />
+            <X class="w-5 h-5" />
           </Button>
         </div>
       </div>

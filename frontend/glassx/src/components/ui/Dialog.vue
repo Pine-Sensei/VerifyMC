@@ -25,14 +25,12 @@
           variant="ghost"
           size="icon"
           @click="handleClose"
-          class="text-white/60 hover:text-white"
+          class="text-white/70 hover:text-white"
           data-dialog-close="true"
           :aria-label="$t('common.close')"
           :title="$t('common.close')"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
+          <X class="w-5 h-5" />
         </Button>
       </div>
       
@@ -51,6 +49,7 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, onUnmounted, useId } from 'vue'
+import { X } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 
 // Generate unique ID for ARIA attributes
