@@ -15,13 +15,13 @@
         </div>
         <Button 
           variant="ghost"
-          size="icon"
           @click="dismissNotification"
-          class="text-white/60 hover:text-white"
+          class="gap-2 text-white/60 hover:text-white"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
+          <span>{{ $t('common.close') }}</span>
         </Button>
       </div>
       

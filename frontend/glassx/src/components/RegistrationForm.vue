@@ -13,13 +13,12 @@
         </div>
     </div>
 
-    <Card :class="shouldShowPassword ? 'w-full max-w-xl' : 'w-full max-w-md'">
-    <CardHeader class="lg:hidden text-center">
-      <CardTitle>{{ $t('register.title') }}</CardTitle>
-      <CardDescription>{{ $t('register.subtitle') }}</CardDescription>
-    </CardHeader>
+    <div :class="shouldShowPassword ? 'w-full max-w-xl' : 'w-full max-w-md'">
+      <div class="lg:hidden text-center mb-6">
+        <h2 class="text-2xl font-bold text-white">{{ $t('register.title') }}</h2>
+        <p class="text-white/60">{{ $t('register.subtitle') }}</p>
+      </div>
 
-    <CardContent>
       <div class="relative">
          <form v-if="currentStep === 'basic'" @submit.prevent="goToQuestionnaire" class="space-y-5">
           <div class="space-y-3">
@@ -167,8 +166,7 @@
           </div>
         </div>
       </div>
-    </CardContent>
-  </Card>
+    </div>
 </div>
 </template>
 
@@ -181,11 +179,6 @@ import DiscordLink from '@/components/DiscordLink.vue'
 import QuestionnaireForm from '@/components/QuestionnaireForm.vue'
 import type { ConfigResponse, QuestionnaireSubmission, RegisterRequest } from '@/services/api'
 
-import Card from './ui/Card.vue'
-import CardHeader from './ui/CardHeader.vue'
-import CardTitle from './ui/CardTitle.vue'
-import CardDescription from './ui/CardDescription.vue'
-import CardContent from './ui/CardContent.vue'
 import Button from './ui/Button.vue'
 import Input from './ui/Input.vue'
 import Label from './ui/Label.vue'

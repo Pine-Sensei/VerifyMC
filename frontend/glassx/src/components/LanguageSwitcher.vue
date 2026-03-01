@@ -262,8 +262,8 @@ onUnmounted(() => {
 }
 
 .fluid-dropdown-content {
-  background: rgba(23, 23, 23, 0.95);
-  border: 1px solid rgba(38, 38, 38, 1);
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   padding: 4px;
   box-shadow: 
@@ -283,7 +283,7 @@ onUnmounted(() => {
   position: absolute;
   left: 4px;
   right: 4px;
-  background: rgba(38, 38, 38, 1);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
   pointer-events: none;

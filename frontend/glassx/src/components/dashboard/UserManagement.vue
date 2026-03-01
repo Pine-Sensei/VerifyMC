@@ -10,10 +10,11 @@
               @click="loadPendingUsers"
               :disabled="loading"
               variant="outline"
-              size="icon"
+              class="gap-2"
               :title="$t('common.refresh')"
             >
               <RefreshCw class="w-5 h-5" :class="{ 'animate-spin': loading }" />
+              <span>{{ $t('common.refresh') }}</span>
             </Button>
           </div>
 
@@ -79,10 +80,11 @@
               @click="loadAllUsers"
               :disabled="loading"
               variant="outline"
-              size="icon"
+              class="gap-2"
               :title="$t('common.refresh')"
             >
               <RefreshCw class="w-5 h-5" :class="{ 'animate-spin': loading }" />
+              <span>{{ $t('common.refresh') }}</span>
             </Button>
           </div>
 
@@ -121,43 +123,43 @@
                         @click="showPasswordDialog = true; selectedUser = user; newPassword = ''"
                         :disabled="loading"
                         variant="ghost"
-                        size="icon"
-                        class="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                        class="h-8 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 px-2"
                         :title="$t('admin.users.actions.change_password')"
                       >
-                        <Key class="w-4 h-4" />
+                        <Key class="w-4 h-4 mr-1" />
+                        <span class="hidden xl:inline">{{ $t('admin.users.actions.change_password') }}</span>
                       </Button>
                       <Button
                         @click="showDeleteConfirm(user)"
                         :disabled="loading"
                         variant="ghost"
-                        size="icon"
-                        class="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        class="h-8 text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2"
                         :title="$t('admin.users.actions.delete')"
                       >
-                        <Trash2 class="w-4 h-4" />
+                        <Trash2 class="w-4 h-4 mr-1" />
+                        <span class="hidden xl:inline">{{ $t('admin.users.actions.delete') }}</span>
                       </Button>
                       <Button
                         v-if="user.status !== 'banned'"
                         @click="showBanConfirm(user)"
                         :disabled="loading"
                         variant="ghost"
-                        size="icon"
-                        class="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        class="h-8 text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2"
                         :title="$t('admin.users.actions.ban')"
                       >
-                        <Ban class="w-4 h-4" />
+                        <Ban class="w-4 h-4 mr-1" />
+                        <span class="hidden xl:inline">{{ $t('admin.users.actions.ban') }}</span>
                       </Button>
                       <Button
                         v-if="user.status === 'banned'"
                         @click="showUnbanConfirm(user)"
                         :disabled="loading"
                         variant="ghost"
-                        size="icon"
-                        class="h-8 w-8 text-green-400 hover:text-green-300 hover:bg-green-500/10"
+                        class="h-8 text-green-400 hover:text-green-300 hover:bg-green-500/10 px-2"
                         :title="$t('admin.users.actions.unban')"
                       >
-                        <CheckCircle class="w-4 h-4" />
+                        <CheckCircle class="w-4 h-4 mr-1" />
+                        <span class="hidden xl:inline">{{ $t('admin.users.actions.unban') }}</span>
                       </Button>
                     </div>
                   </TableCell>
