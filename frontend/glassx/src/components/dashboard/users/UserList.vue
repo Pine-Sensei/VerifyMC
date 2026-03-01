@@ -22,7 +22,7 @@
     </div>
 
     <Card class="overflow-hidden">
-      <div class="overflow-x-auto p-1">
+      <div class="overflow-x-auto">
         <Table class="min-w-full text-xs sm:text-sm">
           <TableHeader>
             <TableRow>
@@ -49,7 +49,8 @@
                     @click="showPasswordDialog = true; selectedUser = user; newPassword = ''"
                     :disabled="loading"
                     variant="ghost"
-                    class="h-8 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 px-2"
+                    size="xs"
+                    class="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
                     :title="$t('admin.users.actions.change_password')"
                   >
                     <Key class="w-4 h-4 xl:mr-1" />
@@ -59,7 +60,8 @@
                     @click="showDeleteConfirm(user)"
                     :disabled="loading"
                     variant="ghost"
-                    class="h-8 text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2"
+                    size="xs"
+                    class="text-red-400 hover:text-red-300 hover:bg-red-500/10"
                     :title="$t('admin.users.actions.delete')"
                   >
                     <Trash2 class="w-4 h-4 xl:mr-1" />
@@ -70,7 +72,8 @@
                     @click="showBanConfirm(user)"
                     :disabled="loading"
                     variant="ghost"
-                    class="h-8 text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2"
+                    size="xs"
+                    class="text-red-400 hover:text-red-300 hover:bg-red-500/10"
                     :title="$t('admin.users.actions.ban')"
                   >
                     <Ban class="w-4 h-4 xl:mr-1" />
@@ -81,7 +84,8 @@
                     @click="showUnbanConfirm(user)"
                     :disabled="loading"
                     variant="ghost"
-                    class="h-8 text-green-400 hover:text-green-300 hover:bg-green-500/10 px-2"
+                    size="xs"
+                    class="text-green-400 hover:text-green-300 hover:bg-green-500/10"
                     :title="$t('admin.users.actions.unban')"
                   >
                     <CheckCircle class="w-4 h-4 xl:mr-1" />

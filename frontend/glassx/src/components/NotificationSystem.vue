@@ -26,9 +26,9 @@
           </div>
             <Button
               variant="ghost"
-              size="icon"
+              size="icon-sm"
               @click="removeNotification(notification.id)"
-              class="absolute top-2 right-2 text-white/70 hover:text-white transition-colors duration-200 h-8 w-8 rounded-full"
+              class="absolute top-2 right-2 text-white/70 hover:text-white transition-colors duration-200 rounded-full"
               :aria-label="$t('common.close')"
               :title="$t('common.close')"
             >
@@ -114,35 +114,3 @@ defineExpose({
   removeNotification
 })
 </script>
-
-<style scoped>
-/* Ensure TransitionGroup animations work properly */
-.v-enter-active,
-.v-leave-active {
-  transition: all 0.3s ease-out;
-}
-
-.v-enter-from {
-  opacity: 0;
-  transform: translateX(100%) scale(0.95);
-}
-
-.v-enter-to {
-  opacity: 1;
-  transform: translateX(0) scale(1);
-}
-
-.v-leave-from {
-  opacity: 1;
-  transform: translateX(0) scale(1);
-}
-
-.v-leave-to {
-  opacity: 0;
-  transform: translateX(100%) scale(0.95);
-}
-
-.v-move {
-  transition: all 0.3s ease-out;
-}
-</style>

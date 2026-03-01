@@ -50,7 +50,11 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
-  .glass-card:hover {
+  .glass-card-hover {
+    @apply cursor-pointer;
+  }
+
+  .glass-card-hover:hover {
     background: rgba(255, 255, 255, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.3);
     box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.5),

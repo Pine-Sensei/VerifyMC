@@ -14,7 +14,7 @@
     </div>
 
     <Card class="overflow-hidden">
-      <div class="overflow-x-auto p-1">
+      <div class="overflow-x-auto">
         <Table class="min-w-full">
           <TableHeader>
             <TableRow>
@@ -37,8 +37,8 @@
                 <div class="flex space-x-2">
                   <Button
                     variant="outline"
-                    size="sm"
-                    class="h-8 text-green-400 border-green-500/30 hover:bg-green-500/10 hover:text-green-300"
+                    size="xs"
+                    class="text-green-400 border-green-500/30 hover:bg-green-500/10 hover:text-green-300"
                     @click="approveUser(user)"
                     :disabled="loading || processingUsers.has(user.username)"
                   >
@@ -46,8 +46,8 @@
                   </Button>
                   <Button
                     variant="outline"
-                    size="sm"
-                    class="h-8 text-red-400 border-red-500/30 hover:bg-red-500/10 hover:text-red-300"
+                    size="xs"
+                    class="text-red-400 border-red-500/30 hover:bg-red-500/10 hover:text-red-300"
                     @click="openRejectDialog(user)"
                     :disabled="loading || processingUsers.has(user.username)"
                   >

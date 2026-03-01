@@ -47,7 +47,7 @@
       <!-- Stats Grid -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- Players -->
-        <Card class="p-5 flex items-start gap-4">
+        <Card class="p-5 flex items-start gap-4 glass-card-hover">
           <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-blue-500/20 text-blue-500">
             <Users class="w-6 h-6" />
           </div>
@@ -58,7 +58,7 @@
         </Card>
 
         <!-- TPS -->
-        <Card class="p-5 flex items-start gap-4">
+        <Card class="p-5 flex items-start gap-4 glass-card-hover">
           <div
             class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
             :class="{
@@ -92,7 +92,7 @@
         </Card>
 
         <!-- Version -->
-        <Card class="p-5 flex items-start gap-4">
+        <Card class="p-5 flex items-start gap-4 glass-card-hover">
           <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-pink-500/20 text-pink-500">
             <Tag class="w-6 h-6" />
           </div>

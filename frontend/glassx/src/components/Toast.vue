@@ -27,9 +27,9 @@
           </div>
           <Button
             variant="ghost"
-            size="icon"
+            size="icon-sm"
             @click="close"
-            class="absolute top-2 right-2 flex-shrink-0 text-white/70 hover:text-white transition-colors duration-200 h-8 w-8 rounded-full"
+            class="absolute top-2 right-2 flex-shrink-0 text-white/70 hover:text-white transition-colors duration-200 rounded-full"
             :aria-label="$t('common.close') || 'Close'"
             :title="$t('common.close') || 'Close'"
           >
