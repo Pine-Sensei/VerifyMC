@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-4 pt-4">
+  <div class="space-y-4">
     <div class="flex items-center justify-end">
       <Button
         @click="loadPendingUsers"

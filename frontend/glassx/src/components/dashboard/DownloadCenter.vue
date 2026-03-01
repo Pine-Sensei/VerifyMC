@@ -1,6 +1,6 @@
 <template>
   <div class="max-w-4xl mx-auto">
-    <div class="mb-8" v-if="resources.length > 0">
+    <div class="mb-6" v-if="resources.length > 0">
       <p class="text-white/60 m-0">{{ $t('dashboard.downloads.description') }}</p>
     </div>
 
@@ -11,7 +11,7 @@
     </div>
 
     <!-- Resources Grid -->
-    <div v-else-if="resources.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+    <div v-else-if="resources.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
       <Card
         v-for="resource in resources"
         :key="resource.id"

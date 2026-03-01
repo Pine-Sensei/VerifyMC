@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full space-y-6">
+  <div class="w-full space-y-4">
     <!-- Tag Navigation -->
     <div class="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-hide">
       <button
@@ -7,7 +7,7 @@
         :key="tag.id"
         @click="activeTag = tag.id"
         class="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 whitespace-nowrap"
-        :class="activeTag === tag.id ? 'bg-white text-slate-900 shadow-lg shadow-white/10' : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'"
+        :class="activeTag === tag.id ? 'glass-button-primary shadow-lg' : 'glass-button bg-transparent hover:bg-white/10 border-transparent text-white/70 hover:text-white'"
       >
         {{ tag.label }}
       </button>

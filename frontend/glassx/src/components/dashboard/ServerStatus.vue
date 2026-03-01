@@ -1,6 +1,6 @@
 <template>
   <div class="max-w-[900px] mx-auto">
-    <div class="flex items-center justify-end mb-6">
+    <div class="flex items-center justify-end mb-4">
       <Button
         @click="refreshStatus"
         :disabled="loading"
@@ -20,7 +20,7 @@
     </div>
 
     <!-- Status Content -->
-    <div v-else class="space-y-6">
+    <div v-else class="space-y-4">
       <!-- Server Status Card -->
       <Card
         class="p-6"

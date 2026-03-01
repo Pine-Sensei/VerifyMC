@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-4xl mx-auto flex flex-col gap-6">
+  <div class="max-w-4xl mx-auto flex flex-col gap-4">
     <Card class="flex flex-col sm:flex-row items-center gap-6 p-6 text-center sm:text-left">
       <div class="relative">
         <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white">

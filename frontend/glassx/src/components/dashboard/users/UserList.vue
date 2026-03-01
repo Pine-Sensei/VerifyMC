@@ -1,23 +1,24 @@
 <template>
-  <div class="space-y-4 pt-4">
-    <div class="flex items-center justify-end">
-      <Button
-        @click="loadAllUsers"
-        :disabled="loading"
-        variant="outline"
-        class="gap-2"
-        :title="$t('common.refresh')"
-      >
-        <RefreshCw class="w-5 h-5" :class="{ 'animate-spin': loading }" />
-        <span>{{ $t('common.refresh') }}</span>
-      </Button>
-    </div>
-
-    <div class="max-w-md">
-      <SearchBar
-        v-model="searchQuery"
-        :placeholder="$t('admin.users.search_placeholder')"
-      />
+  <div class="space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div class="w-full sm:max-w-md order-2 sm:order-1">
+        <SearchBar
+          v-model="searchQuery"
+          :placeholder="$t('admin.users.search_placeholder')"
+        />
+      </div>
+      <div class="flex items-center justify-end order-1 sm:order-2">
+        <Button
+          @click="loadAllUsers"
+          :disabled="loading"
+          variant="outline"
+          class="gap-2"
+          :title="$t('common.refresh')"
+        >
+          <RefreshCw class="w-5 h-5" :class="{ 'animate-spin': loading }" />
+          <span>{{ $t('common.refresh') }}</span>
+        </Button>
+      </div>
     </div>
 
     <Card class="overflow-hidden">

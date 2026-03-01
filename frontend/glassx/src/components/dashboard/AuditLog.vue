@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full space-y-6">
+  <div class="w-full space-y-4">
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-end gap-4">
       <div class="flex items-center gap-3 w-full sm:w-auto">
         <select
