@@ -1,7 +1,6 @@
 <template>
   <div class="max-w-4xl mx-auto">
-    <div class="mb-8">
-      <h2 class="text-2xl font-bold text-white mb-2">{{ $t('dashboard.downloads.title') }}</h2>
+    <div class="mb-8" v-if="resources.length > 0">
       <p class="text-white/60 m-0">{{ $t('dashboard.downloads.description') }}</p>
     </div>
 

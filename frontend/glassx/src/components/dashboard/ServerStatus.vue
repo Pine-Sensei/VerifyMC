@@ -1,7 +1,6 @@
 <template>
   <div class="max-w-[900px] mx-auto">
-    <div class="flex items-center justify-between mb-6">
-      <h2 class="text-2xl font-bold text-white">{{ $t('dashboard.server_status.title') }}</h2>
+    <div class="flex items-center justify-end mb-6">
       <Button
         @click="refreshStatus"
         :disabled="loading"

@@ -4,7 +4,7 @@
     <div class="nav-gradient-line"></div>
     
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between items-center h-16">
+      <div class="relative flex justify-between items-center h-16">
         <!-- Logo -->
         <div class="flex items-center">
           <router-link to="/" class="logo-link group">
@@ -13,11 +13,9 @@
         </div>
 
         <!-- Desktop Navigation Links -->
-        <div class="hidden md:flex items-center">
+        <div class="hidden md:flex items-center absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
           <AnimatedMenuBar />
         </div>
-
-        <div class="flex-1"></div>
 
         <!-- Language Switcher -->
         <div class="flex items-center gap-2">

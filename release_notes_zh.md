@@ -1,12 +1,17 @@
-[English](https://github.com/KiteMC/VerifyMC/releases/tag/v1.6.3) | 简体中文 | [官方文档](https://kitemc.com/docs/verifymc/)
+[English](https://github.com/KiteMC/VerifyMC/releases/tag/v1.6.5) | 简体中文 | [官方文档](https://kitemc.com/docs/verifymc/)
 
-# VerifyMC v1.6.3 更新日志
+# VerifyMC v1.6.5 更新日志
 
 ## 优化与修复
 
-- 修复了一些已知问题
-- 优化了插件性能和稳定性
-- 更新了部分依赖库版本
+- **前端弹窗重构**：统一了所有模态框（确认、密码、拒绝、版本更新）使用共享的 `Dialog` 组件，消除了代码冗余。
+- **用户管理重构**：将用户管理模块拆分为独立组件（用户列表、待审核列表），优化了代码结构与加载逻辑。
+- **交互体验升级**：增加了全屏遮罩、ESC 键关闭支持、自动焦点管理（打开时自动聚焦、防止误操作）。
+- **无障碍性改进**：添加了标准的 `aria-labelledby` 和 `role="dialog"` 属性。
+- **视觉修复**：调整了弹窗遮罩层级（z-index 60），解决了被其他 UI 元素遮挡的问题。
+- **依赖更新**：更新了部分内部依赖。
+
+# VerifyMC v1.6.3 更新日志
 
 # VerifyMC v1.6.0 更新日志
 

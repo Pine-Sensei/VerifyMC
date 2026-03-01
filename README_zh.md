@@ -96,7 +96,7 @@ cd plugin
 mvn clean package
 ```
 
-产物 jar：`plugin/target/verifymc-1.6.3.jar`
+产物 jar：`plugin/target/verifymc-1.6.4.jar`
 
 ---
 
