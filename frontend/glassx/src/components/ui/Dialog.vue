@@ -6,20 +6,23 @@
     role="dialog"
     aria-modal="true"
     :aria-labelledby="titleId"
-    :aria-describedby="messageId"
   >
     <!-- Background mask -->
-    <div class="fixed inset-0 bg-black/50 backdrop-blur-xl" @click="handleCancel"></div>
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-xl" @click="handleClose"></div>
     
     <!-- Dialog container -->
-    <div class="relative w-full max-w-md bg-white/5 border border-white/10 rounded-xl p-6 shadow-2xl backdrop-blur-xl" ref="dialogRef">
-      <!-- 标题 -->
-      <div class="flex items-center justify-between mb-4">
+    <div 
+      class="relative w-full bg-white/5 border border-white/10 rounded-xl p-6 shadow-2xl backdrop-blur-xl flex flex-col max-h-[90vh]" 
+      :class="maxWidth"
+      ref="dialogRef"
+    >
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-4 flex-shrink-0">
         <h3 :id="titleId" class="text-lg font-semibold text-white">{{ title }}</h3>
         <Button 
           variant="ghost"
           size="icon"
-          @click="handleCancel"
+          @click="handleClose"
           class="text-white/60 hover:text-white"
           :aria-label="$t('common.close')"
           :title="$t('common.close')"
@@ -30,81 +33,54 @@
         </Button>
       </div>
       
-      <!-- 内容 -->
-      <div class="mb-6">
-        <p :id="messageId" class="text-white/80">{{ message }}</p>
+      <!-- Content -->
+      <div class="mb-6 overflow-y-auto flex-1 custom-scrollbar">
+        <slot></slot>
       </div>
       
-      <!-- 操作按钮 -->
-      <div class="flex gap-3 justify-end">
-        <Button 
-          ref="cancelBtnRef"
-          variant="outline"
-          @click="handleCancel"
-          class="text-white/80 hover:text-white"
-        >
-          {{ cancelText || $t('common.cancel') }}
-        </Button>
-        <Button 
-          ref="confirmBtnRef"
-          @click="handleConfirm"
-          :variant="type === 'danger' ? 'destructive' : 'default'"
-        >
-          {{ confirmText || $t('common.confirm') }}
-        </Button>
+      <!-- Footer Actions -->
+      <div v-if="$slots.footer" class="flex gap-3 justify-end flex-shrink-0 pt-2 border-t border-white/5 mt-auto">
+        <slot name="footer"></slot>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick, onUnmounted, useId, type ComponentPublicInstance } from 'vue'
+import { ref, watch, nextTick, onUnmounted, useId } from 'vue'
 import Button from '@/components/ui/Button.vue'
 
-// Generate unique IDs for ARIA attributes
+// Generate unique ID for ARIA attributes
 const titleId = useId()
-const messageId = useId()
 
 interface Props {
   show: boolean
   title: string
-  message: string
-  confirmText?: string
-  cancelText?: string
-  type?: 'danger' | 'warning' | 'info'
+  maxWidth?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  confirmText: '',
-  cancelText: '',
-  type: 'danger'
+  maxWidth: 'max-w-md'
 })
 
 const emit = defineEmits<{
-  confirm: []
-  cancel: []
+  close: []
 }>()
 
 // Refs for focus management
 const dialogRef = ref<HTMLElement | null>(null)
-const cancelBtnRef = ref<ComponentPublicInstance | null>(null)
-const confirmBtnRef = ref<ComponentPublicInstance | null>(null)
 
 // Store the previously focused element
 let previouslyFocusedElement: HTMLElement | null = null
 
-const handleConfirm = () => {
-  emit('confirm')
-}
-
-const handleCancel = () => {
-  emit('cancel')
+const handleClose = () => {
+  emit('close')
 }
 
 // Handle Escape key press
 const handleKeyDown = (event: KeyboardEvent) => {
   if (event.key === 'Escape') {
-    handleCancel()
+    handleClose()
   }
 }
 
@@ -117,9 +93,16 @@ watch(() => props.show, async (newShow) => {
     // Add keyboard event listener
     document.addEventListener('keydown', handleKeyDown)
     
-    // Focus the cancel button when dialog opens
+    // Focus the dialog container or the first focusable element inside
     await nextTick()
-    ;(cancelBtnRef.value?.$el as HTMLElement)?.focus()
+    
+    // Try to focus the first input or button in the dialog
+    const focusable = dialogRef.value?.querySelector('input, textarea, button:not([aria-label="Close"])') as HTMLElement
+    if (focusable) {
+      focusable.focus()
+    } else {
+      dialogRef.value?.focus()
+    }
   } else {
     // Remove keyboard event listener
     document.removeEventListener('keydown', handleKeyDown)
@@ -136,4 +119,21 @@ watch(() => props.show, async (newShow) => {
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeyDown)
 })
-</script> 
+</script>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+</style>

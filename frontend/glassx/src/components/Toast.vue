@@ -30,6 +30,8 @@
             size="icon"
             @click="close"
             class="flex-shrink-0 text-white/40 hover:text-white transition-colors duration-200 h-6 w-6 rounded-full"
+            :aria-label="$t('common.close') || 'Close'"
+            :title="$t('common.close') || 'Close'"
           >
             <X class="w-4 h-4" />
           </Button>

@@ -14,26 +14,12 @@
 
     <!-- Sidebar -->
     <aside 
-      class="fixed left-0 top-0 h-full bg-white/5 backdrop-blur-xl border-r border-white/10 z-50 transition-all duration-300 flex flex-col"
+      class="fixed left-0 top-0 h-full bg-white/5 backdrop-blur-xl border-r border-white/10 z-50 transition-all duration-300 flex flex-col pt-16"
       :class="[
         sidebarCollapsed ? 'w-20' : 'w-64',
         mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       ]"
     >
-      <!-- Sidebar Header -->
-      <div class="h-16 flex items-center justify-between px-4 border-b border-white/10 shrink-0">
-        <div class="flex items-center gap-3 overflow-hidden">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white shrink-0">
-            <Server class="w-6 h-6" />
-          </div>
-          <span v-if="!sidebarCollapsed" class="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-br from-blue-400 to-purple-500 whitespace-nowrap">{{ serverName }}</span>
-        </div>
-        <Button v-if="!mobileMenuOpen" @click="toggleSidebar" variant="outline" size="icon" class="hidden lg:flex w-7 h-7 border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10">
-          <ChevronLeft v-if="!sidebarCollapsed" class="w-4 h-4" />
-          <ChevronRight v-else class="w-4 h-4" />
-        </Button>
-      </div>
-
       <!-- Navigation -->
       <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-6">
         <!-- Player Section -->

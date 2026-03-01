@@ -1,5 +1,13 @@
 package team.kitemc.verifymc.proxy.velocity;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import org.slf4j.Logger;
+
+import com.google.inject.Inject;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.PreLoginEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
@@ -7,19 +15,13 @@ import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import org.slf4j.Logger;
 import team.kitemc.verifymc.proxy.ApiClient;
 import team.kitemc.verifymc.proxy.ProxyConfig;
-import team.kitemc.verifymc.proxy.ProxyVersionCheckService;
 import team.kitemc.verifymc.proxy.ProxyResourceUpdater;
-
-import com.google.inject.Inject;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import team.kitemc.verifymc.proxy.ProxyVersionCheckService;
 
 /**
  * VerifyMC Proxy Plugin for Velocity

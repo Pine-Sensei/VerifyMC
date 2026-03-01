@@ -21,6 +21,7 @@
         size="icon"
         @click="$emit('update:modelValue', '')"
         :aria-label="$t('common.search') + ' ' + $t('common.clear') || 'Clear search'"
+        :title="$t('common.clear') || 'Clear search'"
         class="absolute inset-y-0 right-0 h-full w-10 text-white/60 hover:text-white transition-colors rounded-none rounded-r-md"
       >
         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

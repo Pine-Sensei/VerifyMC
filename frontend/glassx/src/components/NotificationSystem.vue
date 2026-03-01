@@ -28,6 +28,8 @@
               size="icon"
               @click="removeNotification(notification.id)"
               class="flex-shrink-0 text-white/40 hover:text-white transition-colors duration-200 mt-0.5 h-6 w-6 rounded-full"
+              :aria-label="$t('common.close')"
+              :title="$t('common.close')"
             >
               <X class="w-4 h-4" />
             </Button>

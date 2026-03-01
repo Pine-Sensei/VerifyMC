@@ -126,7 +126,7 @@
                         class="h-8 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 px-2"
                         :title="$t('admin.users.actions.change_password')"
                       >
-                        <Key class="w-4 h-4 mr-1" />
+                        <Key class="w-4 h-4 xl:mr-1" />
                         <span class="hidden xl:inline">{{ $t('admin.users.actions.change_password') }}</span>
                       </Button>
                       <Button
@@ -136,7 +136,7 @@
                         class="h-8 text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2"
                         :title="$t('admin.users.actions.delete')"
                       >
-                        <Trash2 class="w-4 h-4 mr-1" />
+                        <Trash2 class="w-4 h-4 xl:mr-1" />
                         <span class="hidden xl:inline">{{ $t('admin.users.actions.delete') }}</span>
                       </Button>
                       <Button
@@ -147,7 +147,7 @@
                         class="h-8 text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2"
                         :title="$t('admin.users.actions.ban')"
                       >
-                        <Ban class="w-4 h-4 mr-1" />
+                        <Ban class="w-4 h-4 xl:mr-1" />
                         <span class="hidden xl:inline">{{ $t('admin.users.actions.ban') }}</span>
                       </Button>
                       <Button
@@ -158,7 +158,7 @@
                         class="h-8 text-green-400 hover:text-green-300 hover:bg-green-500/10 px-2"
                         :title="$t('admin.users.actions.unban')"
                       >
-                        <CheckCircle class="w-4 h-4 mr-1" />
+                        <CheckCircle class="w-4 h-4 xl:mr-1" />
                         <span class="hidden xl:inline">{{ $t('admin.users.actions.unban') }}</span>
                       </Button>
                     </div>
@@ -223,58 +223,58 @@
     />
 
     <!-- Reject Dialog -->
-    <div v-if="rejectDialog.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black/80 backdrop-blur-xl" @click="closeRejectDialog"></div>
-      <div class="relative w-full max-w-md bg-white/5 border border-white/10 rounded-xl p-6 shadow-2xl backdrop-blur-xl">
-        <h3 class="text-xl font-semibold text-white mb-5 text-center">{{ $t('admin.review.reject_modal.title') }}</h3>
-        <div class="space-y-4 mb-6">
-          <div>
-            <Label for="rejectReason" class="block text-sm font-medium text-white mb-2">{{ $t('admin.review.reject_modal.reason_label') }}</Label>
-            <textarea
-              id="rejectReason"
-              v-model="rejectDialog.reason"
-              class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/50 min-h-24 resize-y placeholder-white/30"
-              :placeholder="$t('admin.review.reject_modal.reason_placeholder')"
-            />
-          </div>
-        </div>
-        <div class="flex justify-end gap-3">
-          <Button variant="outline" @click="closeRejectDialog">
-            {{ $t('admin.review.reject_modal.cancel') }}
-          </Button>
-          <Button @click="confirmReject" :disabled="rejectDialog.processing" variant="destructive">
-            {{ $t('admin.review.reject_modal.confirm') }}
-          </Button>
+    <Dialog
+      :show="rejectDialog.show"
+      :title="$t('admin.review.reject_modal.title')"
+      @close="closeRejectDialog"
+    >
+      <div class="space-y-4">
+        <div>
+          <Label for="rejectReason" class="block text-sm font-medium text-white mb-2">{{ $t('admin.review.reject_modal.reason_label') }}</Label>
+          <textarea
+            id="rejectReason"
+            v-model="rejectDialog.reason"
+            class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/50 min-h-24 resize-y placeholder-white/30"
+            :placeholder="$t('admin.review.reject_modal.reason_placeholder')"
+          />
         </div>
       </div>
-    </div>
+      <template #footer>
+        <Button variant="outline" @click="closeRejectDialog">
+          {{ $t('admin.review.reject_modal.cancel') }}
+        </Button>
+        <Button @click="confirmReject" :disabled="rejectDialog.processing" variant="destructive">
+          {{ $t('admin.review.reject_modal.confirm') }}
+        </Button>
+      </template>
+    </Dialog>
 
     <!-- Password Dialog -->
-    <div v-if="showPasswordDialog" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black/80 backdrop-blur-xl" @click="showPasswordDialog = false"></div>
-      <div class="relative w-full max-w-md bg-white/5 border border-white/10 rounded-xl p-6 shadow-2xl backdrop-blur-xl">
-        <h3 class="text-xl font-semibold text-white mb-5 text-center">{{ $t('admin.users.change_password_modal.title') }}</h3>
-        <div class="space-y-4 mb-6">
-          <div>
-            <Label forId="newPassword" class="block text-sm font-medium text-white mb-2">{{ $t('admin.users.change_password_modal.new_password') }}</Label>
-            <Input
-              id="newPassword"
-              v-model="newPassword"
-              type="password"
-              :placeholder="$t('admin.users.change_password_modal.password_placeholder')"
-            />
-          </div>
-        </div>
-        <div class="flex justify-end gap-3">
-          <Button variant="outline" @click="showPasswordDialog = false">
-            {{ $t('common.cancel') }}
-          </Button>
-          <Button @click="confirmChangePassword" :disabled="!newPassword" variant="default">
-            {{ $t('common.save') }}
-          </Button>
+    <Dialog
+      :show="showPasswordDialog"
+      :title="$t('admin.users.change_password_modal.title')"
+      @close="showPasswordDialog = false"
+    >
+      <div class="space-y-4">
+        <div>
+          <Label forId="newPassword" class="block text-sm font-medium text-white mb-2">{{ $t('admin.users.change_password_modal.new_password') }}</Label>
+          <Input
+            id="newPassword"
+            v-model="newPassword"
+            type="password"
+            :placeholder="$t('admin.users.change_password_modal.password_placeholder')"
+          />
         </div>
       </div>
-    </div>
+      <template #footer>
+        <Button variant="outline" @click="showPasswordDialog = false">
+          {{ $t('common.cancel') }}
+        </Button>
+        <Button @click="confirmChangePassword" :disabled="!newPassword" variant="default">
+          {{ $t('common.save') }}
+        </Button>
+      </template>
+    </Dialog>
 
     <!-- Version Update Notification -->
     <VersionUpdateNotification />
@@ -310,6 +310,7 @@ import Button from '@/components/ui/Button.vue'
 import Label from '@/components/ui/Label.vue'
 import Input from '@/components/ui/Input.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
+import Dialog from '@/components/ui/Dialog.vue'
 import SearchBar from '@/components/ui/SearchBar.vue'
 import Pagination from '@/components/ui/Pagination.vue'
 import VersionUpdateNotification from '@/components/ui/VersionUpdateNotification.vue'

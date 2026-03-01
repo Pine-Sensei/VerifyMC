@@ -17,6 +17,8 @@
           <AnimatedMenuBar />
         </div>
 
+        <div class="flex-1"></div>
+
         <!-- Language Switcher -->
         <div class="flex items-center gap-2">
           <LanguageSwitcher class="text-white" />
@@ -28,6 +30,7 @@
             @click="toggleMobileMenu"
             class="md:hidden text-white"
             aria-label="Toggle mobile menu"
+            title="Toggle mobile menu"
           >
             <svg
               class="w-6 h-6 transition-transform duration-300"

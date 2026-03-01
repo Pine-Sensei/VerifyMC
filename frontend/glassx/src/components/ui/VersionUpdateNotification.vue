@@ -1,73 +1,71 @@
 <template>
   <!-- Version update notification component with glassx theme styling -->
-  <div v-if="showNotification" class="version-notification">
-    <div class="version-notification-backdrop" @click="dismissNotification"></div>
-    <div class="version-notification-dialog">
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-4">
-        <div class="flex items-center space-x-3">
-          <div class="version-icon">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
-            </svg>
-          </div>
-          <h3 class="text-xl font-semibold text-white">{{ $t('version.update_available') }}</h3>
-        </div>
-        <Button 
-          variant="ghost"
-          @click="dismissNotification"
-          class="gap-2 text-white/60 hover:text-white"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+  <Dialog
+    :show="showNotification"
+    :title="$t('version.update_available')"
+    @close="remindLater"
+    max-width="max-w-lg"
+  >
+    <div class="space-y-4">
+      <div class="flex items-center space-x-3 mb-4">
+        <div class="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
           </svg>
-          <span>{{ $t('common.close') }}</span>
-        </Button>
+        </div>
+        <div>
+          <h4 class="text-lg font-medium text-white">{{ $t('version.new_version_detected') }}</h4>
+          <p class="text-white/60 text-sm">{{ $t('version.update_description') }}</p>
+        </div>
       </div>
       
       <!-- Version info -->
-      <div class="bg-white/5 border border-white/10 rounded-xl p-4 mb-6">
+      <div class="bg-white/5 border border-white/10 rounded-xl p-4">
         <div class="flex justify-between items-center mb-2">
           <span class="text-white/80">{{ $t('version.current_version') }}:</span>
           <span class="text-white font-mono">{{ versionInfo.currentVersion }}</span>
         </div>
-        <div class="flex justify-between items-center mb-4">
+        <div class="flex justify-between items-center">
           <span class="text-white/80">{{ $t('version.latest_version') }}:</span>
           <span class="text-green-400 font-mono font-semibold">{{ versionInfo.latestVersion }}</span>
         </div>
-        <div class="text-white/70 text-sm">
-          {{ $t('version.update_description') }}
-        </div>
-      </div>
-      
-      <!-- Actions -->
-      <div class="flex gap-3 justify-end">
-        <Button 
-          variant="outline"
-          @click="remindLater"
-          class="text-white/80 hover:text-white"
-        >
-          {{ $t('version.remind_later') }}
-        </Button>
-        <Button 
-          variant="default"
-          @click="openDownloadPage"
-          class="flex items-center space-x-2"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
-          </svg>
-          <span>{{ $t('version.download_now') }}</span>
-        </Button>
       </div>
     </div>
-  </div>
+    
+    <template #footer>
+      <Button 
+        variant="outline"
+        @click="remindLater"
+        class="text-white/80 hover:text-white"
+      >
+        {{ $t('version.remind_later') }}
+      </Button>
+      <Button 
+        variant="ghost"
+        @click="dismissNotification"
+        class="text-white/60 hover:text-white"
+      >
+        {{ $t('version.skip_version') }}
+      </Button>
+      <Button 
+        variant="default"
+        @click="openDownloadPage"
+        class="flex items-center space-x-2"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+        </svg>
+        <span>{{ $t('version.download_now') }}</span>
+      </Button>
+    </template>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { apiService } from '@/services/api'
 import Button from '@/components/ui/Button.vue'
+import Dialog from '@/components/ui/Dialog.vue'
 
 const isSafeUrl = (url: string): boolean => {
   try {
@@ -173,15 +171,4 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Animation */
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-20px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
 </style>
