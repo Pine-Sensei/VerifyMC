@@ -2,6 +2,7 @@
   <Dialog
     :show="show"
     :title="title"
+    :aria-describedby="messageId"
     max-width="max-w-md"
     @close="handleCancel"
   >

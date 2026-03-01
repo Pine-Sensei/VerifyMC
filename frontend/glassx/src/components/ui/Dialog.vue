@@ -6,6 +6,7 @@
     role="dialog"
     aria-modal="true"
     :aria-labelledby="titleId"
+    :aria-describedby="ariaDescribedby"
   >
     <!-- Background mask -->
     <div class="fixed inset-0 bg-black/50 backdrop-blur-xl" @click="handleClose"></div>
@@ -25,6 +26,7 @@
           size="icon"
           @click="handleClose"
           class="text-white/60 hover:text-white"
+          data-dialog-close="true"
           :aria-label="$t('common.close')"
           :title="$t('common.close')"
         >
@@ -58,10 +60,12 @@ interface Props {
   show: boolean
   title: string
   maxWidth?: string
+  ariaDescribedby?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  maxWidth: 'max-w-md'
+  maxWidth: 'max-w-md',
+  ariaDescribedby: undefined
 })
 
 const emit = defineEmits<{
@@ -105,7 +109,7 @@ watch(() => props.show, async (newShow) => {
     }
 
     // Try to focus the first input or button in the dialog (excluding close button)
-    const focusable = dialogRef.value?.querySelector('input, textarea, select, button:not([aria-label="Close"]):not([title="Close"])') as HTMLElement
+    const focusable = dialogRef.value?.querySelector('input, textarea, select, button:not([data-dialog-close="true"])') as HTMLElement
     if (focusable) {
       focusable.focus()
     } else {
