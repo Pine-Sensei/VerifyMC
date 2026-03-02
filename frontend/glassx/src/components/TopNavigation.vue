@@ -63,7 +63,7 @@
           class="md:hidden border-t border-white/10 bg-white/5 backdrop-blur-xl"
         >
           <div class="px-3 pt-3 pb-4 space-y-2">
-            <AnimatedMenuBar class="flex-col space-y-2" />
+            <AnimatedMenuBar :vertical="true" />
           </div>
         </div>
       </transition>

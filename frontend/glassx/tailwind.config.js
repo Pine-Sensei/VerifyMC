@@ -84,8 +84,8 @@ export default {
   corePlugins: {
     // Disable unused core plugins to reduce CSS size
     preflight: true,
-    container: false,
-    accessibility: false,
+    container: true,
+    accessibility: true,
     appearance: false,
     backgroundAttachment: false,
     backgroundClip: true,
@@ -175,9 +175,9 @@ export default {
     zIndex: true,
     gap: true,
     gridAutoFlow: false,
-    gridTemplateColumns: false,
+    gridTemplateColumns: true,
     gridAutoColumns: false,
-    gridColumn: false,
+    gridColumn: true,
     gridColumnStart: false,
     gridColumnEnd: false,
     gridTemplateRows: false,

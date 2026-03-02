@@ -27,22 +27,22 @@
           <TableHeader>
             <TableRow>
               <TableHead>{{ $t('admin.users.table.username') }}</TableHead>
-              <TableHead>{{ $t('admin.users.table.email') }}</TableHead>
+              <TableHead class="hidden md:table-cell">{{ $t('admin.users.table.email') }}</TableHead>
               <TableHead>{{ $t('admin.users.table.status') }}</TableHead>
-              <TableHead>{{ $t('admin.users.table.register_time') }}</TableHead>
+              <TableHead class="hidden lg:table-cell">{{ $t('admin.users.table.register_time') }}</TableHead>
               <TableHead class="w-48">{{ $t('admin.users.table.actions') }}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             <TableRow v-for="user in allUsers" :key="user.username">
               <TableCell class="font-medium text-white break-all">{{ user.username }}</TableCell>
-              <TableCell class="break-all">{{ user.email }}</TableCell>
+              <TableCell class="break-all hidden md:table-cell">{{ user.email }}</TableCell>
               <TableCell>
                 <span :class="getStatusClass(user.status) + ' inline-block px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap'">
                   {{ $t(`admin.users.status.${(user.status || '').toLowerCase()}`) }}
                 </span>
               </TableCell>
-              <TableCell>{{ formatDate(user.regTime) }}</TableCell>
+              <TableCell class="hidden lg:table-cell">{{ formatDate(user.regTime) }}</TableCell>
               <TableCell>
                 <div class="flex items-center gap-2">
                   <Button
@@ -187,9 +187,6 @@ import {
   Trash2,
   Ban,
   CheckCircle,
-  Search,
-  Filter,
-  X,
 } from 'lucide-vue-next'
 import { useNotification } from '@/composables/useNotification'
 import { useAdminUsers } from '@/composables/useAdminUsers'

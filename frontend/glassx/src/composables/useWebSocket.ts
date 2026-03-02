@@ -1,4 +1,4 @@
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { sessionService } from '@/services/session'
 
 interface UseWebSocketOptions {
@@ -36,17 +36,6 @@ export function useWebSocket(
   let reconnectTimer: number | undefined
   let shouldReconnect = true
 
-  const scheduleReconnect = () => {
-    if (!shouldReconnect || !autoReconnect || reconnectAttempts >= maxReconnectAttempts) {
-      return
-    }
-
-    reconnectTimer = window.setTimeout(() => {
-      reconnectAttempts++
-      connect()
-    }, reconnectInterval)
-  }
-
   const getUrl = () => {
     let url = typeof urlOrFactory === 'function' ? urlOrFactory() : urlOrFactory
     
@@ -55,7 +44,6 @@ export function useWebSocket(
     if (token) {
       // Check if token is already in the URL to avoid duplication
       if (!url.includes('token=')) {
-        const separator = url.includes('?') ? '&' : '/?'
         // If URL ends with slash and we use /?, it might be //?.
         // UserManagement used `/?token=...`.
         // Let's be smart about it.
@@ -76,6 +64,11 @@ export function useWebSocket(
 
   const connect = () => {
     shouldReconnect = true
+
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer)
+      reconnectTimer = undefined
+    }
 
     // Check for existing connection
     if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
@@ -109,15 +102,25 @@ export function useWebSocket(
         isConnected.value = false
         if (onDisconnected) onDisconnected(ws, event)
         ws = null
-
-        scheduleReconnect()
+        
+        if (shouldReconnect && autoReconnect && reconnectAttempts < maxReconnectAttempts) {
+          reconnectTimer = window.setTimeout(() => {
+            reconnectAttempts++
+            connect()
+          }, reconnectInterval)
+        }
       }
     } catch (e) {
       console.error('WebSocket connection failed:', e)
       // Trigger error handling
       if (onError) onError(null, e as Event)
-
-      scheduleReconnect()
+      
+      if (shouldReconnect && autoReconnect && reconnectAttempts < maxReconnectAttempts) {
+          reconnectTimer = window.setTimeout(() => {
+            reconnectAttempts++
+            connect()
+          }, reconnectInterval)
+        }
     }
   }
 

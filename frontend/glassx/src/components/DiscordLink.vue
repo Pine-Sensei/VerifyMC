@@ -39,13 +39,21 @@ import { apiService } from '@/services/api'
 import { useNotification } from '@/composables/useNotification'
 import Button from './ui/Button.vue'
 
+interface DiscordUser {
+  id: string
+  username: string
+  discriminator: string
+  avatar?: string
+  globalName?: string
+}
+
 const props = defineProps<{
   username: string
   required?: boolean
 }>()
 
 const emit = defineEmits<{
-  (e: 'linked', user: any): void
+  (e: 'linked', user: DiscordUser): void
   (e: 'unlinked'): void
 }>()
 
@@ -54,7 +62,7 @@ const { success, error } = useNotification()
 
 const loading = ref(false)
 const linked = ref(false)
-const discordUser = ref<any>(null)
+const discordUser = ref<DiscordUser | null>(null)
 
 // 使用 ref 保存定时器，确保组件卸载时能正确清理
 const pollInterval = ref<number | null>(null)
@@ -105,7 +113,7 @@ const checkLinkStatus = async () => {
   try {
     const response = await apiService.getDiscordStatus(props.username)
     
-    if (response.success && response.linked) {
+    if (response.success && response.linked && response.user) {
       linked.value = true
       discordUser.value = response.user
       stopPolling()

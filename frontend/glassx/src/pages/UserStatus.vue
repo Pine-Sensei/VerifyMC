@@ -41,33 +41,34 @@
         </div>
 
         <!-- Loading State -->
-        <div v-if="loading" class="text-center py-12">
-          <div class="spinner mx-auto mb-4"></div>
-          <p class="text-white/70">{{ $t('common.loading') }}</p>
+        <div v-if="loading" class="space-y-6">
+          <Skeleton class="h-24 w-full rounded-xl" />
+          <div class="glass-card p-6 border-l-4 border-white/10">
+             <div class="h-6 w-32 mb-4 bg-white/10 rounded animate-pulse" />
+             <div class="space-y-2">
+               <Skeleton class="h-4 w-full" />
+               <Skeleton class="h-4 w-3/4" />
+             </div>
+          </div>
+           <div class="glass-card p-6">
+            <div class="h-6 w-32 mb-4 bg-white/10 rounded animate-pulse" />
+            <div class="grid md:grid-cols-2 gap-4">
+              <div>
+                <Skeleton class="h-4 w-24 mb-2" />
+                <Skeleton class="h-6 w-48" />
+              </div>
+              <div>
+                <Skeleton class="h-4 w-24 mb-2" />
+                <Skeleton class="h-6 w-48" />
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Status Display -->
         <div v-else-if="status" class="space-y-6">
           <!-- Status Card -->
-          <div class="glass-card p-6 border-l-4" :class="statusCardClass">
-            <div class="flex items-center space-x-4">
-              <div class="flex-shrink-0">
-                <div class="w-12 h-12 rounded-xl flex items-center justify-center" :class="statusIconBg">
-                  <Clock v-if="status.status === 'pending'" class="w-6 h-6 text-white" />
-                  <CheckCircle v-else-if="status.status === 'approved'" class="w-6 h-6 text-white" />
-                  <XCircle v-else class="w-6 h-6 text-white" />
-                </div>
-              </div>
-              <div class="flex-1">
-                <h3 class="text-xl font-bold text-white mb-1">
-                  {{ $t(`user_status.status.${status.status}`) }}
-                </h3>
-                <p class="text-white/70">
-                  {{ $t(`user_status.messages.${status.status}`) }}
-                </p>
-              </div>
-            </div>
-          </div>
+          <StatusCard :status="status" />
 
           <!-- Rejection Reason -->
           <div v-if="status.status === 'rejected' && status.reason" class="glass-card p-6 border-l-4 border-red-400 bg-red-900/20">
@@ -143,97 +144,40 @@
         </div>
       </div>
     </main>
-
-    <!-- Toast Container -->
-    <div class="fixed top-0 right-0 z-50 p-4 space-y-2">
-      <Toast
-        v-for="toast in toasts"
-        :key="toast.id"
-        :type="toast.type"
-        :title="toast.title"
-        :message="toast.message"
-        @close="removeToast(toast.id)"
-      />
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, inject, type Ref } from 'vue'
+import { ref, onMounted, inject, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
   Server,
   LogOut,
   User,
-  Clock,
-  CheckCircle,
-  XCircle,
   RefreshCw,
   Home,
   AlertCircle
 } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
-import Toast from '@/components/Toast.vue'
+import StatusCard from '@/components/ui/StatusCard.vue'
+import Skeleton from '@/components/ui/Skeleton.vue'
 import { apiService } from '@/services/api'
 import { sessionService } from '@/services/session'
-import type { UserInfo, AppConfig, NotificationType } from '@/types'
+import type { UserInfo, AppConfig } from '@/types'
+import { useNotification } from '@/composables/useNotification'
 
 const config = inject<Ref<AppConfig>>('config', ref({}))
 
 const router = useRouter()
 const { t } = useI18n()
+const { error: notifyError } = useNotification()
 
 const loading = ref(true)
 const refreshing = ref(false)
 const status = ref<{ status: string; reason?: string } | null>(null)
 const user = ref<UserInfo | null>(null)
-
-const toasts = ref<Array<{ id: number; type: NotificationType; title: string; message?: string }>>([])
-let toastId = 0
-
-const addToast = (type: NotificationType, title: string, message?: string) => {
-  const id = ++toastId
-  toasts.value.push({ id, type, title, message })
-}
-
-const removeToast = (id: number) => {
-  const index = toasts.value.findIndex(toast => toast.id === id)
-  if (index > -1) {
-    toasts.value.splice(index, 1)
-  }
-}
-
-const statusCardClass = computed(() => {
-  if (!status.value) return ''
-
-  switch (status.value.status) {
-    case 'pending':
-      return 'border-yellow-400 bg-yellow-900/20'
-    case 'approved':
-      return 'border-green-400 bg-green-900/20'
-    case 'rejected':
-      return 'border-red-400 bg-red-900/20'
-    default:
-      return 'border-white/10 bg-white/10'
-  }
-})
-
-const statusIconBg = computed(() => {
-  if (!status.value) return 'bg-white/20'
-
-  switch (status.value.status) {
-    case 'pending':
-      return 'bg-yellow-500'
-    case 'approved':
-      return 'bg-green-500'
-    case 'rejected':
-      return 'bg-red-500'
-    default:
-      return 'bg-white/20'
-  }
-})
 
 const loadStatus = async () => {
   try {
@@ -241,10 +185,10 @@ const loadStatus = async () => {
     if (response.success) {
       status.value = response.data
     } else {
-      addToast('error', t('common.error'), response.message && response.message !== t('common.error') ? response.message : '')
+      notifyError(t('common.error'), response.message && response.message !== t('common.error') ? response.message : '')
     }
   } catch (error: unknown) {
-    addToast('error', t('common.error'), t('errors.network'))
+    notifyError(t('common.error'), t('errors.network'))
   } finally {
     loading.value = false
     refreshing.value = false

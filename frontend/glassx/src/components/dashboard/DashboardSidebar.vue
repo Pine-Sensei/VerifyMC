@@ -1,6 +1,6 @@
 <template>
   <aside 
-    class="fixed left-0 top-0 h-full bg-white/5 backdrop-blur-xl border-r border-white/10 z-50 transition-all duration-300 flex flex-col pt-16"
+    class="fixed left-0 top-0 h-full bg-white/5 backdrop-blur-xl border-r border-white/10 z-50 transition-all duration-300 flex flex-col pt-16 max-w-[80vw]"
     :class="[
       sidebarCollapsed ? 'w-20' : 'w-64',
       mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
@@ -69,21 +69,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, markRaw } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   User,
   LogOut,
-  Download,
-  Activity,
-  Users,
-  FileText,
 } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 import type { UserInfo } from '@/types'
 import { getPlayerMenuItems, getAdminMenuItems } from '@/config/menu'
 
-const props = defineProps<{
+defineProps<{
   sidebarCollapsed: boolean
   mobileMenuOpen: boolean
   activeSection: string
@@ -91,7 +87,7 @@ const props = defineProps<{
   isAdmin: boolean
 }>()
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'toggleSidebar'): void
   (e: 'closeMobileMenu'): void
   (e: 'setActiveSection', section: string): void

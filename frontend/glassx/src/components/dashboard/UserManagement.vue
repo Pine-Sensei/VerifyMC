@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject, shallowRef } from 'vue'
+import { ref, computed, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useWebSocket } from '@/composables/useWebSocket'
 import Button from '@/components/ui/Button.vue'

@@ -43,7 +43,7 @@ const { t, locale } = useI18n()
 
 // Update document title
 watch(
-  [() => route.meta.title, () => config.value?.webServerPrefix, () => locale.value],
+  [() => route.meta.title, () => locale.value, () => config.value?.webServerPrefix],
   ([newTitle]) => {
     const title = newTitle ? t(newTitle as string) : ''
     const prefix = config.value?.webServerPrefix || 'VerifyMC'
@@ -52,12 +52,9 @@ watch(
   { immediate: true }
 )
 
-// Update title when language changes
-
-
 // 暴露重载配置方法给全局
 if (typeof window !== 'undefined') {
-  (window as any).reloadVerifyMCConfig = reloadConfig
+  (window as Window & { reloadVerifyMCConfig?: () => Promise<boolean> }).reloadVerifyMCConfig = reloadConfig
 }
 </script>
 
