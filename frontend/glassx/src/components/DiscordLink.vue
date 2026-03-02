@@ -149,7 +149,7 @@ const stopPolling = () => {
 }
 
 // Watch for username changes to reset link status
-watch(() => props.username, async (newUsername) => {
+watch(() => props.username, async (newUsername: string) => {
   if (newUsername) {
     await checkLinkStatus()
   } else {

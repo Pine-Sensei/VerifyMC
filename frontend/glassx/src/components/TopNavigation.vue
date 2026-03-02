@@ -7,6 +7,15 @@
       <div class="relative flex justify-between items-center h-16">
         <!-- Logo -->
         <div class="flex items-center">
+          <Button
+            v-if="showTrigger"
+            variant="ghost"
+            size="icon"
+            class="mr-2 text-white/70 hover:text-white hover:bg-white/10"
+            @click="toggleSidebar"
+          >
+            <Menu class="w-5 h-5" />
+          </Button>
           <router-link to="/" class="logo-link group">
             <span v-if="serverName !== undefined" class="logo-text">{{ serverName }}</span>
           </router-link>
@@ -72,16 +81,43 @@
 </template>
 
 <script setup lang="ts">
-import { inject, computed, ref, type Ref } from 'vue'
+import { inject, computed, ref, type Ref, onMounted, onUnmounted } from 'vue'
 import LanguageSwitcher from './LanguageSwitcher.vue'
 import AnimatedMenuBar from './AnimatedMenuBar.vue'
 import Button from '@/components/ui/Button.vue'
+import { Menu } from 'lucide-vue-next'
+import { useSidebar } from '@/composables/useSidebar'
 import type { AppConfig } from '@/types'
 
 const config = inject<Ref<AppConfig>>('config', ref({}))
+const { toggleOpen, toggleCollapse, showTrigger, setCollapse } = useSidebar()
+
 const mobileMenuOpen = ref(false)
+const isMobile = ref(false)
 
 const serverName = computed(() => config.value?.webServerPrefix)
+
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 1024
+}
+
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+})
+
+const toggleSidebar = () => {
+  if (isMobile.value) {
+    setCollapse(false)
+    toggleOpen()
+  } else {
+    toggleCollapse()
+  }
+}
 
 const toggleMobileMenu = () => {
   mobileMenuOpen.value = !mobileMenuOpen.value

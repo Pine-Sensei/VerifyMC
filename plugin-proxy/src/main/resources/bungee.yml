@@ -1,6 +1,6 @@
 name: VerifyMC-Proxy
 main: team.kitemc.verifymc.proxy.VerifyMCProxy
-version: 1.6.5
+version: 1.6.6
 author: KiteMC
 description: VerifyMC proxy plugin for BungeeCord/Waterfall
 

@@ -1,26 +1,13 @@
 <template>
   <div class="min-h-screen w-full relative">
-    <!-- Mobile Header -->
-    <DashboardHeader
-      :sidebar-collapsed="sidebarCollapsed"
-      :mobile-menu-open="mobileMenuOpen"
-      :server-name="serverName"
-      :current-section-title="currentSectionTitle"
-      @toggle-mobile-menu="toggleMobileMenu"
-    />
-
     <!-- Mobile Overlay -->
-    <div v-if="mobileMenuOpen" class="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm" @click="closeMobileMenu"></div>
+    <div v-if="isOpen" class="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm" @click="setOpen(false)"></div>
 
     <!-- Sidebar -->
     <DashboardSidebar
-      :sidebar-collapsed="sidebarCollapsed"
-      :mobile-menu-open="mobileMenuOpen"
       :active-section="activeSection"
       :user-info="userInfo"
       :is-admin="isAdmin"
-      @toggle-sidebar="toggleSidebar"
-      @close-mobile-menu="closeMobileMenu"
       @set-active-section="setActiveSection"
       @logout="handleLogout"
     />
@@ -29,7 +16,7 @@
     <main 
       class="min-h-screen transition-all duration-300 flex flex-col"
       :class="[
-        sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
+        isCollapsed ? 'lg:pl-20' : 'lg:pl-64'
       ]"
     >
       <div class="pt-20 lg:pt-8 px-4 lg:px-8 pb-8 flex-1">
@@ -56,15 +43,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, inject, defineAsyncComponent, type Ref } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject, defineAsyncComponent, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { sessionService } from '@/services/session'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar.vue'
-import DashboardHeader from '@/components/dashboard/DashboardHeader.vue'
 import type { AppConfig, UserInfo } from '@/types'
 import { getPlayerMenuItems, getAdminMenuItems } from '@/config/menu'
+import { useSidebar } from '@/composables/useSidebar'
 
 // Section components - lazy loaded for better performance
 const ProfileSection = defineAsyncComponent(() => import('@/components/dashboard/ProfileSection.vue'))
@@ -76,9 +63,8 @@ const AuditLog = defineAsyncComponent(() => import('@/components/dashboard/Audit
 const { t } = useI18n()
 const router = useRouter()
 const config = inject<Ref<AppConfig>>('config', ref({}))
+const { isCollapsed, isOpen, setTrigger, setOpen, setCollapse } = useSidebar()
 
-const sidebarCollapsed = ref(false)
-const mobileMenuOpen = ref(false)
 const activeSection = ref('profile')
 const userInfo = ref<UserInfo | null>(null)
 
@@ -91,21 +77,9 @@ const currentSectionTitle = computed(() => {
   return item?.label || ''
 })
 
-const toggleSidebar = () => {
-  sidebarCollapsed.value = !sidebarCollapsed.value
-}
-
-const toggleMobileMenu = () => {
-  mobileMenuOpen.value = !mobileMenuOpen.value
-}
-
-const closeMobileMenu = () => {
-  mobileMenuOpen.value = false
-}
-
 const setActiveSection = (section: string) => {
   activeSection.value = section
-  closeMobileMenu()
+  setOpen(false)
 }
 
 const handleLogout = () => {
@@ -114,6 +88,7 @@ const handleLogout = () => {
 }
 
 onMounted(() => {
+  setTrigger(true)
   // Check authentication
   if (!sessionService.isAuthenticated()) {
     sessionService.redirectToLogin()
@@ -129,5 +104,11 @@ onMounted(() => {
   } else {
     activeSection.value = 'profile'
   }
+})
+
+onUnmounted(() => {
+  setTrigger(false)
+  setOpen(false)
+  setCollapse(false)
 })
 </script>

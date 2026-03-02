@@ -1,4 +1,11 @@
-[English](https://github.com/KiteMC/VerifyMC/releases/tag/v1.6.5) | 简体中文 | [官方文档](https://kitemc.com/docs/verifymc/)
+[English](https://github.com/KiteMC/VerifyMC/releases/tag/v1.6.6) | 简体中文 | [官方文档](https://kitemc.com/docs/verifymc/)
+
+# VerifyMC v1.6.6 更新日志
+
+## 常规更新
+
+- **版本更新**：项目版本升级至 1.6.6。
+- **依赖更新**：更新了相关依赖版本。
 
 # VerifyMC v1.6.5 更新日志
 
