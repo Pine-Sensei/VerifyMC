@@ -31,7 +31,7 @@ const variants = {
   destructive: 'glass-button-danger',
   outline: 'glass-button bg-transparent hover:bg-white/10 border-white/10',
   secondary: 'glass-button',
-  ghost: 'glass-button border-transparent bg-transparent hover:bg-white/5 shadow-none',
+  ghost: 'hover:bg-white/5 text-white/70 hover:text-white',
   link: 'text-blue-400 underline-offset-4 hover:underline'
 }
 

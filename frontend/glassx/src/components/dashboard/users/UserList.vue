@@ -193,7 +193,9 @@ import {
 } from 'lucide-vue-next'
 import { useNotification } from '@/composables/useNotification'
 import { useAdminUsers } from '@/composables/useAdminUsers'
-import { apiService, type PendingUser } from '@/services/api'
+import { apiService } from '@/services/api'
+import type { PendingUser } from '@/types'
+import { formatDate, getStatusColors } from '@/lib/utils'
 import Card from '@/components/ui/Card.vue'
 import Table from '@/components/ui/Table.vue'
 import TableHeader from '@/components/ui/TableHeader.vue'
@@ -238,27 +240,9 @@ const {
 
 const loading = computed(() => usersLoading.value || actionLoading.value)
 
-const formatDate = (dateValue: string | number) => {
-  if (!dateValue) return '—'
-  const date = typeof dateValue === 'number' ? new Date(dateValue) : new Date(dateValue)
-  return date.toLocaleDateString()
-}
-
 const getStatusClass = (status: string) => {
-  const s = (status || '').toLowerCase()
-  const baseClasses = 'px-2 py-1 rounded-full text-xs font-medium'
-  switch (s) {
-    case 'pending':
-      return `${baseClasses} bg-yellow-500/20 text-yellow-300`
-    case 'approved':
-      return `${baseClasses} bg-green-500/20 text-green-300`
-    case 'rejected':
-      return `${baseClasses} bg-red-500/20 text-red-300`
-    case 'banned':
-      return `${baseClasses} bg-red-500/20 text-red-300`
-    default:
-      return `${baseClasses} bg-white/5 text-white/70`
-  }
+  const colors = getStatusColors(status)
+  return `px-2 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`
 }
 
 const notifyResult = (success: boolean, key: string, backendMessage?: string) => {

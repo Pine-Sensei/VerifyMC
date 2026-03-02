@@ -29,9 +29,9 @@
             variant="ghost"
             size="icon-sm"
             @click="close"
-            class="absolute top-2 right-2 flex-shrink-0 text-white/70 hover:text-white transition-colors duration-200 rounded-full"
-            :aria-label="$t('common.close') || 'Close'"
-            :title="$t('common.close') || 'Close'"
+            class="absolute top-2 right-2 flex-shrink-0 transition-colors duration-200 rounded-full"
+            :aria-label="$t('common.close')"
+            :title="$t('common.close')"
           >
             <X class="w-5 h-5" />
           </Button>
@@ -44,9 +44,10 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { CheckCircle, XCircle, AlertCircle, Info, X } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
+import type { NotificationType } from '@/types'
 
 interface Props {
-  type?: 'success' | 'error' | 'warning' | 'info'
+  type?: NotificationType
   title: string
   message?: string
   duration?: number

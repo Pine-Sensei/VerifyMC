@@ -100,7 +100,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RefreshCw } from 'lucide-vue-next'
 import { useNotification } from '@/composables/useNotification'
-import { apiService, type PendingUser } from '@/services/api'
+import { apiService } from '@/services/api'
+import type { PendingUser } from '@/types'
+import { formatDate } from '@/lib/utils'
 import Card from '@/components/ui/Card.vue'
 import Table from '@/components/ui/Table.vue'
 import TableHeader from '@/components/ui/TableHeader.vue'
@@ -133,12 +135,6 @@ const rejectDialog = ref({
   reason: '',
   processing: false
 })
-
-const formatDate = (dateValue: string | number) => {
-  if (!dateValue) return '—'
-  const date = typeof dateValue === 'number' ? new Date(dateValue) : new Date(dateValue)
-  return date.toLocaleDateString()
-}
 
 const loadQuestionnaireConfig = async () => {
   try {

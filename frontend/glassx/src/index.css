@@ -2,6 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===========================================
+   Global CSS Custom Properties (Migrated from App.vue)
+   =========================================== */
+:root {
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  --glass-bg-hover: rgba(255, 255, 255, 0.12);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --glass-border-hover: rgba(255, 255, 255, 0.25);
+  --glass-blur: 20px;
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+
+  --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  --gradient-accent: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
+
+  --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
 @layer base {
   * {
     @apply border-gray-200;
@@ -316,6 +335,10 @@
   .backdrop-blur-strong {
     backdrop-filter: blur(20px);
   }
+
+  .pixelated {
+    image-rendering: pixelated;
+  }
 }
 
 /* Custom scrollbar */
@@ -453,4 +476,98 @@
   100% {
     border-color: rgba(79, 172, 254, 0.5);
   }
+}
+
+/* ===========================================
+   Migrated Styles from App.vue
+   =========================================== */
+
+/* Layout & Base */
+#app {
+  height: 100vh;
+  overflow-y: auto;
+  background: transparent;
+  position: relative;
+  z-index: 1;
+}
+
+/* Mobile Safe Area */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@supports (-webkit-touch-callout: none) {
+  .min-h-screen {
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* Custom Pulse Animation (Slower than Tailwind default) */
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 0.3;
+    transform: translateZ(0);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translateZ(0);
+  }
+}
+
+.animate-pulse {
+  animation: pulse-slow 8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  transform: translateZ(0);
+  will-change: opacity;
+}
+
+/* Low Performance Mode */
+.low-performance-mode {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+.low-performance-mode * {
+  animation: none !important;
+  transition: none !important;
+  transform: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.low-performance-mode .glass-card {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.low-performance-mode .glass-button {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: none !important;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse,
+  .heart-icon {
+    animation: none;
+  }
+
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Selection */
+::selection {
+  background: rgba(59, 130, 246, 0.3);
+  color: #fff;
+}
+
+::-moz-selection {
+  background: rgba(59, 130, 246, 0.3);
+  color: #fff;
 }

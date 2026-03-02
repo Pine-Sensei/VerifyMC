@@ -22,7 +22,7 @@
         @click="$emit('update:modelValue', '')"
         :aria-label="$t('common.search') + ' ' + $t('common.clear') || 'Clear search'"
         :title="$t('common.clear') || 'Clear search'"
-        class="absolute inset-y-0 right-0 h-full w-10 text-white/60 hover:text-white transition-colors rounded-none rounded-r-md"
+        class="absolute inset-y-0 right-0 h-full w-10 transition-colors rounded-none rounded-r-md"
       >
         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>

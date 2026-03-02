@@ -76,10 +76,7 @@ import { inject, computed, ref, type Ref } from 'vue'
 import LanguageSwitcher from './LanguageSwitcher.vue'
 import AnimatedMenuBar from './AnimatedMenuBar.vue'
 import Button from '@/components/ui/Button.vue'
-
-interface AppConfig {
-  webServerPrefix?: string
-}
+import type { AppConfig } from '@/types'
 
 const config = inject<Ref<AppConfig>>('config', ref({}))
 const mobileMenuOpen = ref(false)

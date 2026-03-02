@@ -124,37 +124,21 @@ import { ref, computed, onMounted, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { User, Clock, CheckCircle, XCircle } from 'lucide-vue-next'
 import { useNotification } from '@/composables/useNotification'
-import { sessionService, type UserInfo } from '@/services/session'
+import { sessionService } from '@/services/session'
 import { apiService, type ConfigResponse } from '@/services/api'
+import { getStatusColors } from '@/lib/utils'
 import Label from '@/components/ui/Label.vue'
 import Input from '@/components/ui/Input.vue'
 import Button from '@/components/ui/Button.vue'
 import Card from '@/components/ui/Card.vue'
-
-// Type definitions
-type UserStatus = 'pending' | 'approved' | 'rejected'
-
-interface DiscordUser {
-  id: string
-  username: string
-  discriminator: string
-  avatar?: string
-  globalName?: string
-}
-
-interface DiscordStatus {
-  success: boolean
-  linked: boolean
-  user?: DiscordUser
-  message?: string
-}
+import type { UserInfo, DiscordStatus, UserStatusType } from '@/types'
 
 const { t, locale } = useI18n()
 const notification = useNotification()
 const config = inject<{ value: ConfigResponse }>('config', { value: {} as ConfigResponse })
 
 const userInfo = ref<UserInfo | null>(null)
-const userStatus = ref<UserStatus>('pending')
+const userStatus = ref<UserStatusType>('pending')
 const rejectReason = ref<string>('')
 const saving = ref(false)
 const changingPassword = ref(false)
@@ -172,32 +156,20 @@ const passwordForm = ref({
 const discordEnabled = computed(() => config.value?.discord?.enabled)
 
 const statusClass = computed(() => {
-  switch (userStatus.value) {
-    case 'pending': return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-    case 'approved': return 'bg-green-500/20 text-green-500 border border-green-500/30'
-    case 'rejected': return 'bg-red-500/20 text-red-500 border border-red-500/30'
-    default: return ''
-  }
+  const colors = getStatusColors(userStatus.value)
+  return `${colors.bg} ${colors.text} border ${colors.border}`
 })
 
 const statusText = computed(() => t(`user_status.status.${userStatus.value}`))
 
 const statusCardClass = computed(() => {
-  switch (userStatus.value) {
-    case 'pending': return 'bg-yellow-500/10 border-yellow-500'
-    case 'approved': return 'bg-green-500/10 border-green-500'
-    case 'rejected': return 'bg-red-500/10 border-red-500'
-    default: return ''
-  }
+  const colors = getStatusColors(userStatus.value)
+  return `${colors.cardBg} ${colors.cardBorder}`
 })
 
 const statusIconWrapperClass = computed(() => {
-  switch (userStatus.value) {
-    case 'pending': return 'bg-yellow-500/20 text-yellow-400'
-    case 'approved': return 'bg-green-500/20 text-green-500'
-    case 'rejected': return 'bg-red-500/20 text-red-500'
-    default: return ''
-  }
+  const colors = getStatusColors(userStatus.value)
+  return `${colors.bg} ${colors.text}`
 })
 
 const loadUserInfo = async () => {

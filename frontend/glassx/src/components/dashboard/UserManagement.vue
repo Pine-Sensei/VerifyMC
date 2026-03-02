@@ -2,15 +2,15 @@
   <div class="w-full space-y-4">
     <!-- Tag Navigation -->
     <div class="flex items-center space-x-2 overflow-x-auto pb-2 pt-1 scrollbar-hide">
-      <button
+      <Button
         v-for="tag in tags"
         :key="tag.id"
         @click="activeTag = tag.id"
-        class="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 whitespace-nowrap"
-        :class="activeTag === tag.id ? 'glass-button-primary shadow-lg' : 'glass-button bg-transparent hover:bg-white/10 border-transparent text-white/70 hover:text-white'"
+        :variant="activeTag === tag.id ? 'default' : 'ghost'"
+        class="rounded-full"
       >
         {{ tag.label }}
-      </button>
+      </Button>
     </div>
 
     <!-- Content Area -->
@@ -34,9 +34,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject, onMounted, onUnmounted, shallowRef } from 'vue'
+import { ref, computed, inject, shallowRef } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { sessionService } from '@/services/session'
+import { useWebSocket } from '@/composables/useWebSocket'
+import Button from '@/components/ui/Button.vue'
 import VersionUpdateNotification from '@/components/ui/VersionUpdateNotification.vue'
 import UserList from './users/UserList.vue'
 import PendingReviews from './users/PendingReviews.vue'
@@ -57,7 +58,13 @@ const activeComponent = computed(() => {
 })
 
 const getWsPort = inject<() => number>('getWsPort', () => window.location.port ? (parseInt(window.location.port, 10) + 1) : 8081)
-let ws: WebSocket | null = null
+
+const getWsUrl = () => {
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
+  const wsHost = window.location.hostname
+  const wsPort = getWsPort()
+  return `${wsProtocol}://${wsHost}:${wsPort}`
+}
 
 const handleWsMessage = () => {
   // Refresh the current active component if it has the method
@@ -70,34 +77,7 @@ const handleWsMessage = () => {
   }
 }
 
-onMounted(() => {
-  // WebSocket for real-time updates
-  if (window.WebSocket) {
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-    const wsHost = window.location.hostname
-    const wsPort = getWsPort()
-    const token = sessionService.getToken()
-    const wsUrl = token
-      ? `${wsProtocol}://${wsHost}:${wsPort}/?token=${encodeURIComponent(token)}`
-      : `${wsProtocol}://${wsHost}:${wsPort}`
-    try {
-      ws = new WebSocket(wsUrl)
-      ws.onmessage = handleWsMessage
-      ws.onerror = () => {
-        console.warn('WebSocket connection error')
-      }
-      ws.onclose = () => {
-        ws = null
-      }
-    } catch {
-      console.warn('WebSocket connection failed')
-    }
-  }
-})
-
-onUnmounted(() => {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.close()
-  }
+useWebSocket(getWsUrl, {
+  onMessage: handleWsMessage
 })
 </script>

@@ -1,7 +1,7 @@
-import type { Notification } from '@/components/NotificationSystem.vue'
+import type { NotificationInput } from '@/types'
 
 interface NotificationSystem {
-  addNotification: (notification: Omit<Notification, 'id'>) => void
+  addNotification: (notification: NotificationInput) => void
 }
 
 let notificationSystemInstance: NotificationSystem | null = null
@@ -11,7 +11,7 @@ export const useNotification = () => {
     notificationSystemInstance = system
   }
 
-  const showNotification = (notification: Omit<Notification, 'id'>) => {
+  const showNotification = (notification: NotificationInput) => {
     if (notificationSystemInstance) {
       notificationSystemInstance.addNotification(notification)
     } else {

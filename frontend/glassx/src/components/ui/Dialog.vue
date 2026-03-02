@@ -25,7 +25,6 @@
           variant="ghost"
           size="icon"
           @click="handleClose"
-          class="text-white/70 hover:text-white"
           data-dialog-close="true"
           :aria-label="$t('common.close')"
           :title="$t('common.close')"

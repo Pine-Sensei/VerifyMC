@@ -1,3 +1,5 @@
+import type { UserInfo } from '@/types'
+
 const ADMIN_TOKEN_KEY = 'admin_token'
 const IS_ADMIN_KEY = 'is_admin'
 const USER_INFO_KEY = 'user_info'
@@ -31,12 +33,6 @@ const redirectToLogin = (redirect?: string): void => {
   if (current !== destination) {
     window.location.assign(destination)
   }
-}
-
-export interface UserInfo {
-  username: string
-  email?: string
-  isAdmin?: boolean
 }
 
 export const sessionService = {

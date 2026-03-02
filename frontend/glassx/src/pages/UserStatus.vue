@@ -177,11 +177,8 @@ import Button from '@/components/ui/Button.vue'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import Toast from '@/components/Toast.vue'
 import { apiService } from '@/services/api'
-import { sessionService, type UserInfo } from '@/services/session'
-
-interface AppConfig {
-  webServerPrefix?: string
-}
+import { sessionService } from '@/services/session'
+import type { UserInfo, AppConfig, NotificationType } from '@/types'
 
 const config = inject<Ref<AppConfig>>('config', ref({}))
 
@@ -193,12 +190,10 @@ const refreshing = ref(false)
 const status = ref<{ status: string; reason?: string } | null>(null)
 const user = ref<UserInfo | null>(null)
 
-type ToastType = 'success' | 'error' | 'warning' | 'info'
-
-const toasts = ref<Array<{ id: number; type: ToastType; title: string; message?: string }>>([])
+const toasts = ref<Array<{ id: number; type: NotificationType; title: string; message?: string }>>([])
 let toastId = 0
 
-const addToast = (type: ToastType, title: string, message?: string) => {
+const addToast = (type: NotificationType, title: string, message?: string) => {
   const id = ++toastId
   toasts.value.push({ id, type, title, message })
 }

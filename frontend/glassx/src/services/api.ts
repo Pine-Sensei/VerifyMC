@@ -1,4 +1,5 @@
 import { sessionService } from '@/services/session'
+import type { PendingUser, ServerStatusData } from '@/types'
 
 const API_BASE = '/api'
 
@@ -147,15 +148,6 @@ export interface AdminLoginResponse {
   message: string
   isAdmin?: boolean
   username?: string
-}
-
-export interface PendingUser {
-  username: string
-  email: string
-  status: string
-  regTime: number
-  questionnaireScore?: number | null
-  questionnaireReviewSummary?: string | null
 }
 
 export interface PendingListResponse {
@@ -526,21 +518,7 @@ class ApiService {
   // 获取服务器状态（预留接口，后端可能未实现）
   async getServerStatus(): Promise<{
     success: boolean
-    data?: {
-      online: boolean
-      players?: {
-        online: number
-        max: number
-        list?: Array<{ name: string; uuid?: string }>
-      }
-      version?: string
-      tps?: number
-      memory?: {
-        used: number
-        max: number
-      }
-      motd?: string
-    }
+    data?: ServerStatusData
     message?: string
   }> {
     return this.request('/server/status')

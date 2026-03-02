@@ -118,8 +118,7 @@
             <img
               :src="`https://mc-heads.net/avatar/${player.uuid || player.name}/32`"
               :alt="player.name"
-              class="w-6 h-6 rounded"
-              style="image-rendering: pixelated"
+              class="w-6 h-6 rounded pixelated"
             />
             <span class="text-sm font-medium text-white">{{ player.name }}</span>
           </div>

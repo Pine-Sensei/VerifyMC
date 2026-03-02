@@ -43,7 +43,6 @@
       <Button 
         variant="ghost"
         @click="dismissNotification"
-        class="text-white/60 hover:text-white"
       >
         {{ $t('version.skip_version') }}
       </Button>
