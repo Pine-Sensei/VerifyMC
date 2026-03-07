@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  * Bans a user — updates status and removes from whitelist.
  */
 public class AdminUserBanHandler implements HttpHandler {
-    private static final Pattern VALID_USERNAME = Pattern.compile("^[a-zA-Z0-9_]{1,16}$");
+    private static final Pattern VALID_USERNAME = Pattern.compile("^[a-zA-Z0-9_.\\-\\s]{1,32}$");
     private final PluginContext ctx;
 
     public AdminUserBanHandler(PluginContext ctx) {

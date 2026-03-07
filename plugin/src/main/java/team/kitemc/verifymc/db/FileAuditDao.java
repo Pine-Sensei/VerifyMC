@@ -90,7 +90,10 @@ public class FileAuditDao implements AuditDao {
     public synchronized void save() {
         try (Writer writer = new FileWriter(file)) {
             gson.toJson(audits, writer);
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            java.util.logging.Logger.getLogger(FileAuditDao.class.getName())
+                .warning("Failed to save audit data: " + e.getMessage());
+        }
     }
 
     @Override

@@ -9,15 +9,15 @@ public interface UserDao {
     boolean registerUser(String username, String email, String status,
                          Integer questionnaireScore, Boolean questionnairePassed,
                          String questionnaireReviewSummary, Long questionnaireScoredAt);
-    
+
     boolean registerUser(String username, String email, String status, String password);
 
     boolean registerUser(String username, String email, String status, String password,
                          Integer questionnaireScore, Boolean questionnairePassed,
                          String questionnaireReviewSummary, Long questionnaireScoredAt);
-    
+
     boolean updateUserStatus(String username, String status);
-    
+
     /**
      * Updates a user's password using a plaintext password input.
      * Implementations are responsible for hashing before persistence.
@@ -25,43 +25,47 @@ public interface UserDao {
     boolean updateUserPassword(String username, String plainPassword);
 
     boolean updateUserEmail(String username, String email);
-    
+
     List<Map<String, Object>> getAllUsers();
-    
+
     List<Map<String, Object>> getUsersWithPagination(int page, int pageSize);
-    
+
     int getTotalUserCount();
-    
+
     List<Map<String, Object>> getUsersWithPaginationAndSearch(int page, int pageSize, String searchQuery);
-    
+
     int getTotalUserCountWithSearch(String searchQuery);
-    
+
+    /**
+     * Returns count of non-pending users (approved, banned, rejected).
+     * Despite the name, this includes all processed users, not just "approved".
+     */
     int getApprovedUserCount();
-    
+
     int getApprovedUserCountWithSearch(String searchQuery);
-    
+
     List<Map<String, Object>> getApprovedUsersWithPagination(int page, int pageSize);
-    
+
     List<Map<String, Object>> getApprovedUsersWithPaginationAndSearch(int page, int pageSize, String searchQuery);
-    
+
     Map<String, Object> getUserByUsername(String username);
 
     Map<String, Object> getUserByUsernameExact(String username);
 
     Map<String, Object> getUserByEmail(String email);
-    
+
     boolean deleteUser(String username);
-    
+
     void save();
-    
+
     int countUsersByEmail(String email);
-    
+
     List<Map<String, Object>> getPendingUsers();
-    
+
     boolean updateUserDiscordId(String username, String discordId);
-    
+
     Map<String, Object> getUserByDiscordId(String discordId);
-    
+
     boolean isDiscordIdLinked(String discordId);
 
     default boolean updateUserStatus(String username, String status, String operator) {
@@ -165,4 +169,4 @@ public interface UserDao {
     default void close() {
         // Default: no-op
     }
-} 
+}

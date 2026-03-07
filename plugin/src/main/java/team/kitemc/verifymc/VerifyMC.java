@@ -99,6 +99,19 @@ public class VerifyMC extends JavaPlugin {
             }
         }
 
+        // Stop service cleanup threads
+        if (context != null) {
+            if (context.getWebAuthHelper() != null) {
+                context.getWebAuthHelper().stopTokenCleanupTask();
+            }
+            if (context.getVerifyCodeService() != null) {
+                context.getVerifyCodeService().stop();
+            }
+            if (context.getCaptchaService() != null) {
+                context.getCaptchaService().stop();
+            }
+        }
+
         // Save and close data access layer
         if (context != null) {
             if (context.getUserDao() != null) {
@@ -166,7 +179,7 @@ public class VerifyMC extends JavaPlugin {
         if (authmeService.isAuthmeEnabled()) {
             authmeService.syncApprovedUsers();
             log.info("[VerifyMC] AuthMe sync completed on startup.");
-            
+
             // Schedule periodic sync
             int syncInterval = config.getAuthmeSyncInterval();
             if (syncInterval > 0) {
@@ -200,8 +213,10 @@ public class VerifyMC extends JavaPlugin {
         // Questionnaire application service
         context.setQuestionnaireApplicationService(new QuestionnaireApplicationService());
 
-        // Web auth
-        context.setWebAuthHelper(new WebAuthHelper(this, context.getI18nManager()));
+        // --- Web auth ---
+        WebAuthHelper webAuthHelper = new WebAuthHelper(this, context.getI18nManager());
+        webAuthHelper.startTokenCleanupTask();
+        context.setWebAuthHelper(webAuthHelper);
     }
 
     private void initWebLayer(Logger log) {

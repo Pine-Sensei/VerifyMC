@@ -22,36 +22,36 @@ public class VerifyMCProxy extends Plugin implements Listener {
     private ApiClient apiClient;
     private ProxyVersionCheckService versionCheckService;
     private ProxyResourceUpdater resourceUpdater;
-    
+
     @Override
     public void onEnable() {
         // Load configuration
         saveDefaultConfig();
         config = new ProxyConfig(getDataFolder());
-        
+
         // Initialize API client
         apiClient = new ApiClient(config, getLogger());
-        
+
         // Initialize version check service
         String version = getDescription().getVersion();
         versionCheckService = new ProxyVersionCheckService(version, getLogger(), config.isDebug());
-        
+
         // Initialize resource updater
         resourceUpdater = new ProxyResourceUpdater(getDataFolder(), getLogger(), config.isDebug(), config, getClass());
-        
+
         // Check and update resources
         resourceUpdater.checkAndUpdateResources();
-        
+
         // Check for updates asynchronously
         checkForUpdates();
-        
+
         // Register event listener
         getProxy().getPluginManager().registerListener(this, this);
-        
+
         getLogger().info("[VerifyMC-Proxy] Plugin enabled!");
         getLogger().info("[VerifyMC-Proxy] Backend API: " + config.getBackendUrl());
     }
-    
+
     /**
      * Check for plugin updates
      */
@@ -70,12 +70,12 @@ public class VerifyMCProxy extends Plugin implements Listener {
             return null;
         });
     }
-    
+
     @Override
     public void onDisable() {
         getLogger().info("[VerifyMC-Proxy] Plugin disabled!");
     }
-    
+
     /**
      * Save default configuration file
      */
@@ -83,7 +83,7 @@ public class VerifyMCProxy extends Plugin implements Listener {
         if (!getDataFolder().exists()) {
             getDataFolder().mkdir();
         }
-        
+
         File configFile = new File(getDataFolder(), "config.yml");
         if (!configFile.exists()) {
             try (InputStream in = getResourceAsStream("config.yml")) {
@@ -93,25 +93,25 @@ public class VerifyMCProxy extends Plugin implements Listener {
                     // Create default config manually
                     String defaultConfig = """
                         # VerifyMC Proxy Configuration
-                        
+
                         # Backend server URL (where the main VerifyMC plugin is running)
                         backend_url: "http://localhost:8080"
-                        
+
                         # API key for authentication (optional, set in main plugin config)
                         api_key: ""
-                        
+
                         # Kick message for unregistered players
                         kick_message: "&c[ VerifyMC ]\\n&7Please visit &a{url} &7to register"
-                        
+
                         # Registration URL to show in kick message
                         register_url: "https://yourdomain.com/"
-                        
+
                         # Debug mode
                         debug: false
-                        
+
                         # Request timeout in milliseconds
                         timeout: 5000
-                        
+
                         # Cache settings
                         cache:
                           enabled: true
@@ -124,7 +124,7 @@ public class VerifyMCProxy extends Plugin implements Listener {
             }
         }
     }
-    
+
     /**
      * Handle player login event
      * Check if player is registered in VerifyMC backend
@@ -134,44 +134,48 @@ public class VerifyMCProxy extends Plugin implements Listener {
         if (event.isCancelled()) {
             return;
         }
-        
-        String playerName = event.getConnection().getName();
-        
-        if (config.isDebug()) {
-            getLogger().info("[DEBUG] PreLogin check for: " + playerName);
-        }
-        
-        try {
-            // Check if player is approved
-            ApiClient.WhitelistStatus status = apiClient.checkWhitelist(playerName);
-            
-            if (status == null || !status.isApproved()) {
-                // Player not approved, cancel login
+
+        // Register async intent to avoid blocking Netty event loop
+        event.registerIntent(this);
+
+        getProxy().getScheduler().runAsync(this, () -> {
+            try {
+                String playerName = event.getConnection().getName();
+
+                if (config.isDebug()) {
+                    getLogger().info("[DEBUG] PreLogin check for: " + playerName);
+                }
+
+                ApiClient.WhitelistStatus status = apiClient.checkWhitelist(playerName);
+
+                if (status == null || !status.isApproved()) {
+                    String kickMessage = config.getKickMessage()
+                        .replace("{url}", config.getRegisterUrl())
+                        .replace("&", "§");
+
+                    event.setCancelled(true);
+                    event.setCancelReason(new TextComponent(kickMessage));
+
+                    if (config.isDebug()) {
+                        String reason = (status == null) ? "lookup failed" : "not approved";
+                        getLogger().info("[DEBUG] Blocked player: " + playerName + " (" + reason + ")");
+                    }
+                } else {
+                    if (config.isDebug()) {
+                        getLogger().info("[DEBUG] Allowed player: " + playerName + " (status: " + status.getStatus() + ")");
+                    }
+                }
+            } catch (Exception e) {
+                getLogger().log(Level.WARNING, "Failed to check whitelist for " + event.getConnection().getName(), e);
+
                 String kickMessage = config.getKickMessage()
                     .replace("{url}", config.getRegisterUrl())
                     .replace("&", "§");
-                
                 event.setCancelled(true);
                 event.setCancelReason(new TextComponent(kickMessage));
-                
-                if (config.isDebug()) {
-                    String reason = (status == null) ? "lookup failed" : "not approved";
-                    getLogger().info("[DEBUG] Blocked player: " + playerName + " (" + reason + ")");
-                }
-            } else {
-                if (config.isDebug()) {
-                    getLogger().info("[DEBUG] Allowed player: " + playerName + " (status: " + status.getStatus() + ")");
-                }
+            } finally {
+                event.completeIntent(this);
             }
-        } catch (Exception e) {
-            getLogger().log(Level.WARNING, "Failed to check whitelist for " + playerName, e);
-
-            String kickMessage = config.getKickMessage()
-                .replace("{url}", config.getRegisterUrl())
-                .replace("&", "搂");
-            event.setCancelled(true);
-            event.setCancelReason(new TextComponent(kickMessage));
-        }
+        });
     }
 }
-

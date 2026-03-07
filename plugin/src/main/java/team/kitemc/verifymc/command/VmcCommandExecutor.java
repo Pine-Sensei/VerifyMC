@@ -118,7 +118,7 @@ public class VmcCommandExecutor implements CommandExecutor, TabCompleter {
                 String email = (String) user.get("email");
                 if (email != null && !email.isEmpty()) {
                     ctx.getMailService().sendReviewResult(email, target, true,
-                            ctx.getConfigManager().getLanguage());
+                            "", ctx.getConfigManager().getLanguage());
                 }
             }
 
@@ -148,7 +148,7 @@ public class VmcCommandExecutor implements CommandExecutor, TabCompleter {
                 String email = (String) user.get("email");
                 if (email != null && !email.isEmpty()) {
                     ctx.getMailService().sendReviewResult(email, target, false,
-                            ctx.getConfigManager().getLanguage());
+                            reason, ctx.getConfigManager().getLanguage());
                 }
             }
 

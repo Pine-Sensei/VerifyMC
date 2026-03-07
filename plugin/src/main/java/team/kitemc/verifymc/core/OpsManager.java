@@ -87,7 +87,9 @@ public class OpsManager {
             return false;
         }
         loadOpsIfNeeded();
-        for (String opName : cachedOps) {
+        // Take a local snapshot to avoid race condition with loadOps() replacing the list
+        List<String> snapshot = cachedOps;
+        for (String opName : snapshot) {
             if (opName.equalsIgnoreCase(username)) {
                 debugLog("User '" + username + "' is an op");
                 return true;

@@ -38,24 +38,24 @@ public class ConfigManager {
         // Validate web port
         int webPort = getWebPort();
         if (webPort < MIN_PORT || webPort > MAX_PORT) {
-            plugin.getLogger().log(Level.WARNING, 
-                "Invalid web_port: {0}. Must be between {1} and {2}. Using default 8080.", 
+            plugin.getLogger().log(Level.WARNING,
+                "Invalid web_port: {0}. Must be between {1} and {2}. Using default 8080.",
                 new Object[]{webPort, MIN_PORT, MAX_PORT});
         }
 
         // Validate WebSocket port
         int wsPort = getWsPort();
         if (wsPort < MIN_PORT || wsPort > MAX_PORT) {
-            plugin.getLogger().log(Level.WARNING, 
-                "Invalid ws_port: {0}. Must be between {1} and {2}. Using default 8081.", 
+            plugin.getLogger().log(Level.WARNING,
+                "Invalid ws_port: {0}. Must be between {1} and {2}. Using default 8081.",
                 new Object[]{wsPort, MIN_PORT, MAX_PORT});
         }
 
         // Validate storage type
         String storageType = getStorageType();
         if (!VALID_STORAGE_TYPES.contains(storageType.toLowerCase())) {
-            plugin.getLogger().log(Level.WARNING, 
-                "Invalid storage type: {0}. Must be one of: {1}. Using default ''file''.", 
+            plugin.getLogger().log(Level.WARNING,
+                "Invalid storage type: {0}. Must be one of: {1}. Using default ''file''.",
                 new Object[]{storageType, String.join(", ", VALID_STORAGE_TYPES)});
         }
 
@@ -63,8 +63,8 @@ public class ConfigManager {
         if ("mysql".equalsIgnoreCase(storageType)) {
             int mysqlPort = getConfig().getInt("mysql.port", 3306);
             if (mysqlPort < MIN_PORT || mysqlPort > MAX_PORT) {
-                plugin.getLogger().log(Level.WARNING, 
-                    "Invalid mysql.port: {0}. Must be between {1} and {2}. Using default 3306.", 
+                plugin.getLogger().log(Level.WARNING,
+                    "Invalid mysql.port: {0}. Must be between {1} and {2}. Using default 3306.",
                     new Object[]{mysqlPort, MIN_PORT, MAX_PORT});
             }
         }
@@ -95,11 +95,13 @@ public class ConfigManager {
 
     // --- Web server ---
     public int getWebPort() {
-        return getConfig().getInt("web_port", 8080);
+        int port = getConfig().getInt("web_port", 8080);
+        return (port >= MIN_PORT && port <= MAX_PORT) ? port : 8080;
     }
 
     public int getWsPort() {
-        return getConfig().getInt("ws_port", 8081);
+        int port = getConfig().getInt("ws_port", 8081);
+        return (port >= MIN_PORT && port <= MAX_PORT) ? port : 8081;
     }
 
     public String getWebServerPrefix() {

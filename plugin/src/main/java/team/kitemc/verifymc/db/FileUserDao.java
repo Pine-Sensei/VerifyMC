@@ -13,6 +13,8 @@ public class FileUserDao implements UserDao {
     private final Gson gson = new Gson();
     private final boolean debug;
     private final org.bukkit.plugin.Plugin plugin;
+    private volatile boolean dirty = false;
+    private volatile boolean running = true;
 
     public FileUserDao(File dataFile, org.bukkit.plugin.Plugin plugin) {
         this.plugin = plugin;
@@ -32,12 +34,38 @@ public class FileUserDao implements UserDao {
 
         this.file = dataFile;
         load();
+        startFlushThread();
+    }
+
+    private void startFlushThread() {
+        Thread flushThread = new Thread(() -> {
+            while (running) {
+                try {
+                    Thread.sleep(5000);
+                    if (dirty) {
+                        save();
+                    }
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        });
+        flushThread.setDaemon(true);
+        flushThread.setName("FileUserDao-Flush");
+        flushThread.start();
+    }
+
+    /**
+     * Mark data as dirty; will be flushed by background thread within 5s.
+     */
+    private void saveLater() {
+        dirty = true;
     }
 
     private void debugLog(String msg) {
         if (debug && plugin != null) plugin.getLogger().info("[DEBUG] FileUserDao: " + msg);
     }
-    
+
     @Override
     public long getRegTimeAsLong(Object regTimeValue) {
         if (regTimeValue == null) {
@@ -78,13 +106,13 @@ public class FileUserDao implements UserDao {
                             hasUpgraded = true;
                             debugLog("Added missing password field for user: " + user.get("username"));
                         }
-                        
+
                         if (!user.containsKey("regTime")) {
                             user.put("regTime", System.currentTimeMillis());
                             hasUpgraded = true;
                             debugLog("Added missing regTime field for user: " + user.get("username"));
                         }
-                        
+
                         if (!user.containsKey("discordId") && !user.containsKey("discord_id")) {
                             user.put("discordId", null);
                             hasUpgraded = true;
@@ -129,10 +157,10 @@ public class FileUserDao implements UserDao {
                         }
                     }
                 }
-                
+
                 users.putAll(loaded);
                 debugLog("Loaded " + loaded.size() + " users from database");
-                
+
                 if (hasUpgraded) {
                     debugLog("Data format upgraded, saving updated data");
                     save();
@@ -148,14 +176,14 @@ public class FileUserDao implements UserDao {
     @Override
     public synchronized void save() {
         debugLog("Saving " + users.size() + " users to: " + file.getAbsolutePath());
-        
+
         // Use temporary file for atomic write operation
         File tempFile = new File(file.getAbsolutePath() + ".tmp");
-        
+
         try (Writer writer = new FileWriter(tempFile)) {
             gson.toJson(users, writer);
             writer.flush();
-            
+
             // Atomic rename: tempFile -> target file
             if (!tempFile.renameTo(file)) {
                 // If rename fails (e.g., cross-filesystem), try copy and delete
@@ -172,7 +200,7 @@ public class FileUserDao implements UserDao {
                     debugLog("Warning: failed to delete temporary file: " + tempFile.getAbsolutePath());
                 }
             }
-            
+
             debugLog("Save successful");
         } catch (Exception e) {
             debugLog("Error saving users: " + e.getMessage());
@@ -217,7 +245,7 @@ public class FileUserDao implements UserDao {
             applyQuestionnaireAuditFields(user, questionnaireScore, questionnairePassed, questionnaireReviewSummary, questionnaireScoredAt);
             debugLog("Adding user to map: " + user);
             users.put(key, user);
-            save();
+            saveLater();
             debugLog("User registration successful");
             return true;
         } catch (Exception e) {
@@ -250,9 +278,9 @@ public class FileUserDao implements UserDao {
             user.put("password", PasswordUtil.hash(password));
             user.put("regTime", System.currentTimeMillis());
             applyQuestionnaireAuditFields(user, questionnaireScore, questionnairePassed, questionnaireReviewSummary, questionnaireScoredAt);
-            debugLog("Adding user with password to map: " + user);
+            debugLog("Adding user with password to map: username=" + username);
             users.put(key, user);
-            save();
+            saveLater();
             debugLog("User registration with password successful");
             return true;
         } catch (Exception e) {
@@ -272,14 +300,14 @@ public class FileUserDao implements UserDao {
         debugLog("updateUserStatus called: username=" + username + ", status=" + status);
         String key = username.toLowerCase();
         Map<String, Object> user = users.get(key);
-        
+
         if (user == null) {
             debugLog("User not found: " + username);
             return false;
         }
         String oldStatus = (String) user.get("status");
         user.put("status", status);
-        save();
+        saveLater();
         debugLog("User status updated: " + username + " from " + oldStatus + " to " + status);
         return true;
     }
@@ -289,14 +317,14 @@ public class FileUserDao implements UserDao {
         debugLog("updateUserPassword called: username=" + username);
         String key = username.toLowerCase();
         Map<String, Object> user = users.get(key);
-        
+
         if (user == null) {
             debugLog("User not found: " + username);
             return false;
         }
-        
+
         user.put("password", PasswordUtil.hash(plainPassword));
-        save();
+        saveLater();
         debugLog("User password updated: " + user.get("username"));
         return true;
     }
@@ -313,7 +341,7 @@ public class FileUserDao implements UserDao {
         }
 
         user.put("email", email);
-        save();
+        saveLater();
         debugLog("User email updated: " + user.get("username"));
         return true;
     }
@@ -367,10 +395,10 @@ public class FileUserDao implements UserDao {
         try {
             String key = username.toLowerCase();
             Map<String, Object> removed = users.remove(key);
-            
+
             if (removed != null) {
                 debugLog("User deleted: " + removed.get("username"));
-                save();
+                saveLater();
                 return true;
             } else {
                 debugLog("User not found for deletion");
@@ -405,12 +433,12 @@ public class FileUserDao implements UserDao {
         debugLog("Found " + result.size() + " pending users");
         return result;
     }
-    
+
     @Override
     public List<Map<String, Object>> getUsersWithPagination(int page, int pageSize) {
         debugLog("Getting users with pagination: page=" + page + ", pageSize=" + pageSize);
         List<Map<String, Object>> allUsers = new ArrayList<>(users.values());
-        
+
         allUsers.sort((a, b) -> {
             Long timeA = getRegTimeAsLong(a.get("regTime"));
             Long timeB = getRegTimeAsLong(b.get("regTime"));
@@ -418,32 +446,32 @@ public class FileUserDao implements UserDao {
             if (timeB == null) timeB = 0L;
             return timeB.compareTo(timeA);
         });
-        
+
         int startIndex = (page - 1) * pageSize;
         int endIndex = Math.min(startIndex + pageSize, allUsers.size());
-        
+
         if (startIndex >= allUsers.size()) {
             debugLog("Page " + page + " is out of range, returning empty list");
             return new ArrayList<>();
         }
-        
+
         List<Map<String, Object>> result = allUsers.subList(startIndex, endIndex);
         debugLog("Returning " + result.size() + " users for page " + page);
         return result;
     }
-    
+
     @Override
     public int getTotalUserCount() {
         int count = users.size();
         debugLog("Total user count: " + count);
         return count;
     }
-    
+
     @Override
     public List<Map<String, Object>> getUsersWithPaginationAndSearch(int page, int pageSize, String searchQuery) {
         debugLog("Getting users with pagination and search: page=" + page + ", pageSize=" + pageSize + ", query=" + searchQuery);
         List<Map<String, Object>> filteredUsers = new ArrayList<>();
-        
+
         String query = searchQuery != null ? searchQuery.toLowerCase().trim() : "";
         for (Map<String, Object> user : users.values()) {
             if (query.isEmpty()) {
@@ -456,7 +484,7 @@ public class FileUserDao implements UserDao {
                 }
             }
         }
-        
+
         filteredUsers.sort((a, b) -> {
             Long timeA = getRegTimeAsLong(a.get("regTime"));
             Long timeB = getRegTimeAsLong(b.get("regTime"));
@@ -464,26 +492,26 @@ public class FileUserDao implements UserDao {
             if (timeB == null) timeB = 0L;
             return timeB.compareTo(timeA);
         });
-        
+
         int startIndex = (page - 1) * pageSize;
         int endIndex = Math.min(startIndex + pageSize, filteredUsers.size());
-        
+
         if (startIndex >= filteredUsers.size()) {
             debugLog("Page " + page + " is out of range for search results, returning empty list");
             return new ArrayList<>();
         }
-        
+
         List<Map<String, Object>> result = filteredUsers.subList(startIndex, endIndex);
         debugLog("Returning " + result.size() + " users for page " + page + " with search query: " + searchQuery);
         return result;
     }
-    
+
     @Override
     public int getTotalUserCountWithSearch(String searchQuery) {
         debugLog("Getting total user count with search: query=" + searchQuery);
         int count = 0;
         String query = searchQuery != null ? searchQuery.toLowerCase().trim() : "";
-        
+
         for (Map<String, Object> user : users.values()) {
             if (query.isEmpty()) {
                 count++;
@@ -495,11 +523,11 @@ public class FileUserDao implements UserDao {
                 }
             }
         }
-        
+
         debugLog("Total user count with search '" + searchQuery + "': " + count);
         return count;
     }
-    
+
     @Override
     public int getApprovedUserCount() {
         debugLog("Getting approved user count (excluding pending)");
@@ -513,13 +541,13 @@ public class FileUserDao implements UserDao {
         debugLog("Approved user count: " + count);
         return count;
     }
-    
+
     @Override
     public int getApprovedUserCountWithSearch(String searchQuery) {
         debugLog("Getting approved user count with search: query=" + searchQuery);
         int count = 0;
         String query = searchQuery != null ? searchQuery.toLowerCase().trim() : "";
-        
+
         for (Map<String, Object> user : users.values()) {
             String status = user.get("status") != null ? user.get("status").toString() : "";
             if (!"pending".equalsIgnoreCase(status)) {
@@ -534,23 +562,23 @@ public class FileUserDao implements UserDao {
                 }
             }
         }
-        
+
         debugLog("Approved user count with search '" + searchQuery + "': " + count);
         return count;
     }
-    
+
     @Override
     public List<Map<String, Object>> getApprovedUsersWithPagination(int page, int pageSize) {
         debugLog("Getting approved users with pagination: page=" + page + ", pageSize=" + pageSize);
         List<Map<String, Object>> approvedUsers = new ArrayList<>();
-        
+
         for (Map<String, Object> user : users.values()) {
             String status = user.get("status") != null ? user.get("status").toString() : "";
             if (!"pending".equalsIgnoreCase(status)) {
                 approvedUsers.add(user);
             }
         }
-        
+
         approvedUsers.sort((a, b) -> {
             Long timeA = getRegTimeAsLong(a.get("regTime"));
             Long timeB = getRegTimeAsLong(b.get("regTime"));
@@ -558,25 +586,25 @@ public class FileUserDao implements UserDao {
             if (timeB == null) timeB = 0L;
             return timeB.compareTo(timeA);
         });
-        
+
         int startIndex = (page - 1) * pageSize;
         int endIndex = Math.min(startIndex + pageSize, approvedUsers.size());
-        
+
         if (startIndex >= approvedUsers.size()) {
             debugLog("Page " + page + " is out of range for approved users, returning empty list");
             return new ArrayList<>();
         }
-        
+
         List<Map<String, Object>> result = approvedUsers.subList(startIndex, endIndex);
         debugLog("Returning " + result.size() + " approved users for page " + page);
         return result;
     }
-    
+
     @Override
     public List<Map<String, Object>> getApprovedUsersWithPaginationAndSearch(int page, int pageSize, String searchQuery) {
         debugLog("Getting approved users with pagination and search: page=" + page + ", pageSize=" + pageSize + ", query=" + searchQuery);
         List<Map<String, Object>> filteredUsers = new ArrayList<>();
-        
+
         String query = searchQuery != null ? searchQuery.toLowerCase().trim() : "";
         for (Map<String, Object> user : users.values()) {
             String status = user.get("status") != null ? user.get("status").toString() : "";
@@ -592,7 +620,7 @@ public class FileUserDao implements UserDao {
                 }
             }
         }
-        
+
         filteredUsers.sort((a, b) -> {
             Long timeA = getRegTimeAsLong(a.get("regTime"));
             Long timeB = getRegTimeAsLong(b.get("regTime"));
@@ -600,37 +628,37 @@ public class FileUserDao implements UserDao {
             if (timeB == null) timeB = 0L;
             return timeB.compareTo(timeA);
         });
-        
+
         int startIndex = (page - 1) * pageSize;
         int endIndex = Math.min(startIndex + pageSize, filteredUsers.size());
-        
+
         if (startIndex >= filteredUsers.size()) {
             debugLog("Page " + page + " is out of range for approved users search results, returning empty list");
             return new ArrayList<>();
         }
-        
+
         List<Map<String, Object>> result = filteredUsers.subList(startIndex, endIndex);
         debugLog("Returning " + result.size() + " approved users for page " + page + " with search query: " + searchQuery);
         return result;
     }
-    
+
     @Override
     public boolean updateUserDiscordId(String username, String discordId) {
         debugLog("updateUserDiscordId called: username=" + username + ", discordId=" + discordId);
         String key = username.toLowerCase();
         Map<String, Object> user = users.get(key);
-        
+
         if (user == null) {
             debugLog("User not found: " + username);
             return false;
         }
-        
+
         user.put("discordId", discordId);
-        save();
+        saveLater();
         debugLog("User Discord ID updated: " + user.get("username") + " -> " + discordId);
         return true;
     }
-    
+
     @Override
     public Map<String, Object> getUserByDiscordId(String discordId) {
         debugLog("Getting user by Discord ID: " + discordId);
@@ -647,7 +675,7 @@ public class FileUserDao implements UserDao {
         debugLog("User not found with Discord ID: " + discordId);
         return null;
     }
-    
+
     @Override
     public boolean isDiscordIdLinked(String discordId) {
         debugLog("Checking if Discord ID is linked: " + discordId);
@@ -656,7 +684,11 @@ public class FileUserDao implements UserDao {
 
     @Override
     public void close() {
-        // File-based storage: no resources to close
-        debugLog("FileUserDao closed (no-op for file storage)");
+        running = false;
+        // Flush any remaining dirty data on close
+        if (dirty) {
+            save();
+        }
+        debugLog("FileUserDao closed");
     }
-} 
+}

@@ -6,7 +6,10 @@ import org.bukkit.plugin.Plugin;
 import team.kitemc.verifymc.util.PasswordUtil;
 
 public class MysqlUserDao implements UserDao, AutoCloseable {
-    private final Connection conn;
+    private Connection conn;
+    private final String jdbcUrl;
+    private final String jdbcUser;
+    private final String jdbcPassword;
     private final ResourceBundle messages;
     private final boolean debug;
     private final Plugin plugin;
@@ -17,13 +20,15 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
         this.debug = plugin.getConfig().getBoolean("debug", false);
         String useSSL = mysqlConfig.getProperty("useSSL", "true");
         String allowPublicKeyRetrieval = mysqlConfig.getProperty("allowPublicKeyRetrieval", "false");
-        String url = "jdbc:mysql://" + mysqlConfig.getProperty("host") + ":" +
+        this.jdbcUrl = "jdbc:mysql://" + mysqlConfig.getProperty("host") + ":" +
                 mysqlConfig.getProperty("port") + "/" +
                 mysqlConfig.getProperty("database") +
                 "?useSSL=" + useSSL +
                 "&allowPublicKeyRetrieval=" + allowPublicKeyRetrieval +
-                "&characterEncoding=utf8";
-        conn = DriverManager.getConnection(url, mysqlConfig.getProperty("user"), mysqlConfig.getProperty("password"));
+                "&characterEncoding=utf8&autoReconnect=true";
+        this.jdbcUser = mysqlConfig.getProperty("user");
+        this.jdbcPassword = mysqlConfig.getProperty("password");
+        conn = DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPassword);
         initDatabase();
     }
 
@@ -33,18 +38,37 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
         this.debug = false;
         String useSSL = mysqlConfig.getProperty("useSSL", "true");
         String allowPublicKeyRetrieval = mysqlConfig.getProperty("allowPublicKeyRetrieval", "false");
-        String url = "jdbc:mysql://" + mysqlConfig.getProperty("host") + ":" +
+        this.jdbcUrl = "jdbc:mysql://" + mysqlConfig.getProperty("host") + ":" +
                 mysqlConfig.getProperty("port") + "/" +
                 mysqlConfig.getProperty("database") +
                 "?useSSL=" + useSSL +
                 "&allowPublicKeyRetrieval=" + allowPublicKeyRetrieval +
-                "&characterEncoding=utf8";
-        conn = DriverManager.getConnection(url, mysqlConfig.getProperty("user"), mysqlConfig.getProperty("password"));
+                "&characterEncoding=utf8&autoReconnect=true";
+        this.jdbcUser = mysqlConfig.getProperty("user");
+        this.jdbcPassword = mysqlConfig.getProperty("password");
+        conn = DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPassword);
         initDatabase();
     }
 
+    /**
+     * Get a valid connection, reconnecting if the current one is closed or invalid.
+     */
+    private synchronized Connection getConnection() throws SQLException {
+        if (conn == null || conn.isClosed() || !conn.isValid(2)) {
+            debugLog("Connection lost, reconnecting...");
+            try {
+                if (conn != null && !conn.isClosed()) {
+                    conn.close();
+                }
+            } catch (SQLException ignored) {}
+            conn = DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPassword);
+            debugLog("Reconnected to database");
+        }
+        return conn;
+    }
+
     private void initDatabase() throws SQLException {
-        try (Statement stmt = conn.createStatement()) {
+        try (Statement stmt = getConnection().createStatement()) {
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS users (" +
                     "username VARCHAR(32) PRIMARY KEY," +
                     "email VARCHAR(64)," +
@@ -124,21 +148,8 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
     public boolean registerUser(String username, String email, String status,
             Integer questionnaireScore, Boolean questionnairePassed,
             String questionnaireReviewSummary, Long questionnaireScoredAt) {
-        String checkSql = "SELECT username FROM users WHERE username = ?";
-        try (PreparedStatement checkPs = conn.prepareStatement(checkSql)) {
-            checkPs.setString(1, username);
-            ResultSet rs = checkPs.executeQuery();
-            if (rs.next()) {
-                debugLog("User already exists with username: " + username + ", skipping registration");
-                return false;
-            }
-        } catch (SQLException e) {
-            debugLog("Error checking existing user: " + e.getMessage());
-            return false;
-        }
-
-        String sql = "INSERT INTO users (username, email, status, regTime, questionnaire_score, questionnaire_passed, questionnaire_review_summary, questionnaire_scored_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        String sql = "INSERT IGNORE INTO users (username, email, status, regTime, questionnaire_score, questionnaire_passed, questionnaire_review_summary, questionnaire_scored_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, username);
             ps.setString(2, email);
             ps.setString(3, status);
@@ -156,7 +167,11 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
                 ps.setLong(8, questionnaireScoredAt);
             else
                 ps.setNull(8, Types.BIGINT);
-            ps.executeUpdate();
+            int rows = ps.executeUpdate();
+            if (rows == 0) {
+                debugLog("User already exists with username: " + username + ", skipping registration");
+                return false;
+            }
             debugLog("User registered: " + username);
             return true;
         } catch (SQLException e) {
@@ -174,21 +189,8 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
     public boolean registerUser(String username, String email, String status, String password,
             Integer questionnaireScore, Boolean questionnairePassed,
             String questionnaireReviewSummary, Long questionnaireScoredAt) {
-        String checkSql = "SELECT username FROM users WHERE username = ?";
-        try (PreparedStatement checkPs = conn.prepareStatement(checkSql)) {
-            checkPs.setString(1, username);
-            ResultSet rs = checkPs.executeQuery();
-            if (rs.next()) {
-                debugLog("User already exists with username: " + username + ", skipping registration");
-                return false;
-            }
-        } catch (SQLException e) {
-            debugLog("Error checking existing user: " + e.getMessage());
-            return false;
-        }
-
-        String sql = "INSERT INTO users (username, email, status, password, regTime, questionnaire_score, questionnaire_passed, questionnaire_review_summary, questionnaire_scored_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        String sql = "INSERT IGNORE INTO users (username, email, status, password, regTime, questionnaire_score, questionnaire_passed, questionnaire_review_summary, questionnaire_scored_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, username);
             ps.setString(2, email);
             ps.setString(3, status);
@@ -207,7 +209,11 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
                 ps.setLong(9, questionnaireScoredAt);
             else
                 ps.setNull(9, Types.BIGINT);
-            ps.executeUpdate();
+            int rows = ps.executeUpdate();
+            if (rows == 0) {
+                debugLog("User already exists with username: " + username + ", skipping registration");
+                return false;
+            }
             debugLog("User registered with password: " + username);
             return true;
         } catch (SQLException e) {
@@ -219,7 +225,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
     @Override
     public boolean updateUserStatus(String username, String status) {
         String sql = "UPDATE users SET status=? WHERE username=?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, status);
             ps.setString(2, username);
             int rows = ps.executeUpdate();
@@ -234,7 +240,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
     @Override
     public boolean updateUserPassword(String username, String plainPassword) {
         String sql = "UPDATE users SET password=? WHERE username=?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, PasswordUtil.hash(plainPassword));
             ps.setString(2, username);
             int rows = ps.executeUpdate();
@@ -249,7 +255,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
     @Override
     public boolean updateUserEmail(String username, String email) {
         String sql = "UPDATE users SET email=? WHERE username=?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, email);
             ps.setString(2, username);
             int rows = ps.executeUpdate();
@@ -265,7 +271,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
     public List<Map<String, Object>> getAllUsers() {
         List<Map<String, Object>> result = new ArrayList<>();
         String sql = "SELECT * FROM users";
-        try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
+        try (Statement stmt = getConnection().createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 result.add(mapUserFromResultSet(rs));
             }
@@ -279,7 +285,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
     public List<Map<String, Object>> getPendingUsers() {
         List<Map<String, Object>> result = new ArrayList<>();
         String sql = "SELECT * FROM users WHERE status='pending'";
-        try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
+        try (Statement stmt = getConnection().createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 result.add(mapUserFromResultSet(rs));
             }
@@ -307,7 +313,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
     @Override
     public Map<String, Object> getUserByUsername(String username) {
         String sql = "SELECT * FROM users WHERE LOWER(username)=LOWER(?)";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, username);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -323,7 +329,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
     @Override
     public Map<String, Object> getUserByUsernameExact(String username) {
         String sql = "SELECT * FROM users WHERE username=?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, username);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -343,7 +349,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
             return null;
         }
         String sql = "SELECT * FROM users WHERE LOWER(email)=LOWER(?)";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, email);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -361,7 +367,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
     @Override
     public boolean deleteUser(String username) {
         String sql = "DELETE FROM users WHERE username=?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, username);
             int rows = ps.executeUpdate();
             debugLog("User deleted: " + username);
@@ -376,7 +382,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
     public int countUsersByEmail(String email) {
         int count = 0;
         String sql = "SELECT COUNT(*) FROM users WHERE LOWER(email)=LOWER(?)";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, email);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -401,7 +407,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
         int offset = (page - 1) * pageSize;
 
         String sql = "SELECT * FROM users ORDER BY regTime DESC LIMIT ? OFFSET ?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setInt(1, pageSize);
             ps.setInt(2, offset);
             try (ResultSet rs = ps.executeQuery()) {
@@ -422,7 +428,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
         debugLog("Getting total user count");
         int count = 0;
         String sql = "SELECT COUNT(*) FROM users";
-        try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
+        try (Statement stmt = getConnection().createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
             if (rs.next()) {
                 count = rs.getInt(1);
             }
@@ -447,7 +453,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
             sql = "SELECT * FROM users WHERE LOWER(username) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?) ORDER BY regTime DESC LIMIT ? OFFSET ?";
         }
 
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             if (searchQuery == null || searchQuery.trim().isEmpty()) {
                 ps.setInt(1, pageSize);
                 ps.setInt(2, offset);
@@ -484,7 +490,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
             sql = "SELECT COUNT(*) FROM users WHERE LOWER(username) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?)";
         }
 
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             if (searchQuery != null && !searchQuery.trim().isEmpty()) {
                 String searchPattern = "%" + searchQuery.trim() + "%";
                 ps.setString(1, searchPattern);
@@ -509,7 +515,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
         debugLog("Getting approved user count (excluding pending)");
         int count = 0;
         String sql = "SELECT COUNT(*) FROM users WHERE status != 'pending'";
-        try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
+        try (Statement stmt = getConnection().createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
             if (rs.next()) {
                 count = rs.getInt(1);
             }
@@ -533,7 +539,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
             sql = "SELECT COUNT(*) FROM users WHERE status != 'pending' AND (LOWER(username) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?))";
         }
 
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             if (searchQuery != null && !searchQuery.trim().isEmpty()) {
                 String searchPattern = "%" + searchQuery.trim() + "%";
                 ps.setString(1, searchPattern);
@@ -560,7 +566,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
         int offset = (page - 1) * pageSize;
 
         String sql = "SELECT * FROM users WHERE status != 'pending' ORDER BY regTime DESC LIMIT ? OFFSET ?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setInt(1, pageSize);
             ps.setInt(2, offset);
             try (ResultSet rs = ps.executeQuery()) {
@@ -589,7 +595,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
             sql = "SELECT * FROM users WHERE status != 'pending' AND (LOWER(username) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?)) ORDER BY regTime DESC LIMIT ? OFFSET ?";
         }
 
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             if (searchQuery == null || searchQuery.trim().isEmpty()) {
                 ps.setInt(1, pageSize);
                 ps.setInt(2, offset);
@@ -618,7 +624,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
     public boolean updateUserDiscordId(String username, String discordId) {
         debugLog("updateUserDiscordId called: username=" + username + ", discordId=" + discordId);
         String sql = "UPDATE users SET discord_id=? WHERE LOWER(username)=LOWER(?)";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, discordId);
             ps.setString(2, username);
             int rows = ps.executeUpdate();
@@ -634,7 +640,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
     public Map<String, Object> getUserByDiscordId(String discordId) {
         debugLog("Getting user by Discord ID: " + discordId);
         String sql = "SELECT * FROM users WHERE discord_id=?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, discordId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {

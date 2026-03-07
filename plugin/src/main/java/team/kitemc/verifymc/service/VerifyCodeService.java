@@ -29,7 +29,7 @@ public class VerifyCodeService {
         this.debug = false;
         startCleanupTask();
     }
-    
+
     /**
      * Start cleanup task to remove expired entries
      */
@@ -50,7 +50,7 @@ public class VerifyCodeService {
         cleanupThread.start();
         debugLog("Cleanup task started");
     }
-    
+
     /**
      * Stop the cleanup task gracefully
      */
@@ -58,13 +58,13 @@ public class VerifyCodeService {
         running = false;
         debugLog("Cleanup task stopped");
     }
-    
+
     /**
      * Clean up expired code entries and rate limit entries
      */
     private void cleanupExpiredEntries() {
         long currentTime = System.currentTimeMillis();
-        
+
         // Clean up expired verification codes
         codeMap.entrySet().removeIf(entry -> {
             boolean expired = entry.getValue().expire < currentTime;
@@ -73,7 +73,7 @@ public class VerifyCodeService {
             }
             return expired;
         });
-        
+
         // Clean up expired rate limit entries
         rateLimitMap.entrySet().removeIf(entry -> {
             boolean expired = (currentTime - entry.getValue()) > rateLimitMillis;
@@ -82,7 +82,7 @@ public class VerifyCodeService {
             }
             return expired;
         });
-        
+
         debugLog("Cleanup completed. Active codes: " + codeMap.size() + ", Active rate limits: " + rateLimitMap.size());
     }
 
@@ -102,21 +102,21 @@ public class VerifyCodeService {
             debugLog("No previous send record for email: " + email);
             return true;
         }
-        
+
         long currentTime = System.currentTimeMillis();
         long timeSinceLastSent = currentTime - lastSentTime;
         boolean canSend = timeSinceLastSent >= rateLimitMillis;
-        
+
         debugLog("Email: " + email + ", last sent: " + lastSentTime + ", time since: " + timeSinceLastSent + "ms, can send: " + canSend);
-        
+
         // Clean up expired rate limit entries
         if (canSend) {
             rateLimitMap.remove(email);
         }
-        
+
         return canSend;
     }
-    
+
     /**
      * Get remaining time in seconds before next code can be sent
      * @param email Email to check
@@ -127,11 +127,11 @@ public class VerifyCodeService {
         if (lastSentTime == null) {
             return 0;
         }
-        
+
         long currentTime = System.currentTimeMillis();
         long timeSinceLastSent = currentTime - lastSentTime;
         long remainingMillis = rateLimitMillis - timeSinceLastSent;
-        
+
         return remainingMillis > 0 ? (remainingMillis / 1000) + 1 : 0;
     }
 
@@ -140,12 +140,12 @@ public class VerifyCodeService {
         String code = String.format("%06d", secureRandom.nextInt(1000000));
         long expireTime = System.currentTimeMillis() + expireMillis;
         long currentTime = System.currentTimeMillis();
-        
+
         // Record the time when code was generated for rate limiting
         rateLimitMap.put(key, currentTime);
         codeMap.put(key, new CodeEntry(code, expireTime));
-        
-        debugLog("Generated code: " + code + " for key: " + key + ", expires at: " + expireTime + ", rate limit recorded at: " + currentTime);
+
+        debugLog("Generated code for key: " + key + ", expires at: " + expireTime + ", rate limit recorded at: " + currentTime);
         return code;
     }
 
@@ -162,23 +162,23 @@ public class VerifyCodeService {
             debugLog("No code found for key: " + key);
             return false;
         }
-        
+
         // 检查尝试次数
         if (entry.attempts >= MAX_ATTEMPTS) {
             debugLog("Too many attempts for key: " + key + ", attempts: " + entry.attempts);
             codeMap.remove(key);
             return false;
         }
-        
+
         if (entry.expire < System.currentTimeMillis()) {
             debugLog("Code expired for key: " + key + ", expired at: " + entry.expire);
             codeMap.remove(key);
             return false;
         }
-        
+
         entry.attempts++; // 增加尝试次数
         boolean ok = entry.code.equals(code);
-        debugLog("Code verification result: " + ok + " (expected: " + entry.code + ", provided: " + code + ", attempts: " + entry.attempts + ")");
+        debugLog("Code verification result: " + ok + " (attempts: " + entry.attempts + ")");
         if (ok) {
             debugLog("Removing used code for key: " + key);
             codeMap.remove(key);
@@ -196,4 +196,4 @@ public class VerifyCodeService {
             this.attempts = 0;
         }
     }
-} 
+}

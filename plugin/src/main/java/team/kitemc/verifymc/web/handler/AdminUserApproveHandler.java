@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
  * Extracted from WebServer.start() — the "/api/admin/user/approve" context.
  */
 public class AdminUserApproveHandler implements HttpHandler {
-    private static final Pattern VALID_USERNAME = Pattern.compile("^[a-zA-Z0-9_]{1,16}$");
+    private static final Pattern VALID_USERNAME = Pattern.compile("^[a-zA-Z0-9_.\\-\\s]{1,32}$");
     private final PluginContext ctx;
 
     public AdminUserApproveHandler(PluginContext ctx) {
@@ -76,14 +76,14 @@ public class AdminUserApproveHandler implements HttpHandler {
                 String email = (String) user.get("email");
                 if (email != null && !email.isEmpty()) {
                     ctx.getMailService().sendReviewResult(email, target, true,
-                            ctx.getConfigManager().getLanguage());
+                            "", ctx.getConfigManager().getLanguage());
                 }
             }
 
             ctx.getAuditDao().addAudit(new AuditRecord("approve", operator, target, "", System.currentTimeMillis()));
 
             if (ctx.getWsServer() != null) {
-                ctx.getWsServer().broadcast(new JSONObject()
+                ctx.getWsServer().broadcastMessage(new JSONObject()
                         .put("type", "user_approved")
                         .put("username", target).toString());
             }

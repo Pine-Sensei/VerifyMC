@@ -55,14 +55,14 @@ public class AdminUserRejectHandler implements HttpHandler {
                 String email = (String) user.get("email");
                 if (email != null && !email.isEmpty()) {
                     ctx.getMailService().sendReviewResult(email, target, false,
-                            ctx.getConfigManager().getLanguage());
+                            reason, ctx.getConfigManager().getLanguage());
                 }
             }
 
             ctx.getAuditDao().addAudit(new AuditRecord("reject", operator, target, reason, System.currentTimeMillis()));
 
             if (ctx.getWsServer() != null) {
-                ctx.getWsServer().broadcast(new JSONObject()
+                ctx.getWsServer().broadcastMessage(new JSONObject()
                         .put("type", "user_rejected")
                         .put("username", target).toString());
             }

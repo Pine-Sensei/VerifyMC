@@ -234,12 +234,24 @@ public class AuthmeService {
         return DriverManager.getConnection(url, user, password);
     }
 
+    private static final java.util.regex.Pattern SAFE_SQL_IDENTIFIER = java.util.regex.Pattern.compile("^[a-zA-Z0-9_]{1,64}$");
+
     private String tableName() {
-        return plugin.getConfig().getString("authme.database.table", "authme");
+        String name = plugin.getConfig().getString("authme.database.table", "authme");
+        if (!SAFE_SQL_IDENTIFIER.matcher(name).matches()) {
+            debugLog("Unsafe table name in config: " + name + ", falling back to 'authme'");
+            return "authme";
+        }
+        return name;
     }
 
     private String column(String key, String def) {
-        return plugin.getConfig().getString("authme.database.columns." + key, def);
+        String col = plugin.getConfig().getString("authme.database.columns." + key, def);
+        if (col != null && !col.isEmpty() && !SAFE_SQL_IDENTIFIER.matcher(col).matches()) {
+            debugLog("Unsafe column name in config: " + col + ", falling back to '" + def + "'");
+            return def;
+        }
+        return col;
     }
 
     private String nameColumn() {

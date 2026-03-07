@@ -16,10 +16,21 @@ import team.kitemc.verifymc.web.WebResponseHelper;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class LoginHandler implements HttpHandler {
+    private static final int MAX_ATTEMPTS_PER_IP = 5;
+    private static final long RATE_LIMIT_WINDOW_MS = 60_000L;
+
     private final PluginContext ctx;
     private final boolean isAdminLogin;
+    private final ConcurrentHashMap<String, LoginAttempt> loginAttempts = new ConcurrentHashMap<>();
+
+    private static class LoginAttempt {
+        final AtomicInteger count = new AtomicInteger(0);
+        volatile long windowStart = System.currentTimeMillis();
+    }
 
     public LoginHandler(PluginContext ctx) {
         this(ctx, false);
@@ -30,9 +41,32 @@ public class LoginHandler implements HttpHandler {
         this.isAdminLogin = isAdminLogin;
     }
 
+    private boolean isRateLimited(String ip) {
+        long now = System.currentTimeMillis();
+        LoginAttempt attempt = loginAttempts.compute(ip, (k, v) -> {
+            if (v == null || (now - v.windowStart) > RATE_LIMIT_WINDOW_MS) {
+                LoginAttempt fresh = new LoginAttempt();
+                fresh.windowStart = now;
+                fresh.count.set(1);
+                return fresh;
+            }
+            v.count.incrementAndGet();
+            return v;
+        });
+        return attempt.count.get() > MAX_ATTEMPTS_PER_IP;
+    }
+
     @Override
     public void handle(HttpExchange exchange) throws IOException {
         if (!WebResponseHelper.requireMethod(exchange, "POST")) return;
+
+        String clientIp = exchange.getRemoteAddress().getAddress().getHostAddress();
+        if (isRateLimited(clientIp)) {
+            ctx.getPlugin().getLogger().warning("[Security] Login rate limit exceeded for IP: " + clientIp);
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    "Too many login attempts. Please try again later."), 429);
+            return;
+        }
 
         JSONObject req;
         try {
@@ -122,22 +156,22 @@ public class LoginHandler implements HttpHandler {
         try {
             String migrationType = PasswordUtil.isPlaintext(oldStoredPassword) ? "plaintext" : "unsalted-sha256";
             boolean success = ctx.getUserDao().updateUserPassword(username, plainPassword);
-            
+
             if (success) {
-                ctx.getPlugin().getLogger().info("[VerifyMC] Password migration successful - User: " + username + 
+                ctx.getPlugin().getLogger().info("[VerifyMC] Password migration successful - User: " + username +
                         ", From: " + migrationType + ", To: salted-sha256");
-                
+
                 if (ctx.getAuditDao() != null) {
                     ctx.getAuditDao().addAudit(new AuditRecord(
-                            "password_migration", "system", username, 
-                            "Migrated from " + migrationType + " to salted-sha256", 
+                            "password_migration", "system", username,
+                            "Migrated from " + migrationType + " to salted-sha256",
                             System.currentTimeMillis()));
                 }
             } else {
                 ctx.getPlugin().getLogger().warning("[VerifyMC] Password migration failed - User: " + username);
             }
         } catch (Exception e) {
-            ctx.getPlugin().getLogger().log(java.util.logging.Level.WARNING, 
+            ctx.getPlugin().getLogger().log(java.util.logging.Level.WARNING,
                     "[VerifyMC] Password migration error - User: " + username, e);
         }
     }

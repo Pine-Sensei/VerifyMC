@@ -134,6 +134,20 @@ public class RegistrationProcessingHandler implements HttpHandler {
     private RegistrationValidationResult validateBasicInput(RegistrationRequest request, String requestId) {
         logRegistrationStage(requestId, "validate_basic_input", null);
 
+        // 1. Null/empty checks first to prevent NPE downstream
+        if (request.normalizedUsername() == null || request.normalizedUsername().trim().isEmpty()) {
+            return RegistrationValidationResult.reject("register.invalid_username");
+        }
+        if (!emailValidator.apply(request.email())) {
+            return RegistrationValidationResult.reject("register.invalid_email");
+        }
+
+        // 2. Format validation
+        if (!usernameValidator.test(request.normalizedUsername(), request.platform())) {
+            String usernameRegex = usernameRegexResolver.apply(request.normalizedUsername(), request.platform());
+            return RegistrationValidationResult.reject("username.invalid", new JSONObject().put("regex", usernameRegex));
+        }
+
         if (authmeService.isAuthmeEnabled() && authmeService.isPasswordRequired()) {
             if (request.password() == null || request.password().trim().isEmpty()) {
                 return RegistrationValidationResult.reject("register.password_required");
@@ -144,6 +158,7 @@ public class RegistrationProcessingHandler implements HttpHandler {
             }
         }
 
+        // 3. Email policy checks
         if (plugin.getConfig().getBoolean("enable_email_alias_limit", false) && request.email().contains("+")) {
             return RegistrationValidationResult.reject("register.alias_not_allowed");
         }
@@ -153,16 +168,14 @@ public class RegistrationProcessingHandler implements HttpHandler {
                 return RegistrationValidationResult.reject("register.domain_not_allowed");
             }
         }
+
+        // 4. Uniqueness checks (require DB access)
         boolean caseSensitive = usernameCaseSensitiveProvider.get();
-        var existingUser = caseSensitive 
+        var existingUser = caseSensitive
             ? userDao.getUserByUsernameExact(request.normalizedUsername())
             : userDao.getUserByUsername(request.normalizedUsername());
         if (existingUser != null) {
             return RegistrationValidationResult.reject("register.username_exists");
-        }
-        if (!usernameValidator.test(request.normalizedUsername(), request.platform())) {
-            String usernameRegex = usernameRegexResolver.apply(request.normalizedUsername(), request.platform());
-            return RegistrationValidationResult.reject("username.invalid", new JSONObject().put("regex", usernameRegex));
         }
         if (usernameCaseConflictChecker.apply(request.normalizedUsername())) {
             return RegistrationValidationResult.reject("username.case_conflict");
@@ -172,12 +185,6 @@ public class RegistrationProcessingHandler implements HttpHandler {
         int emailCount = userDao.countUsersByEmail(request.email());
         if (emailCount >= maxAccounts) {
             return RegistrationValidationResult.reject("register.email_limit");
-        }
-        if (!emailValidator.apply(request.email())) {
-            return RegistrationValidationResult.reject("register.invalid_email");
-        }
-        if (request.normalizedUsername() == null || request.normalizedUsername().trim().isEmpty()) {
-            return RegistrationValidationResult.reject("register.invalid_username");
         }
         return RegistrationValidationResult.pass();
     }
@@ -233,6 +240,11 @@ public class RegistrationProcessingHandler implements HttpHandler {
         boolean useCaptcha = authMethods.contains("captcha");
         boolean useEmail = authMethods.contains("email");
 
+        // If no auth methods configured, skip verification
+        if (!useCaptcha && !useEmail) {
+            return RegistrationValidationResult.pass();
+        }
+
         if (useCaptcha) {
             if (request.captchaToken().isEmpty() || request.captchaAnswer().isEmpty()) {
                 return RegistrationValidationResult.reject("captcha.required");
@@ -242,7 +254,7 @@ public class RegistrationProcessingHandler implements HttpHandler {
             }
         }
 
-        if (useEmail || !useCaptcha) {
+        if (useEmail) {
             if (!codeService.checkCode(request.email(), request.code())) {
                 return RegistrationValidationResult.reject("verify.wrong_code");
             }
