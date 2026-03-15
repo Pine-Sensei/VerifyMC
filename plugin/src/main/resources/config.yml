@@ -1,8 +1,16 @@
 language: en
 debug: false
+admin_auth:
+  mode: op
 web_port: 8080
 ws_port: 8081
 web_server_prefix: '[ Name ]'
+ssl:
+  enabled: false
+  keystore:
+    path: ""
+    password: ""
+    type: PKCS12
 auth_methods:
   - email
 max_accounts_per_email: 2
@@ -50,7 +58,6 @@ mysql:
     password: yourpassword
 authme:
   enabled: true
-  require_password: true
   password_regex: "^[a-zA-Z0-9_]{8,26}$"
   database:
     type: sqlite

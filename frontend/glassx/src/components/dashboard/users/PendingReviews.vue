@@ -31,11 +31,12 @@
               <TableCell class="font-medium text-white">{{ user.username }}</TableCell>
               <TableCell>{{ user.email }}</TableCell>
               <TableCell>{{ formatDate(user.regTime) }}</TableCell>
-              <TableCell v-if="showQuestionnaireScoreColumn">{{ user.questionnaireScore ?? '—' }}</TableCell>
-              <TableCell v-if="showQuestionnaireReasonColumn" class="max-w-[360px] break-words">{{ user.questionnaireReviewSummary || '—' }}</TableCell>
+              <TableCell v-if="showQuestionnaireScoreColumn">{{ user.questionnaireScore ?? '-' }}</TableCell>
+              <TableCell v-if="showQuestionnaireReasonColumn" class="max-w-[360px] break-words">{{ user.questionnaireReviewSummary || '-' }}</TableCell>
               <TableCell>
                 <div class="flex space-x-2">
                   <Button
+                    v-if="canApprove"
                     variant="outline"
                     size="xs"
                     class="text-green-400 border-green-500/30 hover:bg-green-500/10 hover:text-green-300"
@@ -45,6 +46,7 @@
                     {{ $t('admin.review.actions.approve') }}
                   </Button>
                   <Button
+                    v-if="canReject"
                     variant="outline"
                     size="xs"
                     class="text-red-400 border-red-500/30 hover:bg-red-500/10 hover:text-red-300"
@@ -66,7 +68,6 @@
       </div>
     </Card>
 
-    <!-- Reject Dialog -->
     <Dialog
       :show="rejectDialog.show"
       :title="$t('admin.review.reject_modal.title')"
@@ -101,6 +102,8 @@ import { useI18n } from 'vue-i18n'
 import { RefreshCw } from 'lucide-vue-next'
 import { useNotification } from '@/composables/useNotification'
 import { apiService } from '@/services/api'
+import { sessionService } from '@/services/session'
+import { hasAdminAction } from '@/lib/adminAccess'
 import type { PendingUser } from '@/types'
 import { formatDate } from '@/lib/utils'
 import Card from '@/components/ui/Card.vue'
@@ -123,6 +126,9 @@ const questionnaireEnabled = ref(false)
 const questionnaireHasTextQuestions = ref(false)
 const processingUsers = ref(new Set<string>())
 
+const adminActions = computed(() => sessionService.getAdminActions())
+const canApprove = computed(() => hasAdminAction(adminActions.value, 'approve'))
+const canReject = computed(() => hasAdminAction(adminActions.value, 'reject'))
 const loading = computed(() => actionLoading.value)
 
 const showQuestionnaireScoreColumn = computed(() => questionnaireEnabled.value)
@@ -158,7 +164,7 @@ const loadPendingUsers = async () => {
       notification.error(response.message || t('admin.review.messages.error'))
     }
   } catch (error) {
-    notification.error(t('admin.review.messages.error'))
+    notification.error(error instanceof Error ? error.message : t('admin.review.messages.error'))
   } finally {
     actionLoading.value = false
   }
@@ -204,13 +210,12 @@ const approveUser = async (user: PendingUser) => {
 
     if (response.success) {
       notifyResult(true, 'admin.review.messages.approve_success', response.message)
-      await apiService.syncAuthme(locale.value)
       await loadPendingUsers()
     } else {
       notifyResult(false, 'admin.review.messages.error', response.message)
     }
   } catch (error) {
-    notification.error(t('admin.review.messages.error'))
+    notification.error(error instanceof Error ? error.message : t('admin.review.messages.error'))
   } finally {
     processingUsers.value.delete(user.username)
     actionLoading.value = false
@@ -240,7 +245,7 @@ const confirmReject = async () => {
       notifyResult(false, 'admin.review.messages.error', response.message)
     }
   } catch (error) {
-    notification.error(t('admin.review.messages.error'))
+    notification.error(error instanceof Error ? error.message : t('admin.review.messages.error'))
   } finally {
     rejectDialog.value.processing = false
     if (rejectDialog.value.user?.username) {

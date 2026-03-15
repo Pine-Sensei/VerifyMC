@@ -6,6 +6,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import team.kitemc.verifymc.core.PluginContext;
 import team.kitemc.verifymc.db.AuditRecord;
+import team.kitemc.verifymc.security.AdminAction;
 import team.kitemc.verifymc.web.ApiResponseFactory;
 import team.kitemc.verifymc.web.WebResponseHelper;
 
@@ -29,7 +30,7 @@ public class AdminUserApproveHandler implements HttpHandler {
         if (!WebResponseHelper.requireMethod(exchange, "POST")) return;
 
         // Require admin privileges and get operator username
-        String operator = AdminAuthUtil.requireAdmin(exchange, ctx);
+        String operator = AdminAuthUtil.requireAdmin(exchange, ctx, AdminAction.APPROVE);
         if (operator == null) return;
 
         JSONObject req;
@@ -62,13 +63,7 @@ public class AdminUserApproveHandler implements HttpHandler {
                     org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + target));
 
             if (ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {
-                var user = ctx.getUserDao().getUserByUsername(target);
-                if (user != null) {
-                    String storedPassword = (String) user.get("password");
-                    if (storedPassword != null && !storedPassword.isEmpty()) {
-                        ctx.getAuthmeService().registerToAuthme(target, storedPassword);
-                    }
-                }
+                ctx.getAuthmeService().syncApprovedUserToAuthme(target);
             }
 
             var user = ctx.getUserDao().getUserByUsername(target);

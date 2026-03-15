@@ -79,7 +79,7 @@ const isNavHovered = ref(false)
 const isAdminLoggedIn = computed(() => {
   // Bind route to ensure reactivity
   route.fullPath
-  return sessionService.isAuthenticated()
+  return sessionService.isAdmin()
 })
 
 const menuItems = computed(() => {

@@ -1,5 +1,15 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 
+const windowEvents = new EventTarget();
+const windowMock = {
+  innerWidth: 1024,
+  addEventListener: windowEvents.addEventListener.bind(windowEvents),
+  removeEventListener: windowEvents.removeEventListener.bind(windowEvents),
+  dispatchEvent: windowEvents.dispatchEvent.bind(windowEvents),
+};
+
+vi.stubGlobal('window', windowMock);
+
 // Mock Vue lifecycle hooks BEFORE importing useBreakpoint
 vi.mock('vue', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue')>();

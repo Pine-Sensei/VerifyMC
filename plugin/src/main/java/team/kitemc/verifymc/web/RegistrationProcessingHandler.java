@@ -22,6 +22,7 @@ import team.kitemc.verifymc.service.DiscordService;
 import team.kitemc.verifymc.service.QuestionnaireService;
 import team.kitemc.verifymc.service.RegistrationApplicationService;
 import team.kitemc.verifymc.service.VerifyCodeService;
+import team.kitemc.verifymc.util.EmailAddressUtil;
 
 public class RegistrationProcessingHandler implements HttpHandler {
     private static final long QUESTIONNAIRE_SUBMISSION_TTL_MS = 10 * 60 * 1000;
@@ -148,22 +149,20 @@ public class RegistrationProcessingHandler implements HttpHandler {
             return RegistrationValidationResult.reject("username.invalid", new JSONObject().put("regex", usernameRegex));
         }
 
-        if (authmeService.isAuthmeEnabled() && authmeService.isPasswordRequired()) {
-            if (request.password() == null || request.password().trim().isEmpty()) {
-                return RegistrationValidationResult.reject("register.password_required");
-            }
-            if (!authmeService.isValidPassword(request.password())) {
-                String passwordRegex = plugin.getConfig().getString("authme.password_regex", "^[a-zA-Z0-9_]{8,26}$");
-                return RegistrationValidationResult.reject("register.invalid_password", new JSONObject().put("regex", passwordRegex));
-            }
+        if (request.password() == null || request.password().trim().isEmpty()) {
+            return RegistrationValidationResult.reject("register.password_required");
+        }
+        if (!authmeService.isValidPassword(request.password())) {
+            String passwordRegex = plugin.getConfig().getString("authme.password_regex", "^[a-zA-Z0-9_]{8,26}$");
+            return RegistrationValidationResult.reject("register.invalid_password", new JSONObject().put("regex", passwordRegex));
         }
 
         // 3. Email policy checks
-        if (plugin.getConfig().getBoolean("enable_email_alias_limit", false) && request.email().contains("+")) {
+        if (plugin.getConfig().getBoolean("enable_email_alias_limit", false) && EmailAddressUtil.hasAlias(request.email())) {
             return RegistrationValidationResult.reject("register.alias_not_allowed");
         }
         if (plugin.getConfig().getBoolean("enable_email_domain_whitelist", true)) {
-            String domain = request.email().contains("@") ? request.email().substring(request.email().indexOf('@') + 1) : "";
+            String domain = EmailAddressUtil.extractDomain(request.email());
             if (!emailDomainWhitelistProvider.get().contains(domain)) {
                 return RegistrationValidationResult.reject("register.domain_not_allowed");
             }
@@ -287,22 +286,16 @@ public class RegistrationProcessingHandler implements HttpHandler {
         String questionnaireReviewSummary = submissionRecord != null ? buildQuestionnaireReviewSummary(submissionRecord.details()) : null;
         Long questionnaireScoredAt = submissionRecord != null ? submissionRecord.submittedAt() : null;
 
-        boolean ok;
-        if (request.password() != null && !request.password().trim().isEmpty()) {
-            ok = userDao.registerUser(request.normalizedUsername(), request.email(), status, request.password(),
-                    questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
-        } else {
-            ok = userDao.registerUser(request.normalizedUsername(), request.email(), status,
-                    questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
-        }
+        boolean ok = userDao.registerUser(request.normalizedUsername(), request.email(), status, request.password(),
+                questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
 
         RegistrationApplicationService.RegistrationDecision decision =
                 registrationApplicationService.resolveDecision(ok, manualReviewRequired, questionnairePassed, registerAutoApprove, scoringServiceUnavailable);
         if (decision.outcome() == RegistrationOutcome.SUCCESS_WHITELISTED) {
             org.bukkit.Bukkit.getScheduler().runTask(plugin, () ->
                     org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + request.normalizedUsername()));
-            if (authmeService.isAuthmeEnabled() && request.password() != null && !request.password().trim().isEmpty()) {
-                authmeService.registerToAuthme(request.normalizedUsername(), request.password());
+            if (authmeService.isAuthmeEnabled()) {
+                authmeService.syncApprovedUserToAuthme(request.normalizedUsername());
             }
         }
 

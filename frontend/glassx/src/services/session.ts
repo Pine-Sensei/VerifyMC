@@ -1,7 +1,8 @@
-import type { UserInfo } from '@/types'
+import type { AdminActionKey, UserInfo } from '@/types'
 
 const ADMIN_TOKEN_KEY = 'admin_token'
 const IS_ADMIN_KEY = 'is_admin'
+const ADMIN_ACTIONS_KEY = 'admin_actions'
 const USER_INFO_KEY = 'user_info'
 const TOKEN_EXPIRY_KEY = 'token_expiry'
 const LOGIN_PATH = '/login'
@@ -10,6 +11,11 @@ const LOGIN_PATH = '/login'
 const DEFAULT_TOKEN_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000
 
 const canUseBrowser = (): boolean => typeof window !== 'undefined'
+
+const normalizeAdminActions = (adminActions?: AdminActionKey[]): AdminActionKey[] => {
+  if (!adminActions?.length) return []
+  return Array.from(new Set(adminActions.filter(Boolean)))
+}
 
 const getCurrentLocationForRedirect = (): string => {
   if (!canUseBrowser()) return '/'
@@ -63,6 +69,7 @@ export const sessionService = {
     if (!canUseBrowser()) return
     localStorage.removeItem(ADMIN_TOKEN_KEY)
     localStorage.removeItem(IS_ADMIN_KEY)
+    localStorage.removeItem(ADMIN_ACTIONS_KEY)
     localStorage.removeItem(USER_INFO_KEY)
     localStorage.removeItem(TOKEN_EXPIRY_KEY)
   },
@@ -81,12 +88,34 @@ export const sessionService = {
   // Admin status management
   isAdmin(): boolean {
     if (!canUseBrowser()) return false
+    if (this.getAdminActions().length > 0) {
+      return true
+    }
     return localStorage.getItem(IS_ADMIN_KEY) === 'true'
   },
 
   setAdminStatus(isAdmin: boolean): void {
     if (!canUseBrowser()) return
     localStorage.setItem(IS_ADMIN_KEY, String(isAdmin))
+  },
+
+  getAdminActions(): AdminActionKey[] {
+    if (!canUseBrowser()) return []
+    const adminActionsStr = localStorage.getItem(ADMIN_ACTIONS_KEY)
+    if (!adminActionsStr) return []
+    try {
+      const parsed = JSON.parse(adminActionsStr)
+      return Array.isArray(parsed) ? normalizeAdminActions(parsed as AdminActionKey[]) : []
+    } catch {
+      return []
+    }
+  },
+
+  setAdminActions(adminActions: AdminActionKey[]): void {
+    if (!canUseBrowser()) return
+    const normalizedAdminActions = normalizeAdminActions(adminActions)
+    localStorage.setItem(ADMIN_ACTIONS_KEY, JSON.stringify(normalizedAdminActions))
+    this.setAdminStatus(normalizedAdminActions.length > 0)
   },
 
   // User info management
@@ -103,9 +132,16 @@ export const sessionService = {
 
   setUserInfo(userInfo: UserInfo): void {
     if (!canUseBrowser()) return
-    localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo))
-    if (userInfo.isAdmin !== undefined) {
-      this.setAdminStatus(userInfo.isAdmin)
+    const adminActions = normalizeAdminActions(userInfo.adminActions)
+    const normalizedUserInfo: UserInfo = {
+      ...userInfo,
+      adminActions,
+      isAdmin: adminActions.length > 0 || userInfo.isAdmin === true,
+    }
+    localStorage.setItem(USER_INFO_KEY, JSON.stringify(normalizedUserInfo))
+    this.setAdminActions(adminActions)
+    if (normalizedUserInfo.isAdmin !== undefined) {
+      this.setAdminStatus(normalizedUserInfo.isAdmin)
     }
   },
 

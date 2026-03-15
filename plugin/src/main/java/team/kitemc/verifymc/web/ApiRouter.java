@@ -2,6 +2,7 @@ package team.kitemc.verifymc.web;
 
 import com.sun.net.httpserver.HttpServer;
 import team.kitemc.verifymc.core.PluginContext;
+import team.kitemc.verifymc.util.EmailAddressUtil;
 import team.kitemc.verifymc.web.handler.*;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -149,7 +150,6 @@ public class ApiRouter {
     }
 
     private boolean isValidEmail(String email) {
-        if (email == null || email.isBlank()) return false;
-        return email.matches("^[\\w.+-]+@[\\w.-]+\\.[a-zA-Z]{2,}$");
+        return EmailAddressUtil.isValid(email);
     }
 }

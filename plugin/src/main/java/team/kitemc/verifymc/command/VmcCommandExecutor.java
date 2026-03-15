@@ -6,8 +6,8 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import team.kitemc.verifymc.core.PluginContext;
 import team.kitemc.verifymc.db.AuditRecord;
+import team.kitemc.verifymc.security.AdminAction;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +29,18 @@ import java.util.stream.Collectors;
  *   version   — Show plugin version
  */
 public class VmcCommandExecutor implements CommandExecutor, TabCompleter {
+    private static final String BASE_PERMISSION = "verifymc.use";
+    private static final Map<String, AdminAction> SUBCOMMAND_ACTIONS = Map.of(
+            "reload", AdminAction.RELOAD,
+            "approve", AdminAction.APPROVE,
+            "reject", AdminAction.REJECT,
+            "delete", AdminAction.DELETE,
+            "ban", AdminAction.BAN,
+            "unban", AdminAction.UNBAN,
+            "list", AdminAction.LIST,
+            "info", AdminAction.INFO
+    );
+
     private final PluginContext ctx;
 
     private static final List<String> SUBCOMMANDS = Arrays.asList(
@@ -42,11 +54,26 @@ public class VmcCommandExecutor implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
-            sender.sendMessage("§6[VerifyMC] §fUsage: /vmc <" + String.join("|", SUBCOMMANDS) + ">");
+            List<String> availableSubcommands = getAvailableSubcommands(sender);
+            if (availableSubcommands.isEmpty()) {
+                sendNoPermission(sender);
+                return true;
+            }
+
+            sender.sendMessage("§6[VerifyMC] §fUsage: /vmc <" + String.join("|", availableSubcommands) + ">");
             return true;
         }
 
         String sub = args[0].toLowerCase();
+        if (!SUBCOMMANDS.contains(sub)) {
+            sender.sendMessage("§6[VerifyMC] §cUnknown subcommand: " + sub);
+            return true;
+        }
+        if (!hasPermissionForSubcommand(sender, sub)) {
+            sendNoPermission(sender);
+            return true;
+        }
+
         switch (sub) {
             case "reload" -> handleReload(sender);
             case "approve" -> handleApprove(sender, args);
@@ -57,7 +84,7 @@ public class VmcCommandExecutor implements CommandExecutor, TabCompleter {
             case "list" -> handleList(sender, args);
             case "info" -> handleInfo(sender, args);
             case "version" -> handleVersion(sender);
-            default -> sender.sendMessage("§6[VerifyMC] §cUnknown subcommand: " + sub);
+            default -> { }
         }
         return true;
     }
@@ -66,11 +93,15 @@ public class VmcCommandExecutor implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
             return SUBCOMMANDS.stream()
+                    .filter(sub -> hasPermissionForSubcommand(sender, sub))
                     .filter(s -> s.startsWith(args[0].toLowerCase()))
                     .collect(Collectors.toList());
         }
         if (args.length == 2) {
             String sub = args[0].toLowerCase();
+            if (!hasPermissionForSubcommand(sender, sub)) {
+                return List.of();
+            }
             if (List.of("approve", "reject", "delete", "ban", "unban", "info").contains(sub)) {
                 // Return registered usernames that match partial input
                 return ctx.getUserDao().getAllUsers().stream()
@@ -87,10 +118,6 @@ public class VmcCommandExecutor implements CommandExecutor, TabCompleter {
     }
 
     private void handleReload(CommandSender sender) {
-        if (!sender.hasPermission("verifymc.admin")) {
-            sender.sendMessage("§6[VerifyMC] §cNo permission.");
-            return;
-        }
         ctx.getConfigManager().reloadConfig();
         ctx.getI18nManager().clearCache();
         ctx.getI18nManager().init(ctx.getConfigManager().getLanguage());
@@ -98,10 +125,6 @@ public class VmcCommandExecutor implements CommandExecutor, TabCompleter {
     }
 
     private void handleApprove(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("verifymc.admin")) {
-            sender.sendMessage("§6[VerifyMC] §cNo permission.");
-            return;
-        }
         if (args.length < 2) {
             sender.sendMessage("§6[VerifyMC] §fUsage: /vmc approve <username>");
             return;
@@ -110,6 +133,9 @@ public class VmcCommandExecutor implements CommandExecutor, TabCompleter {
         boolean ok = ctx.getUserDao().updateUserStatus(target, "approved", sender.getName());
         if (ok) {
             org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + target);
+            if (ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {
+                ctx.getAuthmeService().syncApprovedUserToAuthme(target);
+            }
             ctx.getAuditDao().addAudit(new AuditRecord("approve", sender.getName(), target, "", System.currentTimeMillis()));
 
             // Send approval email
@@ -129,10 +155,6 @@ public class VmcCommandExecutor implements CommandExecutor, TabCompleter {
     }
 
     private void handleReject(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("verifymc.admin")) {
-            sender.sendMessage("§6[VerifyMC] §cNo permission.");
-            return;
-        }
         if (args.length < 2) {
             sender.sendMessage("§6[VerifyMC] §fUsage: /vmc reject <username> [reason]");
             return;
@@ -159,10 +181,6 @@ public class VmcCommandExecutor implements CommandExecutor, TabCompleter {
     }
 
     private void handleDelete(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("verifymc.admin")) {
-            sender.sendMessage("§6[VerifyMC] §cNo permission.");
-            return;
-        }
         if (args.length < 2) {
             sender.sendMessage("§6[VerifyMC] §fUsage: /vmc delete <username>");
             return;
@@ -171,6 +189,9 @@ public class VmcCommandExecutor implements CommandExecutor, TabCompleter {
         boolean ok = ctx.getUserDao().deleteUser(target);
         if (ok) {
             org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist remove " + target);
+            if (ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {
+                ctx.getAuthmeService().removeUserFromAuthme(target);
+            }
             ctx.getAuditDao().addAudit(new AuditRecord("delete", sender.getName(), target, "", System.currentTimeMillis()));
             sender.sendMessage("§6[VerifyMC] §aUser " + target + " deleted.");
         } else {
@@ -179,10 +200,6 @@ public class VmcCommandExecutor implements CommandExecutor, TabCompleter {
     }
 
     private void handleBan(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("verifymc.admin")) {
-            sender.sendMessage("§6[VerifyMC] §cNo permission.");
-            return;
-        }
         if (args.length < 2) {
             sender.sendMessage("§6[VerifyMC] §fUsage: /vmc ban <username> [reason]");
             return;
@@ -192,6 +209,9 @@ public class VmcCommandExecutor implements CommandExecutor, TabCompleter {
         boolean ok = ctx.getUserDao().banUser(target);
         if (ok) {
             org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist remove " + target);
+            if (ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {
+                ctx.getAuthmeService().removeUserFromAuthme(target);
+            }
             ctx.getAuditDao().addAudit(new AuditRecord("ban", sender.getName(), target, reason, System.currentTimeMillis()));
             sender.sendMessage("§6[VerifyMC] §cUser " + target + " banned.");
         } else {
@@ -200,10 +220,6 @@ public class VmcCommandExecutor implements CommandExecutor, TabCompleter {
     }
 
     private void handleUnban(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("verifymc.admin")) {
-            sender.sendMessage("§6[VerifyMC] §cNo permission.");
-            return;
-        }
         if (args.length < 2) {
             sender.sendMessage("§6[VerifyMC] §fUsage: /vmc unban <username>");
             return;
@@ -212,6 +228,9 @@ public class VmcCommandExecutor implements CommandExecutor, TabCompleter {
         boolean ok = ctx.getUserDao().unbanUser(target);
         if (ok) {
             org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + target);
+            if (ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {
+                ctx.getAuthmeService().syncApprovedUserToAuthme(target);
+            }
             ctx.getAuditDao().addAudit(new AuditRecord("unban", sender.getName(), target, "", System.currentTimeMillis()));
             sender.sendMessage("§6[VerifyMC] §aUser " + target + " unbanned.");
         } else {
@@ -220,10 +239,6 @@ public class VmcCommandExecutor implements CommandExecutor, TabCompleter {
     }
 
     private void handleList(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("verifymc.admin")) {
-            sender.sendMessage("§6[VerifyMC] §cNo permission.");
-            return;
-        }
         String statusFilter = args.length > 1 ? args[1].toLowerCase() : "all";
         List<Map<String, Object>> users;
         if ("all".equals(statusFilter)) {
@@ -245,10 +260,6 @@ public class VmcCommandExecutor implements CommandExecutor, TabCompleter {
     }
 
     private void handleInfo(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("verifymc.admin")) {
-            sender.sendMessage("§6[VerifyMC] §cNo permission.");
-            return;
-        }
         if (args.length < 2) {
             sender.sendMessage("§6[VerifyMC] §fUsage: /vmc info <username>");
             return;
@@ -268,5 +279,23 @@ public class VmcCommandExecutor implements CommandExecutor, TabCompleter {
 
     private void handleVersion(CommandSender sender) {
         sender.sendMessage("§6[VerifyMC] §fVersion: " + ctx.getPlugin().getDescription().getVersion());
+    }
+
+    private List<String> getAvailableSubcommands(CommandSender sender) {
+        return SUBCOMMANDS.stream()
+                .filter(subcommand -> hasPermissionForSubcommand(sender, subcommand))
+                .collect(Collectors.toList());
+    }
+
+    private boolean hasPermissionForSubcommand(CommandSender sender, String subcommand) {
+        AdminAction action = SUBCOMMAND_ACTIONS.get(subcommand);
+        if (action == null) {
+            return sender.hasPermission(BASE_PERMISSION) || ctx.getAdminAccessManager().hasAnyAdminAccess(sender);
+        }
+        return ctx.getAdminAccessManager().canAccess(sender, action);
+    }
+
+    private void sendNoPermission(CommandSender sender) {
+        sender.sendMessage("§6[VerifyMC] §cNo permission.");
     }
 }

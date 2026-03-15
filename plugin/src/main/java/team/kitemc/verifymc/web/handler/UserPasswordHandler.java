@@ -77,7 +77,7 @@ public class UserPasswordHandler implements HttpHandler {
 
         if (updated) {
             if (ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {
-                ctx.getAuthmeService().changePassword(username, newPassword);
+                ctx.getAuthmeService().syncUserPasswordToAuthme(username, newPassword);
             }
 
             ctx.getAuditDao().addAudit(new AuditRecord(

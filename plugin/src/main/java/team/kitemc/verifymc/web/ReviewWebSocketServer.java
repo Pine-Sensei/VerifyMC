@@ -2,9 +2,11 @@ package team.kitemc.verifymc.web;
 
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
+import org.java_websocket.server.DefaultSSLWebSocketServerFactory;
 import org.java_websocket.server.WebSocketServer;
 import team.kitemc.verifymc.core.PluginContext;
 
+import javax.net.ssl.SSLContext;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -150,6 +152,11 @@ public class ReviewWebSocketServer extends WebSocketServer {
     @Override
     public void onStart() {
         debugLog("WebSocket server started on port: " + getPort());
+    }
+
+    public void enableSsl(SSLContext sslContext) {
+        setWebSocketFactory(new DefaultSSLWebSocketServerFactory(sslContext));
+        debugLog("WebSocket SSL enabled");
     }
 
     public void broadcastMessage(String message) {

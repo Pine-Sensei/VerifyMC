@@ -36,7 +36,6 @@ public class ConfigHandler implements HttpHandler {
 
         JSONObject authmeConfig = new JSONObject();
         authmeConfig.put("enabled", ctx.getConfigManager().isAuthmeEnabled());
-        authmeConfig.put("requirePassword", ctx.getConfigManager().isAuthmePasswordRequired());
         authmeConfig.put("passwordRegex", ctx.getConfigManager().getAuthmePasswordRegex());
         config.put("authme", authmeConfig);
 

@@ -37,6 +37,12 @@ public class AdminVerifyHandler implements HttpHandler {
         String language = req.optString("language", "en");
 
         if (ctx.getWebAuthHelper().isValidToken(token)) {
+            String username = ctx.getWebAuthHelper().getUsername(token);
+            if (username == null || !ctx.getAdminAccessManager().hasAnyAdminAccess(username)) {
+                WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                        ctx.getMessage("login.not_authorized", language)), 403);
+                return;
+            }
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.success(
                     ctx.getMessage("login.token_valid", language)));
         } else {

@@ -76,14 +76,15 @@ import {
   LogOut,
 } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
-import type { UserInfo } from '@/types'
+import type { AdminActionKey, UserInfo } from '@/types'
 import { getPlayerMenuItems, getAdminMenuItems } from '@/config/menu'
 import { useSidebar } from '@/composables/useSidebar'
 
-defineProps<{
+const props = defineProps<{
   activeSection: string
   userInfo: UserInfo | null
   isAdmin: boolean
+  adminActions: AdminActionKey[]
 }>()
 
 defineEmits<{
@@ -95,5 +96,5 @@ const { t } = useI18n()
 const { isOpen, isCollapsed } = useSidebar()
 
 const playerMenuItems = computed(() => getPlayerMenuItems(t))
-const adminMenuItems = computed(() => getAdminMenuItems(t))
+const adminMenuItems = computed(() => getAdminMenuItems(t, props.adminActions))
 </script>

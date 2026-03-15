@@ -125,7 +125,9 @@ const handleSubmit = async () => {
       // Store user info including admin status
       sessionService.setUserInfo({
         username: response.username || form.username.trim(),
-        isAdmin: response.isAdmin ?? false
+        email: response.email,
+        isAdmin: response.isAdmin ?? false,
+        adminActions: response.adminActions ?? [],
       })
       
       notification.success(response.message || t('login.messages.success'))

@@ -13,7 +13,7 @@
         </div>
     </div>
 
-    <div :class="shouldShowPassword ? 'w-full max-w-xl' : 'w-full max-w-md'">
+    <div class="w-full max-w-xl">
       <div class="lg:hidden text-center mb-6">
         <h2 class="text-2xl font-bold text-white">{{ $t('register.title') }}</h2>
         <p class="text-white/60">{{ $t('register.subtitle') }}</p>
@@ -75,7 +75,7 @@
               <p v-if="errors.email" class="mt-1 text-sm text-red-400">{{ errors.email }}</p>
             </div>
 
-            <div v-if="shouldShowPassword">
+            <div>
               <Label for="password" class="mb-1">{{ $t('register.form.password') }}</Label>
               <Input
                 id="password"
@@ -200,7 +200,7 @@ const config = ref<ConfigResponse>({
   announcement: '',
   webServerPrefix: '',
   usernameRegex: '',
-  authme: { enabled: false, requirePassword: false, passwordRegex: '' },
+  authme: { enabled: false, passwordRegex: '^[a-zA-Z0-9_]{8,26}$' },
   captcha: { enabled: false, emailEnabled: true, type: 'math' },
   questionnaire: { enabled: false, passScore: 60 }
 })
@@ -222,7 +222,6 @@ const bedrockPrefix = computed(() => config.value.bedrock?.prefix || '.')
 const selectedPlatform = ref<'java' | 'bedrock'>('java')
 
 const authmeConfig = computed(() => config.value.authme)
-const shouldShowPassword = computed(() => authmeConfig.value?.enabled && authmeConfig.value?.requirePassword)
 
 onMounted(async () => {
   try {
@@ -341,12 +340,10 @@ const validateEmail = () => {
 }
 const validatePassword = () => {
   errors.password = ''
-  if (shouldShowPassword.value) {
-    if (!form.password) {
-      errors.password = t('register.validation.password_required')
-    } else if (authmeConfig.value?.passwordRegex && !new RegExp(authmeConfig.value.passwordRegex).test(form.password)) {
-      errors.password = t('register.validation.password_format', { regex: authmeConfig.value.passwordRegex })
-    }
+  if (!form.password) {
+    errors.password = t('register.validation.password_required')
+  } else if (authmeConfig.value?.passwordRegex && !new RegExp(authmeConfig.value.passwordRegex).test(form.password)) {
+    errors.password = t('register.validation.password_format', { regex: authmeConfig.value.passwordRegex })
   }
 }
 const validateCode = () => {
@@ -375,7 +372,7 @@ const isBasicStepValid = computed(() => {
   let valid = form.username && form.email && !errors.username && !errors.email
   if (emailEnabled.value) valid = valid && !!form.code && !errors.code
   if (captchaEnabled.value) valid = valid && !!form.captchaAnswer && !errors.captcha
-  if (shouldShowPassword.value) valid = valid && !!form.password && !errors.password
+  valid = valid && !!form.password && !errors.password
   if (discordRequired.value) valid = valid && discordLinked.value && !errors.discord
   return valid
 })
@@ -470,6 +467,7 @@ const handleSubmit = async () => {
     const registerData: RegisterRequest = {
       username: getNormalizedUsername(),
       email: form.email.trim().toLowerCase(),
+      password: form.password,
       language: locale.value,
       platform: selectedPlatform.value
     }
@@ -479,7 +477,6 @@ const handleSubmit = async () => {
       registerData.captchaToken = captchaToken.value
       registerData.captchaAnswer = form.captchaAnswer
     }
-    if (shouldShowPassword.value) registerData.password = form.password
     if (questionnaireResult.value) registerData.questionnaire = questionnaireResult.value
 
     const response = await apiService.register(registerData)

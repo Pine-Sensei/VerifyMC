@@ -1,6 +1,7 @@
 package team.kitemc.verifymc.core;
 
 import org.bukkit.plugin.java.JavaPlugin;
+import team.kitemc.verifymc.security.AdminAccessManager;
 import team.kitemc.verifymc.db.AuditDao;
 import team.kitemc.verifymc.db.UserDao;
 import team.kitemc.verifymc.mail.MailService;
@@ -18,6 +19,7 @@ public class PluginContext {
     private final ConfigManager configManager;
     private final I18nManager i18nManager;
     private final ResourceManager resourceManager;
+    private final AdminAccessManager adminAccessManager;
     private OpsManager opsManager;
 
     // Data access
@@ -47,6 +49,7 @@ public class PluginContext {
         this.configManager = new ConfigManager(plugin);
         this.i18nManager = new I18nManager(plugin);
         this.resourceManager = new ResourceManager(plugin);
+        this.adminAccessManager = new AdminAccessManager(this);
         this.resourceManager.setConfigManager(configManager);
     }
 
@@ -55,6 +58,7 @@ public class PluginContext {
     public ConfigManager getConfigManager() { return configManager; }
     public I18nManager getI18nManager() { return i18nManager; }
     public ResourceManager getResourceManager() { return resourceManager; }
+    public AdminAccessManager getAdminAccessManager() { return adminAccessManager; }
     public OpsManager getOpsManager() { return opsManager; }
 
     public UserDao getUserDao() { return userDao; }

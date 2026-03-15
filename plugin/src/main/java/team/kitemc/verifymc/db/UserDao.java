@@ -4,17 +4,13 @@ import java.util.List;
 import java.util.Map;
 
 public interface UserDao {
-    boolean registerUser(String username, String email, String status);
-
-    boolean registerUser(String username, String email, String status,
-                         Integer questionnaireScore, Boolean questionnairePassed,
-                         String questionnaireReviewSummary, Long questionnaireScoredAt);
-
     boolean registerUser(String username, String email, String status, String password);
 
     boolean registerUser(String username, String email, String status, String password,
                          Integer questionnaireScore, Boolean questionnairePassed,
                          String questionnaireReviewSummary, Long questionnaireScoredAt);
+
+    boolean registerUserWithStoredPassword(String username, String email, String status, String storedPassword);
 
     boolean updateUserStatus(String username, String status);
 
@@ -23,6 +19,11 @@ public interface UserDao {
      * Implementations are responsible for hashing before persistence.
      */
     boolean updateUserPassword(String username, String plainPassword);
+
+    /**
+     * Updates a user's password using an already encoded value.
+     */
+    boolean updateUserStoredPassword(String username, String storedPassword);
 
     boolean updateUserEmail(String username, String email);
 

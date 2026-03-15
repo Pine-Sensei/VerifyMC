@@ -12,11 +12,13 @@ import team.kitemc.verifymc.mail.MailService;
 import team.kitemc.verifymc.registration.RegistrationOutcomeResolver;
 import team.kitemc.verifymc.service.*;
 import team.kitemc.verifymc.web.ReviewWebSocketServer;
+import team.kitemc.verifymc.web.ServerSslContextFactory;
 import team.kitemc.verifymc.web.WebAuthHelper;
 import team.kitemc.verifymc.web.WebServer;
 
 import java.io.File;
 import java.sql.SQLException;
+import javax.net.ssl.SSLContext;
 import java.util.logging.Logger;
 
 /**
@@ -220,19 +222,34 @@ public class VerifyMC extends JavaPlugin {
     }
 
     private void initWebLayer(Logger log) {
+        SSLContext sslContext = null;
+        if (context.getConfigManager().isSslEnabled()) {
+            try {
+                sslContext = ServerSslContextFactory.create(context.getConfigManager());
+                log.info("[VerifyMC] SSL context loaded successfully.");
+            } catch (Exception e) {
+                log.severe("[VerifyMC] Failed to initialize SSL. Web layer will remain disabled: " + e.getMessage());
+                return;
+            }
+        }
+
         // WebSocket server for review notifications
         int wsPort = context.getConfigManager().getWsPort();
         try {
             wsServer = new ReviewWebSocketServer(wsPort, context);
+            if (sslContext != null) {
+                wsServer.enableSsl(sslContext);
+            }
             wsServer.start();
             context.setWsServer(wsServer);
-            log.info("[VerifyMC] WebSocket server started on port " + wsPort);
+            String protocol = sslContext != null ? "WSS" : "WS";
+            log.info("[VerifyMC] " + protocol + " WebSocket server started on port " + wsPort);
         } catch (Exception e) {
             log.warning("[VerifyMC] WebSocket server failed to start: " + e.getMessage());
         }
 
         // HTTP server
-        webServer = new WebServer(context);
+        webServer = new WebServer(context, sslContext);
         webServer.start();
     }
 

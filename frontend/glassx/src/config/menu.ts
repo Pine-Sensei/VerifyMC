@@ -6,6 +6,8 @@ import {
   Users,
   FileText,
 } from 'lucide-vue-next'
+import { canAccessAdminSection } from '@/lib/adminAccess'
+import type { AdminActionKey } from '@/types'
 
 export const getPlayerMenuItems = (t: (key: string) => string) => [
   {
@@ -20,7 +22,7 @@ export const getPlayerMenuItems = (t: (key: string) => string) => [
   },
 ]
 
-export const getAdminMenuItems = (t: (key: string) => string) => [
+export const getAdminMenuItems = (t: (key: string) => string, adminActions: readonly AdminActionKey[] = []) => [
   {
     id: 'server-status',
     label: t('dashboard.menu.server_status'),
@@ -36,4 +38,4 @@ export const getAdminMenuItems = (t: (key: string) => string) => [
     label: t('dashboard.menu.audit_log'),
     icon: markRaw(FileText),
   },
-]
+].filter((item) => canAccessAdminSection(item.id as 'server-status' | 'user-management' | 'audit-log', adminActions))

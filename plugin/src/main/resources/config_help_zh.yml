@@ -5,6 +5,11 @@
 language: zh
 # 开启后，控制台会输出详细的日志，用于故障排查。
 debug: false
+# 统一控制 /vmc 管理命令和 Web 管理后台的鉴权方式。
+# op：按服务器 OP 身份判断。
+# permission：命令按 Bukkit 权限判断，Web/离线用户按 Vault 权限服务判断。
+admin_auth:
+  mode: op
 
 # ----------------------------------------
 # 网页服务器
@@ -15,6 +20,13 @@ web_port: 8080
 ws_port: 8081
 # 显示在网页界面上的服务器名称。
 web_server_prefix: '[ Name ]'
+
+ssl:
+  enabled: false
+  keystore:
+    path: ""
+    password: ""
+    type: PKCS12
 
 # ----------------------------------------
 # 验证与白名单
@@ -129,8 +141,6 @@ mysql:
 authme:
   # 是否启用Authme集成功能
   enabled: true
-  # 是否强制在Web注册时要求输入密码
-  require_password: true
   # 密码正则表达式
   password_regex: "^[a-zA-Z0-9_]{8,26}$"
   database:

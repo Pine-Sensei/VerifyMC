@@ -6,6 +6,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import team.kitemc.verifymc.core.PluginContext;
 import team.kitemc.verifymc.db.AuditRecord;
+import team.kitemc.verifymc.service.VerifyCodeService;
+import team.kitemc.verifymc.util.EmailAddressUtil;
 import team.kitemc.verifymc.web.ApiResponseFactory;
 import team.kitemc.verifymc.web.WebResponseHelper;
 
@@ -37,7 +39,8 @@ public class UserUpdateHandler implements HttpHandler {
         }
 
         String language = req.optString("language", "en");
-        String newEmail = req.optString("email", "");
+        String newEmail = EmailAddressUtil.normalize(req.optString("email", ""));
+        String code = req.optString("code", "").trim();
 
         if (newEmail.isBlank()) {
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
@@ -65,14 +68,28 @@ public class UserUpdateHandler implements HttpHandler {
             return;
         }
 
+        if (ctx.getConfigManager().isEmailAliasLimitEnabled() && EmailAddressUtil.hasAlias(newEmail)) {
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("register.alias_not_allowed", language)));
+            return;
+        }
+
         if (ctx.getConfigManager().isEmailDomainWhitelistEnabled()) {
-            String domain = newEmail.contains("@") ? newEmail.substring(newEmail.indexOf('@') + 1) : "";
+            String domain = EmailAddressUtil.extractDomain(newEmail);
             List<String> whitelist = ctx.getConfigManager().getEmailDomainWhitelist();
             if (!whitelist.contains(domain)) {
                 WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
                         ctx.getMessage("register.domain_not_allowed", language)));
                 return;
             }
+        }
+
+        VerifyCodeService verifyCodeService = ctx.getVerifyCodeService();
+        if (ctx.getConfigManager().isEmailAuthEnabled()
+                && (verifyCodeService == null || !verifyCodeService.checkCode(newEmail, code))) {
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("verify.wrong_code", language)));
+            return;
         }
 
         int maxAccounts = ctx.getConfigManager().getMaxAccountsPerEmail();
@@ -99,7 +116,6 @@ public class UserUpdateHandler implements HttpHandler {
     }
 
     private boolean isValidEmail(String email) {
-        if (email == null || email.isBlank()) return false;
-        return email.matches("^[\\w.+-]+@[\\w.-]+\\.[a-zA-Z]{2,}$");
+        return EmailAddressUtil.isValid(email);
     }
 }

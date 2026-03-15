@@ -46,6 +46,7 @@
               <TableCell>
                 <div class="flex items-center gap-2">
                   <Button
+                    v-if="canChangePassword"
                     @click="showPasswordDialog = true; selectedUser = user; newPassword = ''"
                     :disabled="loading"
                     variant="ghost"
@@ -57,6 +58,7 @@
                     <span class="hidden xl:inline">{{ $t('admin.users.actions.change_password') }}</span>
                   </Button>
                   <Button
+                    v-if="canDeleteUser"
                     @click="showDeleteConfirm(user)"
                     :disabled="loading"
                     variant="ghost"
@@ -68,7 +70,7 @@
                     <span class="hidden xl:inline">{{ $t('admin.users.actions.delete') }}</span>
                   </Button>
                   <Button
-                    v-if="user.status !== 'banned'"
+                    v-if="canBanUser && user.status !== 'banned'"
                     @click="showBanConfirm(user)"
                     :disabled="loading"
                     variant="ghost"
@@ -80,7 +82,7 @@
                     <span class="hidden xl:inline">{{ $t('admin.users.actions.ban') }}</span>
                   </Button>
                   <Button
-                    v-if="user.status === 'banned'"
+                    v-if="canUnbanUser && user.status === 'banned'"
                     @click="showUnbanConfirm(user)"
                     :disabled="loading"
                     variant="ghost"
@@ -115,7 +117,6 @@
       @page-size-change="handlePageSizeChange"
     />
 
-    <!-- Confirm Dialogs -->
     <ConfirmDialog
       :show="showDeleteDialog"
       :title="$t('admin.users.delete_modal.title')"
@@ -149,7 +150,6 @@
       @cancel="showUnbanDialog = false"
     />
 
-    <!-- Password Dialog -->
     <Dialog
       :show="showPasswordDialog"
       :title="$t('admin.users.change_password_modal.title')"
@@ -191,6 +191,8 @@ import {
 import { useNotification } from '@/composables/useNotification'
 import { useAdminUsers } from '@/composables/useAdminUsers'
 import { apiService } from '@/services/api'
+import { sessionService } from '@/services/session'
+import { hasAdminAction } from '@/lib/adminAccess'
 import type { PendingUser } from '@/types'
 import { formatDate, getStatusColors } from '@/lib/utils'
 import Card from '@/components/ui/Card.vue'
@@ -218,6 +220,12 @@ const showUnbanDialog = ref(false)
 const showPasswordDialog = ref(false)
 const selectedUser = ref<PendingUser | null>(null)
 const newPassword = ref('')
+
+const adminActions = computed(() => sessionService.getAdminActions())
+const canChangePassword = computed(() => hasAdminAction(adminActions.value, 'password'))
+const canDeleteUser = computed(() => hasAdminAction(adminActions.value, 'delete'))
+const canBanUser = computed(() => hasAdminAction(adminActions.value, 'ban'))
+const canUnbanUser = computed(() => hasAdminAction(adminActions.value, 'unban'))
 
 const {
   loading: usersLoading,
@@ -282,7 +290,7 @@ const confirmDelete = async () => {
       notifyResult(false, 'admin.users.messages.error', response.message)
     }
   } catch (error) {
-    notification.error(t('admin.users.messages.error'))
+    notification.error(error instanceof Error ? error.message : t('admin.users.messages.error'))
   } finally {
     actionLoading.value = false
     selectedUser.value = null
@@ -305,7 +313,7 @@ const confirmBan = async () => {
       notifyResult(false, 'admin.users.messages.error', response.message)
     }
   } catch (error) {
-    notification.error(t('admin.users.messages.error'))
+    notification.error(error instanceof Error ? error.message : t('admin.users.messages.error'))
   } finally {
     actionLoading.value = false
     selectedUser.value = null
@@ -328,7 +336,7 @@ const confirmUnban = async () => {
       notifyResult(false, 'admin.users.messages.error', response.message)
     }
   } catch (error) {
-    notification.error(t('admin.users.messages.error'))
+    notification.error(error instanceof Error ? error.message : t('admin.users.messages.error'))
   } finally {
     actionLoading.value = false
     selectedUser.value = null
@@ -356,7 +364,7 @@ const confirmChangePassword = async () => {
       notifyResult(false, 'admin.users.messages.error', response.message)
     }
   } catch (error) {
-    notification.error(t('admin.users.messages.error'))
+    notification.error(error instanceof Error ? error.message : t('admin.users.messages.error'))
   } finally {
     actionLoading.value = false
   }

@@ -3,6 +3,7 @@ package team.kitemc.verifymc.web.handler;
 import com.sun.net.httpserver.HttpExchange;
 import team.kitemc.verifymc.core.PluginContext;
 import team.kitemc.verifymc.db.AuditRecord;
+import team.kitemc.verifymc.security.AdminAction;
 import team.kitemc.verifymc.web.ApiResponseFactory;
 import team.kitemc.verifymc.web.WebResponseHelper;
 
@@ -44,12 +45,9 @@ public final class AdminAuthUtil {
      * @return The username of the authenticated admin, or null if validation fails
      * @throws IOException If an I/O error occurs while sending the response
      */
-    public static String requireAdmin(HttpExchange exchange, PluginContext ctx) throws IOException {
+    public static String requireAdmin(HttpExchange exchange, PluginContext ctx, AdminAction action) throws IOException {
         // Step 1: Extract and validate token
-        String token = exchange.getRequestHeaders().getFirst("Authorization");
-        if (token != null && token.startsWith("Bearer ")) {
-            token = token.substring(7);
-        }
+        String token = extractBearerToken(exchange);
 
         // Check if token exists and is valid
         if (token == null || !ctx.getWebAuthHelper().isValidToken(token)) {
@@ -64,8 +62,8 @@ public final class AdminAuthUtil {
             return null;
         }
 
-        // Step 3: Check if user is an admin (OP)
-        if (!ctx.getOpsManager().isOp(username)) {
+        // Step 3: Check if user is authorized for the requested admin action
+        if (!ctx.getAdminAccessManager().canAccess(username, action)) {
             // Get language from Accept-Language header
             String acceptLanguage = exchange.getRequestHeaders().getFirst("Accept-Language");
             String language = (acceptLanguage != null && acceptLanguage.startsWith("zh")) ? "zh" : "en";
@@ -97,10 +95,7 @@ public final class AdminAuthUtil {
      * @throws IOException If an I/O error occurs while sending the response
      */
     public static String getAuthenticatedUser(HttpExchange exchange, PluginContext ctx) throws IOException {
-        String token = exchange.getRequestHeaders().getFirst("Authorization");
-        if (token != null && token.startsWith("Bearer ")) {
-            token = token.substring(7);
-        }
+        String token = extractBearerToken(exchange);
 
         if (token == null || !ctx.getWebAuthHelper().isValidToken(token)) {
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure("Unauthorized"), 401);
@@ -120,10 +115,7 @@ public final class AdminAuthUtil {
      */
     public static String getAuthenticatedUserQuietly(HttpExchange exchange, PluginContext ctx) {
         try {
-            String token = exchange.getRequestHeaders().getFirst("Authorization");
-            if (token != null && token.startsWith("Bearer ")) {
-                token = token.substring(7);
-            }
+            String token = extractBearerToken(exchange);
 
             if (token == null || !ctx.getWebAuthHelper().isValidToken(token)) {
                 return null;
@@ -133,5 +125,13 @@ public final class AdminAuthUtil {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private static String extractBearerToken(HttpExchange exchange) {
+        String token = exchange.getRequestHeaders().getFirst("Authorization");
+        if (token != null && token.startsWith("Bearer ")) {
+            return token.substring(7);
+        }
+        return token;
     }
 }

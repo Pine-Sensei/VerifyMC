@@ -2,13 +2,14 @@ package team.kitemc.verifymc.web.handler;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+import java.io.IOException;
 import org.json.JSONException;
 import org.json.JSONObject;
 import team.kitemc.verifymc.core.PluginContext;
+import team.kitemc.verifymc.service.VerifyCodeService;
+import team.kitemc.verifymc.util.EmailAddressUtil;
 import team.kitemc.verifymc.web.ApiResponseFactory;
 import team.kitemc.verifymc.web.WebResponseHelper;
-
-import java.io.IOException;
 
 /**
  * Sends an email verification code.
@@ -33,18 +34,30 @@ public class VerifyCodeHandler implements HttpHandler {
                     ctx.getMessage("error.invalid_json", "en")), 400);
             return;
         }
-        String email = req.optString("email", "").trim().toLowerCase();
+        String email = EmailAddressUtil.normalize(req.optString("email", ""));
         String language = req.optString("language", "en");
 
-        if (email.isEmpty() || !email.matches("^[\\w.+-]+@[\\w.-]+\\.[a-zA-Z]{2,}$")) {
+        if (!ctx.getConfigManager().isEmailAuthEnabled()) {
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
-                    ctx.getMessage("verify.invalid_email", language)));
+                    ctx.getMessage("email.not_enabled", language)));
+            return;
+        }
+
+        if (!EmailAddressUtil.isValid(email)) {
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("email.invalid_format", language)));
+            return;
+        }
+
+        if (ctx.getConfigManager().isEmailAliasLimitEnabled() && EmailAddressUtil.hasAlias(email)) {
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("register.alias_not_allowed", language)));
             return;
         }
 
         // Check email domain whitelist
         if (ctx.getConfigManager().isEmailDomainWhitelistEnabled()) {
-            String domain = email.contains("@") ? email.substring(email.indexOf('@') + 1) : "";
+            String domain = EmailAddressUtil.extractDomain(email);
             if (!ctx.getConfigManager().getEmailDomainWhitelist().contains(domain)) {
                 WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
                         ctx.getMessage("register.domain_not_allowed", language)));
@@ -52,26 +65,33 @@ public class VerifyCodeHandler implements HttpHandler {
             }
         }
 
-        // Check rate limit
-        if (!ctx.getVerifyCodeService().canSendCode(email)) {
+        if (ctx.getUserDao().countUsersByEmail(email) >= ctx.getConfigManager().getMaxAccountsPerEmail()) {
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
-                    ctx.getMessage("verify.rate_limit", language)));
+                    ctx.getMessage("register.email_limit", language)));
             return;
         }
 
-        // Generate and send code
-        String code = ctx.getVerifyCodeService().generateCode(email);
-        boolean sent = ctx.getMailService().sendVerifyCode(email, code, language);
-
-        if (sent) {
-            // Get remaining cooldown seconds for next send
-            long remainingSeconds = ctx.getVerifyCodeService().getRemainingCooldownSeconds(email);
-            JSONObject response = ApiResponseFactory.success(ctx.getMessage("verify.sent", language));
+        VerifyCodeService.CodeIssueResult issueResult = ctx.getVerifyCodeService().issueCode(email);
+        if (!issueResult.issued()) {
+            long remainingSeconds = issueResult.remainingSeconds();
+            String message = ctx.getMessage("email.rate_limited", language)
+                    .replace("{seconds}", String.valueOf(remainingSeconds));
+            JSONObject response = ApiResponseFactory.failure(message);
             response.put("remainingSeconds", remainingSeconds);
             WebResponseHelper.sendJson(exchange, response);
+            return;
+        }
+
+        boolean sent = ctx.getMailService().sendVerificationCode(email, issueResult.code(), language);
+
+        if (sent) {
+            JSONObject response = ApiResponseFactory.success(ctx.getMessage("email.sent", language));
+            response.put("remainingSeconds", issueResult.remainingSeconds());
+            WebResponseHelper.sendJson(exchange, response);
         } else {
+            ctx.getVerifyCodeService().revokeCode(email);
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
-                    ctx.getMessage("verify.send_failed", language)));
+                    ctx.getMessage("email.failed", language)));
         }
     }
 }

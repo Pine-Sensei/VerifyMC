@@ -15,7 +15,6 @@
       </div>
     </Card>
 
-    <!-- Status Card -->
     <Card class="border-l-4 p-5 flex items-start gap-4" :class="statusCardClass">
       <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" :class="statusIconWrapperClass">
         <Clock v-if="userStatus === 'pending'" class="w-6 h-6" />
@@ -31,7 +30,6 @@
       </div>
     </Card>
 
-    <!-- Profile Form -->
     <Card class="p-6">
       <h3 class="text-lg font-semibold text-white mb-5">{{ $t('dashboard.profile.edit_profile') }}</h3>
 
@@ -45,6 +43,25 @@
           <Label>{{ $t('register.form.email') }}</Label>
           <Input v-model="form.email" :placeholder="$t('register.form.email_placeholder')" :disabled="saving" />
         </div>
+
+        <div v-if="requiresVerificationCode" class="flex flex-col gap-2 md:col-span-2">
+          <Label>{{ $t('register.form.code') }}</Label>
+          <div class="flex flex-col sm:flex-row gap-2">
+            <Input
+              v-model="verificationCode"
+              :placeholder="$t('register.form.code_placeholder')"
+              :disabled="saving"
+            />
+            <Button
+              @click="sendVerificationCode"
+              :disabled="saving || sendingCode || !normalizedFormEmail || cooldownSeconds > 0"
+              variant="secondary"
+              class="whitespace-nowrap"
+            >
+              {{ sendingCode ? $t('register.sending') : cooldownSeconds > 0 ? `${cooldownSeconds}s` : $t('register.sendCode') }}
+            </Button>
+          </div>
+        </div>
       </div>
 
       <div class="mt-5 flex justify-end">
@@ -55,7 +72,6 @@
       </div>
     </Card>
 
-    <!-- Change Password -->
     <Card class="p-6">
       <h3 class="text-lg font-semibold text-white mb-5">{{ $t('dashboard.profile.change_password') }}</h3>
 
@@ -89,7 +105,6 @@
       </div>
     </Card>
 
-    <!-- Discord Status -->
     <Card v-if="discordEnabled" class="p-6">
       <h3 class="text-lg font-semibold text-white mb-5">{{ $t('discord.linked') }}</h3>
       <div class="flex items-center">
@@ -120,7 +135,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, inject } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { User, Clock, CheckCircle, XCircle } from 'lucide-vue-next'
 import { useNotification } from '@/composables/useNotification'
@@ -143,6 +158,10 @@ const rejectReason = ref<string>('')
 const saving = ref(false)
 const changingPassword = ref(false)
 const discordStatus = ref<DiscordStatus | null>(null)
+const sendingCode = ref(false)
+const verificationCode = ref('')
+const cooldownSeconds = ref(0)
+const cooldownTimer = ref<ReturnType<typeof setInterval> | null>(null)
 
 const form = ref({
   email: '',
@@ -154,6 +173,12 @@ const passwordForm = ref({
 })
 
 const discordEnabled = computed(() => config.value?.discord?.enabled)
+const emailVerificationEnabled = computed(() => config.value?.authMethods?.includes('email') ?? false)
+const normalizedCurrentEmail = computed(() => (userInfo.value?.email || '').trim().toLowerCase())
+const normalizedFormEmail = computed(() => form.value.email.trim().toLowerCase())
+const requiresVerificationCode = computed(() => {
+  return emailVerificationEnabled.value && normalizedFormEmail.value !== normalizedCurrentEmail.value
+})
 
 const statusClass = computed(() => {
   const colors = getStatusColors(userStatus.value)
@@ -177,6 +202,20 @@ const loadUserInfo = async () => {
   if (userInfo.value) {
     form.value.email = userInfo.value.email || ''
   }
+}
+
+const startCooldown = (seconds: number) => {
+  cooldownSeconds.value = seconds
+  if (cooldownTimer.value) {
+    clearInterval(cooldownTimer.value)
+  }
+  cooldownTimer.value = setInterval(() => {
+    cooldownSeconds.value -= 1
+    if (cooldownSeconds.value <= 0 && cooldownTimer.value) {
+      clearInterval(cooldownTimer.value)
+      cooldownTimer.value = null
+    }
+  }, 1000)
 }
 
 const loadUserStatus = async () => {
@@ -206,19 +245,58 @@ const loadDiscordStatus = async () => {
   }
 }
 
+const sendVerificationCode = async () => {
+  if (!normalizedFormEmail.value || sendingCode.value || cooldownSeconds.value > 0) {
+    return
+  }
+
+  if (!isValidEmail(normalizedFormEmail.value)) {
+    notification.error(t('register.validation.email_format'))
+    return
+  }
+
+  sendingCode.value = true
+  try {
+    const response = await apiService.sendCode({
+      email: normalizedFormEmail.value,
+      language: locale.value,
+    })
+    if (response.success) {
+      notification.success(t('register.codeSent'))
+      startCooldown(response.remainingSeconds && response.remainingSeconds > 0 ? response.remainingSeconds : 60)
+    } else if (response.remainingSeconds && response.remainingSeconds > 0) {
+      startCooldown(response.remainingSeconds)
+      notification.error(response.message || t('register.sendFailed'))
+    } else {
+      notification.error(response.message || t('register.sendFailed'))
+    }
+  } catch (error) {
+    notification.error(t('register.sendFailed'))
+  } finally {
+    sendingCode.value = false
+  }
+}
+
 const saveProfile = async () => {
+  if (requiresVerificationCode.value && !verificationCode.value.trim()) {
+    notification.error(t('register.validation.code_required'))
+    return
+  }
+
   saving.value = true
   try {
     const response = await apiService.updateUserInfo({
-      email: form.value.email,
+      email: normalizedFormEmail.value,
+      code: requiresVerificationCode.value ? verificationCode.value.trim() : undefined,
       language: locale.value,
     })
     if (response.success) {
       notification.success(t('dashboard.profile.save_success'))
       if (userInfo.value) {
-        userInfo.value.email = form.value.email
+        userInfo.value.email = normalizedFormEmail.value
         sessionService.setUserInfo(userInfo.value)
       }
+      verificationCode.value = ''
     } else {
       notification.error(response.message || t('common.error'))
     }
@@ -274,4 +352,21 @@ onMounted(() => {
     loadDiscordStatus()
   }
 })
+
+watch(normalizedFormEmail, (nextEmail, previousEmail) => {
+  if (nextEmail !== previousEmail) {
+    verificationCode.value = ''
+  }
+})
+
+onUnmounted(() => {
+  if (cooldownTimer.value) {
+    clearInterval(cooldownTimer.value)
+    cooldownTimer.value = null
+  }
+})
+
+const isValidEmail = (email: string) => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
 </script>

@@ -131,7 +131,7 @@ export const useAdminUsers = ({ locale, t, notification }: UseAdminUsersOptions)
     } catch (error) {
       allUsers.value = []
       setPagination({})
-      notifyLoadError(undefined, 'errors.network')
+      notifyLoadError(error instanceof Error ? error.message : undefined, 'errors.network')
     } finally {
       loading.value = false
     }

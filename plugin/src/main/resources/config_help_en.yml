@@ -5,6 +5,11 @@
 language: en
 # Enable detailed console logs for troubleshooting.
 debug: false
+# Unified admin authorization mode for both /vmc admin commands and web admin access.
+# op: require server operator status.
+# permission: require Bukkit permissions for commands and Vault-backed permission lookup for web/offline users.
+admin_auth:
+  mode: op
 
 # ----------------------------------------
 # Web Server
@@ -15,6 +20,16 @@ web_port: 8080
 ws_port: 8081
 # The server name displayed on the web interface.
 web_server_prefix: '[ Name ]'
+# Whether to enable the built-in HTTPS and WSS servers.
+ssl:
+  enabled: false
+  keystore:
+    # Path to the keystore file. Relative paths are resolved from the plugin data folder.
+    path: ""
+    # Password for the keystore and private key.
+    password: ""
+    # Keystore type, for example: PKCS12 or JKS.
+    type: PKCS12
 
 # ----------------------------------------
 # Verification & Whitelist
@@ -129,8 +144,6 @@ mysql:
 authme:
   # Whether to enable Authme integration functionality
   enabled: true
-  # Whether to require password input during web registration
-  require_password: true
   # Password regex pattern
   password_regex: "^[a-zA-Z0-9_]{8,26}$"
   database:

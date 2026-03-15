@@ -307,10 +307,12 @@
   },
   "version": {
     "update_available": "发现新版本",
+    "new_version_detected": "检测到新版本",
     "current_version": "当前版本",
     "latest_version": "最新版本",
     "update_description": "建议更新到最新版本以获得更好的功能和安全性。",
     "remind_later": "稍后提醒",
+    "skip_version": "跳过此版本",
     "download_now": "立即下载",
     "check_failed": "版本检查失败"
   },

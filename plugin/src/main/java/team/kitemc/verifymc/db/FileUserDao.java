@@ -221,15 +221,13 @@ public class FileUserDao implements UserDao {
     }
 
     @Override
-    public boolean registerUser(String username, String email, String status) {
-        return registerUser(username, email, status, null, null, null, null);
+    public boolean registerUser(String username, String email, String status, String password) {
+        return registerUser(username, email, status, password, null, null, null, null);
     }
 
     @Override
-    public boolean registerUser(String username, String email, String status,
-                                Integer questionnaireScore, Boolean questionnairePassed,
-                                String questionnaireReviewSummary, Long questionnaireScoredAt) {
-        debugLog("registerUser called: username=" + username + ", email=" + email + ", status=" + status);
+    public boolean registerUserWithStoredPassword(String username, String email, String status, String storedPassword) {
+        debugLog("registerUserWithStoredPassword called: username=" + username + ", email=" + email + ", status=" + status);
         try {
             String key = username.toLowerCase();
             if (users.containsKey(key)) {
@@ -241,22 +239,17 @@ public class FileUserDao implements UserDao {
             user.put("username", username);
             user.put("email", email);
             user.put("status", status);
+            user.put("password", storedPassword);
             user.put("regTime", System.currentTimeMillis());
-            applyQuestionnaireAuditFields(user, questionnaireScore, questionnairePassed, questionnaireReviewSummary, questionnaireScoredAt);
-            debugLog("Adding user to map: " + user);
+            applyQuestionnaireAuditFields(user, null, null, null, null);
             users.put(key, user);
             saveLater();
-            debugLog("User registration successful");
+            debugLog("User registration with stored password successful");
             return true;
         } catch (Exception e) {
-            debugLog("Exception in registerUser: " + e.getMessage());
+            debugLog("Exception in registerUserWithStoredPassword: " + e.getMessage());
             return false;
         }
-    }
-
-    @Override
-    public boolean registerUser(String username, String email, String status, String password) {
-        return registerUser(username, email, status, password, null, null, null, null);
     }
 
     @Override
@@ -326,6 +319,23 @@ public class FileUserDao implements UserDao {
         user.put("password", PasswordUtil.hash(plainPassword));
         saveLater();
         debugLog("User password updated: " + user.get("username"));
+        return true;
+    }
+
+    @Override
+    public boolean updateUserStoredPassword(String username, String storedPassword) {
+        debugLog("updateUserStoredPassword called: username=" + username);
+        String key = username.toLowerCase();
+        Map<String, Object> user = users.get(key);
+
+        if (user == null) {
+            debugLog("User not found: " + username);
+            return false;
+        }
+
+        user.put("password", storedPassword);
+        saveLater();
+        debugLog("User stored password updated: " + user.get("username"));
         return true;
     }
 

@@ -121,7 +121,7 @@ const announcement = computed(() => {
 })
 
 const isAdminLoggedIn = computed(() => {
-  return sessionService.isAuthenticated()
+  return sessionService.isAdmin()
 })
 
 const secondaryAction = computed(() => {

@@ -1,5 +1,5 @@
 import { sessionService } from '@/services/session'
-import type { PendingUser, ServerStatusData } from '@/types'
+import type { AdminActionKey, PendingUser, ServerStatusData } from '@/types'
 
 const API_BASE = '/api'
 
@@ -19,7 +19,6 @@ export interface ConfigResponse {
   usernameRegex: string
   authme: {
     enabled: boolean
-    requirePassword: boolean
     passwordRegex: string
   }
   captcha?: {
@@ -123,7 +122,7 @@ export interface RegisterRequest {
   email: string
   code?: string
   username: string
-  password?: string
+  password: string
   captchaToken?: string
   captchaAnswer?: string
   language: string
@@ -148,6 +147,8 @@ export interface AdminLoginResponse {
   message: string
   isAdmin?: boolean
   username?: string
+  email?: string
+  adminActions?: AdminActionKey[]
 }
 
 export interface PendingListResponse {
@@ -230,7 +231,7 @@ class ApiService {
       })
 
       // 处理 401/403 认证错误
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 401) {
         sessionService.handleUnauthorized()
         throw new Error('Authentication required')
       }
@@ -498,13 +499,6 @@ class ApiService {
     })
   }
 
-  // AuthMe 同步
-  async syncAuthme(language: string = 'en'): Promise<{ success: boolean; message?: string }> {
-    return this.request<{ success: boolean; message?: string }>('/admin/sync', {
-      method: 'POST',
-      body: JSON.stringify({ language }),
-    })
-  }
   // 获取审计日志
   async getAuditLogs(): Promise<AuditListResponse> {
     return this.request<AuditListResponse>('/admin/audits')
@@ -528,6 +522,7 @@ class ApiService {
   async updateUserInfo(data: {
     email?: string
     language?: string
+    code?: string
   }): Promise<{ success: boolean; message?: string }> {
     return this.request('/user/update', {
       method: 'POST',

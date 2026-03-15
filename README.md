@@ -6,91 +6,167 @@
 
 ## 🚀 Introduction
 
-**VerifyMC** is a powerful whitelist management plugin for Minecraft servers. It supports web-based registration, auto/manual review, banning, theme switching, AuthMe integration, and high customizability, helping you secure and manage your server community with ease.
+**VerifyMC** is a web-first whitelist and registration system for Minecraft servers. It gives players a cleaner application flow and gives server staff a practical dashboard for review, user management, audit records, and day-to-day operations.
+
+It is designed for communities that want something more structured than editing whitelist files by hand, while still remaining simple enough for small private servers.
 
 ---
 
 ## 📝 Key Features
 
-1. 🖥️ **Web Registration & Review**: Players can submit whitelist applications via a web page; admins can review, ban, and manage users online.
-2. 🔒 **Auto/Manual Review**: Supports both automatic approval and manual admin review to fit different server needs.
-3. 🚫 **Ban System**: Ban problematic players to keep your server safe.
-4. 🎨 **GlassX Theme**: Beautiful glassmorphism design with smooth animations and modern UI.
-5. 📨 **Email Verification & Domain Whitelist**: Integrated SMTP email verification, supports email domain whitelist and alias limit.
-6. 🔐 **Self-hosted CAPTCHA**: Built-in graphical CAPTCHA (math/text) - no external services required.
-7. 🎮 **Discord Integration**: OAuth2 Discord account linking with optional/required mode.
-8. 📋 **Registration Questionnaire**: Customizable questionnaire system with multi-language support.
-9. 📧 **User Notifications**: Automatic email notifications for whitelist approval/rejection.
-10. 🌐 **Multi-language Support**: Both web UI and plugin messages support English and Chinese.
-11. ⚙️ **Highly Customizable**: Set max accounts per email, player ID regex, and more.
-12. 🔄 **Auto Update & Backup**: Config files auto-upgrade, with full backup before each update.
-13. 🧩 **Flexible Whitelist Modes**: Supports Bukkit native whitelist sync, plugin self-management, and MySQL storage.
-14. 💾 **MySQL & Data File Storage**: Easily switch between local file and MySQL storage; supports automatic migration.
-15. 📝 **Audit Log Multi-Storage**: Audit logs can be stored in file or MySQL.
-16. 🌍 **Custom Internationalization**: Auto-loads any messages_xx.properties file; users can add any language.
-17. 🔐 **AuthMe Integration**: Seamless integration with AuthMe plugin for password management and auto-registration.
-18. 🎮 **Bedrock Support**: Geyser/Floodgate player prefix support for cross-platform servers.
-19. 🔗 **Proxy Support**: BungeeCord/Velocity proxy plugin for network-level whitelist enforcement.
-20. 🤖 **LLM Essay Scoring**: AI-powered auto-scoring for text questionnaire answers via DeepSeek/Google, with circuit breaker and concurrency control.
-21. 🛠️ **In-Game Commands**: Comprehensive `/vmc` command suite for managing whitelist applications directly in-game.
-22. 🛡️ **Enhanced Security**: SHA-256 + Salt password hashing.
+1. 🖥️ **Web Registration Portal**: Players register from a browser instead of joining blind or sending manual applications.
+2. 🔐 **Flexible Verification Flow**: Combine email verification, self-hosted CAPTCHA, optional Discord linking, and optional questionnaires.
+3. ✅ **Auto or Manual Approval**: Run a lightweight private-server flow or require staff review for every application.
+4. 🎛️ **Admin Dashboard**: Review pending users, manage accounts, inspect audit logs, and check live server status in one place.
+5. 👤 **Player Self-Service Area**: Logged-in players can access their profile and server downloads from the same web UI.
+6. 📦 **Download Center**: Publish modpacks, resource packs, or client files directly from the dashboard.
+7. 🔐 **AuthMe Integration**: Support password collection, synchronization, and admin password changes when AuthMe is part of your stack.
+8. 🌉 **Bedrock Support**: Works with Geyser/Floodgate style Bedrock prefixes for mixed-platform communities.
+9. 🔗 **Proxy Support**: Optional BungeeCord/Velocity plugin can check whitelist status before players enter your network.
+10. 💾 **Flexible Storage**: Store users in local files or MySQL, with audit records available in file or MySQL storage as well.
+11. 🌍 **Multi-language Support**: Web UI, plugin messages, and mail templates support English and Chinese, with custom i18n files supported.
+12. 🤖 **Questionnaire Scoring**: Score text answers through DeepSeek or Google-compatible LLM endpoints, with concurrency and circuit-breaker controls.
+13. 🎨 **Modern GlassX UI**: Clean default frontend with announcements, login, registration, player area, and admin area.
+14. 🛠️ **In-Game Admin Commands**: Use `/vmc` commands for quick review and moderation tasks in-game.
+15. 🛡️ **Security Hardening**: Includes rate limits, audit trails, hashed passwords, and safer config validation.
 
 ---
 
-## 🖼️ Screenshots (GlassX Theme)
+## 🖼️ Interface Overview
 
-### Home Page
-
-![Home GlassX](docs/screenshot-home-glassx.png)
-
-### Registration Page
-
-![Registration GlassX](docs/screenshot-register-glassx.png)
-
-### Admin Panel
-
-![Admin GlassX](docs/screenshot-admin-glassx.png)
+- **Home page**: branding and announcement entry point for new players.
+- **Register page**: username, email/CAPTCHA, optional password, optional questionnaire, and optional Discord flow.
+- **Player dashboard**: profile area and download center.
+- **Admin dashboard**: pending reviews, user management, audit log, and server status.
+- **Screenshots**: the latest screenshots are maintained in the official documentation so the repository can stay lightweight.
 
 ---
 
-## 🛠️ Tech Stack
+## ⚙️ What You Configure
 
-- Java (Bukkit/Spigot/Paper/Folia plugin)
-- Frontend: Vue3 + Tailwind CSS (custom themes supported)
-- WebSocket real-time communication
-- Email service: SMTP
+- `config.yml`: authentication methods, whitelist mode, SMTP, theme, storage, Discord, downloads, and Bedrock settings.
+- `questionnaire.yml`: question list, answer types (`single_choice`, `multiple_choice`, `text`), pass score, and text scoring rules.
+- `plugin-proxy/config.yml`: backend URL, registration URL, kick message, cache, and language when using the proxy plugin.
 
 ---
 
 ## 📦 Installation & Configuration
 
-1. Download the latest `VerifyMC.jar` and place it in your server's `plugins` directory.
-2. Start the server to auto-generate config files, then edit `config.yml` as needed (see full example below).
-3. Restart the server and visit `http://your_server_ip:8080` to access the admin panel.
+1. Download the latest `VerifyMC.jar` release and place it in your server `plugins` directory.
+2. Start the server once to generate `config.yml`, language files, email templates, and `questionnaire.yml`.
+3. Edit `config.yml` based on your registration flow. If you do not use AuthMe, set `authme.enabled: false`.
+4. Restart the server and open `http://your-server-ip:8080`.
+5. Register the first account from the web page, then choose an admin auth mode in `config.yml`.
+6. If `admin_auth.mode: op`, grant yourself OP to use both the admin dashboard and in-game admin actions.
+7. If `admin_auth.mode: permission`, grant `verifymc.admin` or the specific `verifymc.admin.*` nodes you need. For web admin permission checks on offline users, install Vault and a Vault-compatible permissions plugin.
 
 ### ✅ Recommended Minimum Environment
 
 - Java 17+
 - Bukkit/Spigot/Paper/Folia 1.20+
-- A public domain with HTTPS enabled (recommended for production)
-- SMTP mailbox account (required when using `email` verification)
+- A public HTTPS domain is recommended for production use
+- An SMTP account is only required when `email` verification is enabled
+- MySQL is only required when you choose `storage: mysql`
 
 ### ⚡ 5-Minute Quick Start
 
-1. Set `auth_methods: [captcha]` in `config.yml` (fastest setup, no SMTP required).
+1. Set `auth_methods: [captcha]` in `config.yml` for the fastest setup.
 2. Set `whitelist_mode: plugin` and `web_register_url: https://your-domain.com/`.
-3. Register an account via the web page, then grant yourself OP (`op <username>`) to access the admin panel.
-4. (Optional) Enable `register.auto_approve: true` for small private servers.
-5. Restart the server and open `http://your_server_ip:8080`.
+3. If you do not use AuthMe, set `authme.enabled: false`.
+4. Start or restart the server.
+5. Open `http://your-server-ip:8080`, register an account, and grant that account OP to access the admin dashboard.
+6. Optional: enable `register.auto_approve: true` for a small private community.
+
+### 🌍 Common Deployment Modes
+
+- **Single server**: the main plugin serves the frontend itself. This is the easiest setup and works for most servers.
+- **Proxy network**: keep the main plugin on your backend Paper/Folia server and install the optional proxy plugin on Waterfall or Velocity for network-level enforcement.
+
+
+### 🔗 Using the Proxy Plugin
+
+If you want whitelist enforcement before players enter a proxy network:
+
+1. Keep the main VerifyMC plugin running on your backend Bukkit/Paper/Folia server.
+2. Install the proxy plugin on Waterfall or Velocity.
+3. In `plugin-proxy/config.yml`, set `backend_url` to the backend VerifyMC web address such as `http://backend-host:8080`.
+4. Do not append `/api` to `backend_url`; the proxy plugin adds the API path itself.
+5. Set `register_url` to the public page players should open when they are not approved yet.
+
+### 🛠️ Common `/vmc` Commands
+
+- `/vmc reload`: reload plugin configuration and language cache.
+- `/vmc approve <username>`: approve a pending user.
+- `/vmc reject <username> [reason]`: reject a user with an optional reason.
+- `/vmc ban <username> [reason]`: ban a user and remove them from whitelist access.
+- `/vmc unban <username>`: restore a banned user.
+- `/vmc delete <username>`: remove a user record.
+- `/vmc list [all|pending|approved|rejected|banned]`: list users by status.
+- `/vmc info <username>`: inspect a single user.
+- `/vmc version`: show the current plugin version.
+
+### 🔐 Permission Nodes
+
+- `verifymc.use`: access the base `/vmc` command and `/vmc version`.
+- `verifymc.admin`: grants every admin subcommand below.
+- `verifymc.admin.reload`: allow `/vmc reload`.
+- `verifymc.admin.approve`: allow `/vmc approve`.
+- `verifymc.admin.reject`: allow `/vmc reject`.
+- `verifymc.admin.delete`: allow `/vmc delete`.
+- `verifymc.admin.ban`: allow `/vmc ban`.
+- `verifymc.admin.unban`: allow `/vmc unban`.
+- `verifymc.admin.list`: allow `/vmc list`.
+- `verifymc.admin.info`: allow `/vmc info`.
+- `verifymc.admin.audit`: allow viewing admin audit logs in the web dashboard.
+- `verifymc.admin.sync`: allow triggering admin sync actions from the web dashboard.
+- `verifymc.admin.password`: allow changing user passwords from the web dashboard.
+
+### ⚙️ Admin Auth Mode
+
+- `admin_auth.mode: op`: both `/vmc` admin actions and web admin access are decided by operator status.
+- `admin_auth.mode: permission`: both `/vmc` admin actions and web admin access are decided by permission nodes.
+- In `permission` mode, command checks use Bukkit permissions directly.
+- In `permission` mode, web checks for offline users require Vault plus a Vault-compatible permissions plugin. Online users can still be resolved directly through Bukkit.
 
 ### 🧪 Build from Source
+
+Most server owners can use the release files directly. Build from source only if you want to customize or self-package the project.
+
+Build the frontend:
+
+```bash
+cd frontend/glassx
+npm ci
+npm run build
+```
+
+Optional frontend checks:
+
+```bash
+cd frontend/glassx
+npm run type-check
+npm run test
+```
+
+Build the main plugin:
 
 ```bash
 cd plugin
 mvn clean package
 ```
 
-Output jar: `plugin/target/verifymc-1.7.1.jar`
+Build the proxy plugin:
+
+```bash
+cd plugin-proxy
+mvn clean package
+```
+
+Build outputs:
+
+- Main plugin jar: `plugin/target/verifymc-1.7.1.jar`
+- Proxy plugin jar: `plugin-proxy/target/verifymc-proxy-1.7.1.jar`
+- Frontend bundle: `frontend/glassx/dist/`
 
 ---
 

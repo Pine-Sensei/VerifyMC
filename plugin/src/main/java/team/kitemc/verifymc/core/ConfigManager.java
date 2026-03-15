@@ -2,7 +2,10 @@ package team.kitemc.verifymc.core;
 
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
+import team.kitemc.verifymc.security.AdminAuthMode;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -35,6 +38,13 @@ public class ConfigManager {
      * Validates configuration values and logs warnings for invalid settings.
      */
     private void validateConfig() {
+        String adminAuthMode = getConfig().getString("admin_auth.mode", "op");
+        if (!"op".equalsIgnoreCase(adminAuthMode) && !"permission".equalsIgnoreCase(adminAuthMode)) {
+            plugin.getLogger().log(Level.WARNING,
+                "Invalid admin_auth.mode: {0}. Must be one of: op, permission. Using default ''op''.",
+                adminAuthMode);
+        }
+
         // Validate web port
         int webPort = getWebPort();
         if (webPort < MIN_PORT || webPort > MAX_PORT) {
@@ -49,6 +59,18 @@ public class ConfigManager {
             plugin.getLogger().log(Level.WARNING,
                 "Invalid ws_port: {0}. Must be between {1} and {2}. Using default 8081.",
                 new Object[]{wsPort, MIN_PORT, MAX_PORT});
+        }
+
+        if (isSslEnabled()) {
+            validateSslKeystorePath();
+
+            if (getSslKeystoreType().isEmpty()) {
+                plugin.getLogger().warning("SSL is enabled but ssl.keystore.type is empty. Using default PKCS12.");
+            }
+
+            if (getSslKeystorePassword().isEmpty()) {
+                plugin.getLogger().warning("SSL is enabled and ssl.keystore.password is empty. Make sure the keystore intentionally uses an empty password.");
+            }
         }
 
         // Validate storage type
@@ -85,6 +107,14 @@ public class ConfigManager {
         return getConfig().getBoolean("debug", false);
     }
 
+    public AdminAuthMode getAdminAuthMode() {
+        return AdminAuthMode.fromConfig(getConfig().getString("admin_auth.mode", "op"));
+    }
+
+    public boolean isAdminAuthByPermission() {
+        return getAdminAuthMode() == AdminAuthMode.PERMISSION;
+    }
+
     public String getStorageType() {
         return getConfig().getString("storage", "file");
     }
@@ -106,6 +136,36 @@ public class ConfigManager {
 
     public String getWebServerPrefix() {
         return getConfig().getString("web_server_prefix", "[VerifyMC]");
+    }
+
+    public boolean isSslEnabled() {
+        return getConfig().getBoolean("ssl.enabled", false);
+    }
+
+    public String getSslKeystorePath() {
+        return getConfig().getString("ssl.keystore.path", "").trim();
+    }
+
+    public String getSslKeystorePassword() {
+        return getConfig().getString("ssl.keystore.password", "");
+    }
+
+    public String getSslKeystoreType() {
+        return getConfig().getString("ssl.keystore.type", "PKCS12").trim();
+    }
+
+    public Path resolveSslKeystorePath() throws IOException {
+        return team.kitemc.verifymc.web.ServerSslContextFactory.resolveKeystorePath(
+                plugin.getDataFolder().toPath(),
+                getSslKeystorePath());
+    }
+
+    private void validateSslKeystorePath() {
+        try {
+            resolveSslKeystorePath();
+        } catch (IOException e) {
+            plugin.getLogger().log(Level.WARNING, "SSL is enabled but {0}", e.getMessage());
+        }
     }
 
     // --- Frontend ---
@@ -183,10 +243,6 @@ public class ConfigManager {
     // --- AuthMe ---
     public boolean isAuthmeEnabled() {
         return getConfig().getBoolean("authme.enabled", false);
-    }
-
-    public boolean isAuthmePasswordRequired() {
-        return getConfig().getBoolean("authme.require_password", false);
     }
 
     public String getAuthmePasswordRegex() {

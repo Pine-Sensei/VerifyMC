@@ -6,6 +6,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import team.kitemc.verifymc.core.PluginContext;
 import team.kitemc.verifymc.db.AuditRecord;
+import team.kitemc.verifymc.security.AdminAction;
 import team.kitemc.verifymc.web.ApiResponseFactory;
 import team.kitemc.verifymc.web.WebResponseHelper;
 
@@ -26,7 +27,7 @@ public class AdminUserPasswordHandler implements HttpHandler {
         if (!WebResponseHelper.requireMethod(exchange, "POST")) return;
 
         // Require admin privileges and get operator username
-        String operator = AdminAuthUtil.requireAdmin(exchange, ctx);
+        String operator = AdminAuthUtil.requireAdmin(exchange, ctx, AdminAction.PASSWORD);
         if (operator == null) return;
 
         JSONObject req;
@@ -50,7 +51,7 @@ public class AdminUserPasswordHandler implements HttpHandler {
         boolean ok = ctx.getUserDao().updatePassword(target, password);
 
         if (ok && ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {
-            ctx.getAuthmeService().changePassword(target, password);
+            ctx.getAuthmeService().syncUserPasswordToAuthme(target, password);
         }
 
         if (ok) {

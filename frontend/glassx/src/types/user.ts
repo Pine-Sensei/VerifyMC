@@ -1,7 +1,22 @@
+export type AdminActionKey =
+  | 'reload'
+  | 'approve'
+  | 'reject'
+  | 'delete'
+  | 'ban'
+  | 'unban'
+  | 'list'
+  | 'info'
+  | 'audit'
+  | 'sync'
+  | 'password'
+  | 'unlink'
+
 export interface UserInfo {
   username: string
   email?: string
   isAdmin?: boolean
+  adminActions?: AdminActionKey[]
 }
 
 export type UserStatusType = 'pending' | 'approved' | 'rejected'
