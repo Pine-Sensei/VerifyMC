@@ -1,6 +1,6 @@
 name: VerifyMC
 main: team.kitemc.verifymc.VerifyMC
-version: 1.7.1
+version: ${project.version}
 author: KiteMC
 folia-supported: true
 softdepend: [Vault]

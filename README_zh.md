@@ -164,8 +164,8 @@ mvn clean package
 
 构建产物：
 
-- 主插件 jar：`plugin/target/verifymc-1.7.1.jar`
-- 代理插件 jar：`plugin-proxy/target/verifymc-proxy-1.7.1.jar`
+- 主插件 jar：`plugin/target/verifymc-1.7.5.jar`
+- 代理插件 jar：`plugin-proxy/target/verifymc-proxy-1.7.5.jar`
 - 前端静态文件：`frontend/glassx/dist/`
 
 ---

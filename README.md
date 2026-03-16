@@ -164,8 +164,8 @@ mvn clean package
 
 Build outputs:
 
-- Main plugin jar: `plugin/target/verifymc-1.7.1.jar`
-- Proxy plugin jar: `plugin-proxy/target/verifymc-proxy-1.7.1.jar`
+- Main plugin jar: `plugin/target/verifymc-1.7.5.jar`
+- Proxy plugin jar: `plugin-proxy/target/verifymc-proxy-1.7.5.jar`
 - Frontend bundle: `frontend/glassx/dist/`
 
 ---

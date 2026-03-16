@@ -29,6 +29,9 @@ jobs:
           awk '/release_notes:/,0' version.yml | sed '1d' >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
+      - name: Sync project versions from version.yml
+        run: pwsh -File scripts/sync-version.ps1
+
       # ========== Frontend Build ==========
       - name: Cache Node modules
         uses: actions/cache@v3
