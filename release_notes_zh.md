@@ -4,7 +4,6 @@
 
 ## 版本管理优化
 
-- 统一 `version.yml` 为唯一版本来源，新增 `scripts/sync-version.ps1` 让本地和 CI 都能同步插件、代理、前端和文档里的版本号。
 - 主插件、代理的 `plugin.yml`/`bungee.yml` 改为 `${project.version}` 注入，Velocity 插件通过生成的 `BuildConstants.VERSION` 获取版本，彻底移除硬编码字符串。
 - GitHub Actions 构建前会运行同步脚本，确保生成的 jar、发布说明和 README 中的构建产物示例都与当前版本一致。
 
