@@ -10,6 +10,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
     private final String jdbcUrl;
     private final String jdbcUser;
     private final String jdbcPassword;
+    @SuppressWarnings("unused")
     private final ResourceBundle messages;
     private final boolean debug;
     private final Plugin plugin;
@@ -140,49 +141,34 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
     }
 
     @Override
-    public boolean registerUser(String username, String email, String status) {
-        return registerUser(username, email, status, null, null, null, null);
+    public boolean registerUser(String username, String email, String status, String password) {
+        return registerUser(username, email, status, password, null, null, null, null);
     }
 
     @Override
-    public boolean registerUser(String username, String email, String status,
-            Integer questionnaireScore, Boolean questionnairePassed,
-            String questionnaireReviewSummary, Long questionnaireScoredAt) {
-        String sql = "INSERT IGNORE INTO users (username, email, status, regTime, questionnaire_score, questionnaire_passed, questionnaire_review_summary, questionnaire_scored_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    public boolean registerUserWithStoredPassword(String username, String email, String status, String storedPassword) {
+        String sql = "INSERT IGNORE INTO users (username, email, status, password, regTime, questionnaire_score, questionnaire_passed, questionnaire_review_summary, questionnaire_scored_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, username);
             ps.setString(2, email);
             ps.setString(3, status);
-            ps.setLong(4, System.currentTimeMillis());
-            if (questionnaireScore != null)
-                ps.setInt(5, questionnaireScore);
-            else
-                ps.setNull(5, Types.INTEGER);
-            if (questionnairePassed != null)
-                ps.setBoolean(6, questionnairePassed);
-            else
-                ps.setNull(6, Types.BOOLEAN);
-            ps.setString(7, questionnaireReviewSummary);
-            if (questionnaireScoredAt != null)
-                ps.setLong(8, questionnaireScoredAt);
-            else
-                ps.setNull(8, Types.BIGINT);
+            ps.setString(4, storedPassword);
+            ps.setLong(5, System.currentTimeMillis());
+            ps.setNull(6, Types.INTEGER);
+            ps.setNull(7, Types.BOOLEAN);
+            ps.setString(8, null);
+            ps.setNull(9, Types.BIGINT);
             int rows = ps.executeUpdate();
             if (rows == 0) {
-                debugLog("User already exists with username: " + username + ", skipping registration");
+                debugLog("User already exists with username: " + username + ", skipping stored-password registration");
                 return false;
             }
-            debugLog("User registered: " + username);
+            debugLog("User registered with stored password: " + username);
             return true;
         } catch (SQLException e) {
-            debugLog("Error registering user: " + e.getMessage());
+            debugLog("Error registering user with stored password: " + e.getMessage());
             return false;
         }
-    }
-
-    @Override
-    public boolean registerUser(String username, String email, String status, String password) {
-        return registerUser(username, email, status, password, null, null, null, null);
     }
 
     @Override
@@ -248,6 +234,21 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
             return rows > 0;
         } catch (SQLException e) {
             debugLog("Error updating user password: " + e.getMessage());
+            return false;
+        }
+    }
+
+    @Override
+    public boolean updateUserStoredPassword(String username, String storedPassword) {
+        String sql = "UPDATE users SET password=? WHERE username=?";
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
+            ps.setString(1, storedPassword);
+            ps.setString(2, username);
+            int rows = ps.executeUpdate();
+            debugLog("User stored password updated: " + username);
+            return rows > 0;
+        } catch (SQLException e) {
+            debugLog("Error updating stored user password: " + e.getMessage());
             return false;
         }
     }

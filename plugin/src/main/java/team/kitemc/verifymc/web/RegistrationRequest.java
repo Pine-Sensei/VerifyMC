@@ -1,7 +1,8 @@
 package team.kitemc.verifymc.web;
 
-import org.json.JSONObject;
 import java.util.function.BiFunction;
+import org.json.JSONObject;
+import team.kitemc.verifymc.util.EmailAddressUtil;
 
 public record RegistrationRequest(
         String email,
@@ -16,7 +17,7 @@ public record RegistrationRequest(
         JSONObject questionnaire
 ) {
     public static RegistrationRequest fromJson(JSONObject req, BiFunction<String, String, String> usernameNormalizer) {
-        String email = req.optString("email", "").trim().toLowerCase();
+        String email = EmailAddressUtil.normalize(req.optString("email", ""));
         String code = req.optString("code");
         String username = req.optString("username");
         String password = req.optString("password", "");

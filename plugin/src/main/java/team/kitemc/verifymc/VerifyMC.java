@@ -1,6 +1,5 @@
 package team.kitemc.verifymc;
 
-import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import team.kitemc.verifymc.core.ConfigManager;
 import team.kitemc.verifymc.core.OpsManager;
@@ -9,15 +8,19 @@ import team.kitemc.verifymc.db.*;
 import team.kitemc.verifymc.listener.PlayerLoginListener;
 import team.kitemc.verifymc.command.VmcCommandExecutor;
 import team.kitemc.verifymc.mail.MailService;
-import team.kitemc.verifymc.registration.RegistrationOutcomeResolver;
 import team.kitemc.verifymc.service.*;
 import team.kitemc.verifymc.web.ReviewWebSocketServer;
+import team.kitemc.verifymc.web.ServerSslContextFactory;
 import team.kitemc.verifymc.web.WebAuthHelper;
 import team.kitemc.verifymc.web.WebServer;
 
 import java.io.File;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import javax.net.ssl.SSLContext;
 import java.util.logging.Logger;
+import team.kitemc.verifymc.util.FoliaCompat;
 
 /**
  * VerifyMC plugin entrypoint — refactored from the 878-line god class
@@ -34,6 +37,7 @@ public class VerifyMC extends JavaPlugin {
     private WebServer webServer;
     private ReviewWebSocketServer wsServer;
     private Metrics metrics;
+    private final List<Object> scheduledTasks = new ArrayList<>();
 
     @Override
     public void onEnable() {
@@ -101,6 +105,7 @@ public class VerifyMC extends JavaPlugin {
 
         // Stop service cleanup threads
         if (context != null) {
+            FoliaCompat.cancelTasks(this, scheduledTasks);
             if (context.getWebAuthHelper() != null) {
                 context.getWebAuthHelper().stopTokenCleanupTask();
             }
@@ -110,6 +115,7 @@ public class VerifyMC extends JavaPlugin {
             if (context.getCaptchaService() != null) {
                 context.getCaptchaService().stop();
             }
+            context.shutdown();
         }
 
         // Save and close data access layer
@@ -169,7 +175,6 @@ public class VerifyMC extends JavaPlugin {
 
         // Verify code service
         context.setVerifyCodeService(new VerifyCodeService(this));
-
         // AuthMe service
         AuthmeService authmeService = new AuthmeService(this);
         authmeService.setUserDao(context.getUserDao());
@@ -183,9 +188,9 @@ public class VerifyMC extends JavaPlugin {
             // Schedule periodic sync
             int syncInterval = config.getAuthmeSyncInterval();
             if (syncInterval > 0) {
-                Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
+                scheduledTasks.add(FoliaCompat.runTaskTimerAsync(this, () -> {
                     authmeService.syncApprovedUsers();
-                }, syncInterval * 20L, syncInterval * 20L);
+                }, syncInterval * 20L, syncInterval * 20L));
                 log.info("[VerifyMC] AuthMe periodic sync scheduled every " + syncInterval + " seconds.");
             }
         }
@@ -220,19 +225,34 @@ public class VerifyMC extends JavaPlugin {
     }
 
     private void initWebLayer(Logger log) {
+        SSLContext sslContext = null;
+        if (context.getConfigManager().isSslEnabled()) {
+            try {
+                sslContext = ServerSslContextFactory.create(context.getConfigManager());
+                log.info("[VerifyMC] SSL context loaded successfully.");
+            } catch (Exception e) {
+                log.severe("[VerifyMC] Failed to initialize SSL. Web layer will remain disabled: " + e.getMessage());
+                return;
+            }
+        }
+
         // WebSocket server for review notifications
         int wsPort = context.getConfigManager().getWsPort();
         try {
             wsServer = new ReviewWebSocketServer(wsPort, context);
+            if (sslContext != null) {
+                wsServer.enableSsl(sslContext);
+            }
             wsServer.start();
             context.setWsServer(wsServer);
-            log.info("[VerifyMC] WebSocket server started on port " + wsPort);
+            String protocol = sslContext != null ? "WSS" : "WS";
+            log.info("[VerifyMC] " + protocol + " WebSocket server started on port " + wsPort);
         } catch (Exception e) {
             log.warning("[VerifyMC] WebSocket server failed to start: " + e.getMessage());
         }
 
         // HTTP server
-        webServer = new WebServer(context);
+        webServer = new WebServer(context, sslContext);
         webServer.start();
     }
 

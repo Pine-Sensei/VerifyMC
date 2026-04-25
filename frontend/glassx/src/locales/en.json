@@ -313,10 +313,12 @@
   },
   "version": {
     "update_available": "New Version Available",
+    "new_version_detected": "New version detected",
     "current_version": "Current Version",
     "latest_version": "Latest Version",
     "update_description": "We recommend updating to the latest version for better features and security.",
     "remind_later": "Remind Later",
+    "skip_version": "Skip This Version",
     "download_now": "Download Now",
     "check_failed": "Version check failed"
   },

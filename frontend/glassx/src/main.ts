@@ -2,11 +2,8 @@ import { createApp, provide, ref, h } from 'vue'
 import App from './App.vue'
 import router from './router'
 import i18n from './i18n'
+import { apiService, type ConfigResponse } from './services/api'
 import './index.css'
-
-interface RuntimeConfig {
-  wsPort?: number
-}
 
 // 全局错误处理
 window.addEventListener('error', (event) => {
@@ -19,16 +16,11 @@ window.addEventListener('unhandledrejection', (event) => {
 
 const app = createApp({
   setup() {
-    const config = ref<RuntimeConfig>({});
+    const config = ref<ConfigResponse>({} as ConfigResponse);
     
     const loadConfig = async () => {
       try {
-        const response = await fetch('/api/config');
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        config.value = data.config || data;
+        config.value = await apiService.getConfig();
       } catch (error) {
         console.error('Failed to load config:', error);
       }
@@ -40,23 +32,8 @@ const app = createApp({
       }
       return window.location.port ? (parseInt(window.location.port, 10) + 1) : 8081
     }
-
-    const reloadConfig = async (): Promise<boolean> => {
-      try {
-        const response = await fetch('/api/reload-config', { method: 'POST' });
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        await loadConfig();
-        return true;
-      } catch (error) {
-        console.error('Failed to reload config:', error);
-        return false;
-      }
-    };
     
     provide('config', config);
-    provide('reloadConfig', reloadConfig);
     provide('getWsPort', getWsPort);
     
     // 初始加载配置
@@ -68,4 +45,4 @@ const app = createApp({
 app.use(router)
 app.use(i18n)
 
-app.mount('#app') 
+app.mount('#app')

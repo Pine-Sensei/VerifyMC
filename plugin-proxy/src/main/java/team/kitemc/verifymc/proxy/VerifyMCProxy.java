@@ -130,6 +130,7 @@ public class VerifyMCProxy extends Plugin implements Listener {
      * Check if player is registered in VerifyMC backend
      */
     @EventHandler(priority = EventPriority.HIGHEST)
+    @SuppressWarnings("deprecation")
     public void onPreLogin(PreLoginEvent event) {
         if (event.isCancelled()) {
             return;

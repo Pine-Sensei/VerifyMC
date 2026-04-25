@@ -37,6 +37,7 @@
 import { ref, computed, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useWebSocket } from '@/composables/useWebSocket'
+import { buildRuntimeWebSocketUrl } from '@/services/runtime'
 import Button from '@/components/ui/Button.vue'
 import VersionUpdateNotification from '@/components/ui/VersionUpdateNotification.vue'
 import UserList from './users/UserList.vue'
@@ -59,12 +60,7 @@ const activeComponent = computed(() => {
 
 const getWsPort = inject<() => number>('getWsPort', () => window.location.port ? (parseInt(window.location.port, 10) + 1) : 8081)
 
-const getWsUrl = () => {
-  const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-  const wsHost = window.location.hostname
-  const wsPort = getWsPort()
-  return `${wsProtocol}://${wsHost}:${wsPort}`
-}
+const getWsUrl = () => buildRuntimeWebSocketUrl(getWsPort())
 
 const handleWsMessage = () => {
   // Refresh the current active component if it has the method

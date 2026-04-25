@@ -1,12 +1,18 @@
 import { defineConfig } from "vite"
 import vue from "@vitejs/plugin-vue"
 import { resolve } from "path"
+import { readFileSync } from "fs"
+
+const packageJson = JSON.parse(
+  readFileSync(resolve(__dirname, "package.json"), "utf-8")
+) as { version?: string }
 
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(packageJson.version ?? "0.0.0"),
+  },
   plugins: [
     vue({
-      // Enable performance optimizations
-      reactivityTransform: true,
       template: {
         compilerOptions: {
           // Enable hoisting for better performance
@@ -41,8 +47,9 @@ export default defineConfig({
         },
         // Optimize asset naming
         assetFileNames: (assetInfo) => {
-          const info = assetInfo.name.split('.')
-          const ext = info[info.length - 1]
+          const name = assetInfo.name ?? ""
+          const info = name.split('.')
+          const ext = info[info.length - 1] ?? ""
           if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
             return `images/[name]-[hash][extname]`
           }

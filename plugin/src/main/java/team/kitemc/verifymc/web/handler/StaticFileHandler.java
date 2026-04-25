@@ -89,6 +89,7 @@ public class StaticFileHandler implements HttpHandler {
     private void serveFile(HttpExchange exchange, File file) throws IOException {
         String contentType = determineContentType(file.getName());
         exchange.getResponseHeaders().set("Content-Type", contentType);
+        exchange.getResponseHeaders().set("Cache-Control", determineCacheControl(file.getName()));
 
         byte[] data = Files.readAllBytes(file.toPath());
         exchange.sendResponseHeaders(200, data.length);
@@ -112,5 +113,13 @@ public class StaticFileHandler implements HttpHandler {
         if (lower.endsWith(".woff2")) return "font/woff2";
         if (lower.endsWith(".ttf")) return "font/ttf";
         return "application/octet-stream";
+    }
+
+    private String determineCacheControl(String fileName) {
+        String lower = fileName.toLowerCase();
+        if (lower.endsWith(".html")) {
+            return "no-cache";
+        }
+        return "public, max-age=31536000, immutable";
     }
 }

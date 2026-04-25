@@ -1,7 +1,6 @@
 import { sessionService } from '@/services/session'
+import { buildApiUrl } from '@/services/runtime'
 import type { PendingUser, ServerStatusData } from '@/types'
-
-const API_BASE = '/api'
 
 export interface ApiResponse<T = unknown> {
   success: boolean
@@ -19,7 +18,6 @@ export interface ConfigResponse {
   usernameRegex: string
   authme: {
     enabled: boolean
-    requirePassword: boolean
     passwordRegex: string
   }
   captcha?: {
@@ -123,7 +121,7 @@ export interface RegisterRequest {
   email: string
   code?: string
   username: string
-  password?: string
+  password: string
   captchaToken?: string
   captchaAnswer?: string
   language: string
@@ -218,7 +216,7 @@ class ApiService {
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${API_BASE}${endpoint}`
+    const url = buildApiUrl(endpoint)
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 30000)
 
@@ -230,7 +228,7 @@ class ApiService {
       })
 
       // 处理 401/403 认证错误
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 401) {
         sessionService.handleUnauthorized()
         throw new Error('Authentication required')
       }
@@ -442,12 +440,6 @@ class ApiService {
     })
   }
 
-  // 检查认证状态
-  isAuthenticated(): boolean {
-    const token = sessionService.getToken()
-    return token !== null
-  }
-
   // 登出
   logout(): void {
     sessionService.clearToken()
@@ -498,13 +490,6 @@ class ApiService {
     })
   }
 
-  // AuthMe 同步
-  async syncAuthme(language: string = 'en'): Promise<{ success: boolean; message?: string }> {
-    return this.request<{ success: boolean; message?: string }>('/admin/sync', {
-      method: 'POST',
-      body: JSON.stringify({ language }),
-    })
-  }
   // 获取审计日志
   async getAuditLogs(): Promise<AuditListResponse> {
     return this.request<AuditListResponse>('/admin/audits')

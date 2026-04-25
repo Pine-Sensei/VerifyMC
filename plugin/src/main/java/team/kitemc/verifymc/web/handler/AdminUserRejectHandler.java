@@ -6,6 +6,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import team.kitemc.verifymc.core.PluginContext;
 import team.kitemc.verifymc.db.AuditRecord;
+import team.kitemc.verifymc.security.AdminAction;
 import team.kitemc.verifymc.web.ApiResponseFactory;
 import team.kitemc.verifymc.web.WebResponseHelper;
 
@@ -27,7 +28,7 @@ public class AdminUserRejectHandler implements HttpHandler {
         if (!WebResponseHelper.requireMethod(exchange, "POST")) return;
 
         // Require admin privileges and get operator username
-        String operator = AdminAuthUtil.requireAdmin(exchange, ctx);
+        String operator = AdminAuthUtil.requireAdmin(exchange, ctx, AdminAction.REJECT);
         if (operator == null) return;
 
         JSONObject req;

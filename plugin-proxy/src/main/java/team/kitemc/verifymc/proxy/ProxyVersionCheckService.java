@@ -2,8 +2,8 @@ package team.kitemc.verifymc.proxy;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.net.URI;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -81,8 +81,7 @@ public class ProxyVersionCheckService {
         try {
             debugLog("Fetching version from: " + GITHUB_POM_URL);
             
-            URL url = new URL(GITHUB_POM_URL);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            HttpURLConnection connection = (HttpURLConnection) URI.create(GITHUB_POM_URL).toURL().openConnection();
             connection.setRequestMethod("GET");
             connection.setConnectTimeout(TIMEOUT_MS);
             connection.setReadTimeout(TIMEOUT_MS);

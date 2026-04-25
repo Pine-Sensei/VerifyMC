@@ -158,7 +158,7 @@ const loadPendingUsers = async () => {
       notification.error(response.message || t('admin.review.messages.error'))
     }
   } catch (error) {
-    notification.error(t('admin.review.messages.error'))
+    notification.error(error instanceof Error ? error.message : t('admin.review.messages.error'))
   } finally {
     actionLoading.value = false
   }
@@ -204,13 +204,12 @@ const approveUser = async (user: PendingUser) => {
 
     if (response.success) {
       notifyResult(true, 'admin.review.messages.approve_success', response.message)
-      await apiService.syncAuthme(locale.value)
       await loadPendingUsers()
     } else {
       notifyResult(false, 'admin.review.messages.error', response.message)
     }
   } catch (error) {
-    notification.error(t('admin.review.messages.error'))
+    notification.error(error instanceof Error ? error.message : t('admin.review.messages.error'))
   } finally {
     processingUsers.value.delete(user.username)
     actionLoading.value = false
@@ -240,7 +239,7 @@ const confirmReject = async () => {
       notifyResult(false, 'admin.review.messages.error', response.message)
     }
   } catch (error) {
-    notification.error(t('admin.review.messages.error'))
+    notification.error(error instanceof Error ? error.message : t('admin.review.messages.error'))
   } finally {
     rejectDialog.value.processing = false
     if (rejectDialog.value.user?.username) {

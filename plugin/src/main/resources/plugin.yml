@@ -1,17 +1,92 @@
 name: VerifyMC
 main: team.kitemc.verifymc.VerifyMC
-version: 1.7.1
+version: ${project.version}
 author: KiteMC
 folia-supported: true
+softdepend: [Vault]
 commands:
   vmc:
     description: Main command for the whitelist verification system
-    usage: /vmc [help|reload|add|remove|port|sync]
+    usage: /vmc [reload|approve|reject|delete|ban|unban|list|info|version]
     permission: verifymc.use
 permissions:
   verifymc.use:
-    description: Permission to use the VerifyMC plugin
+    description: Permission to access the base /vmc command
     default: true
   verifymc.admin:
-    description: Admin permission
+    description: Grants all VerifyMC admin subcommands
     default: op
+    children:
+      verifymc.use: true
+      verifymc.admin.reload: true
+      verifymc.admin.approve: true
+      verifymc.admin.reject: true
+      verifymc.admin.delete: true
+      verifymc.admin.ban: true
+      verifymc.admin.unban: true
+      verifymc.admin.list: true
+      verifymc.admin.info: true
+      verifymc.admin.audit: true
+      verifymc.admin.sync: true
+      verifymc.admin.password: true
+      verifymc.admin.unlink: true
+  verifymc.admin.reload:
+    description: Permission to reload VerifyMC configuration
+    default: false
+    children:
+      verifymc.use: true
+  verifymc.admin.approve:
+    description: Permission to approve pending users
+    default: false
+    children:
+      verifymc.use: true
+  verifymc.admin.reject:
+    description: Permission to reject users
+    default: false
+    children:
+      verifymc.use: true
+  verifymc.admin.delete:
+    description: Permission to delete user records
+    default: false
+    children:
+      verifymc.use: true
+  verifymc.admin.ban:
+    description: Permission to ban users
+    default: false
+    children:
+      verifymc.use: true
+  verifymc.admin.unban:
+    description: Permission to unban users
+    default: false
+    children:
+      verifymc.use: true
+  verifymc.admin.list:
+    description: Permission to list users by status
+    default: false
+    children:
+      verifymc.use: true
+  verifymc.admin.info:
+    description: Permission to view user details
+    default: false
+    children:
+      verifymc.use: true
+  verifymc.admin.audit:
+    description: Permission to view audit logs
+    default: false
+    children:
+      verifymc.use: true
+  verifymc.admin.sync:
+    description: Permission to trigger admin sync actions
+    default: false
+    children:
+      verifymc.use: true
+  verifymc.admin.password:
+    description: Permission to change user passwords from the admin panel
+    default: false
+    children:
+      verifymc.use: true
+  verifymc.admin.unlink:
+    description: Permission to unlink Discord accounts for other users from the admin panel
+    default: false
+    children:
+      verifymc.use: true

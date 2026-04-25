@@ -79,9 +79,10 @@ public class I18nManager {
 
         // Try loading from JAR
         try {
-            return ResourceBundle.getBundle("i18n.messages", new Locale(language));
+            @SuppressWarnings("deprecation")
+            Locale locale = new Locale(language);
+            return ResourceBundle.getBundle("i18n.messages", locale);
         } catch (Exception e) {
-            // Fallback
             return null;
         }
     }

@@ -1,16 +1,16 @@
 package team.kitemc.verifymc.service;
 
 import org.bukkit.plugin.Plugin;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.json.JSONObject;
 import org.json.JSONArray;
 import team.kitemc.verifymc.db.UserDao;
+import team.kitemc.verifymc.util.FoliaCompat;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -39,6 +39,8 @@ public class DiscordService {
     
     // Token cache (username -> DiscordToken) - temporary cache for active sessions
     private final Map<String, TokenData> tokenCache = new ConcurrentHashMap<>();
+    
+    private Object cleanupTaskHandle;
     
     private static final String DISCORD_API_BASE = "https://discord.com/api/v10";
     private static final String DISCORD_OAUTH_AUTHORIZE = "https://discord.com/oauth2/authorize";
@@ -71,12 +73,7 @@ public class DiscordService {
      * Start periodic cleanup task for expired state tokens and token cache
      */
     private void startCleanupTask() {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                cleanupExpiredTokens();
-            }
-        }.runTaskTimerAsynchronously(plugin, CLEANUP_INTERVAL_TICKS, CLEANUP_INTERVAL_TICKS);
+        cleanupTaskHandle = FoliaCompat.runTaskTimerAsync(plugin, this::cleanupExpiredTokens, CLEANUP_INTERVAL_TICKS, CLEANUP_INTERVAL_TICKS);
         debugLog("Started cleanup task for expired tokens");
     }
     
@@ -257,8 +254,7 @@ public class DiscordService {
      * Exchange authorization code for access token
      */
     private DiscordToken exchangeCodeForToken(String code) throws Exception {
-        URL url = new URL(DISCORD_OAUTH_TOKEN);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        HttpURLConnection conn = (HttpURLConnection) URI.create(DISCORD_OAUTH_TOKEN).toURL().openConnection();
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
         conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
@@ -297,8 +293,7 @@ public class DiscordService {
      */
     private DiscordToken refreshAccessToken(String refreshToken) {
         try {
-            URL url = new URL(DISCORD_OAUTH_TOKEN);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            HttpURLConnection conn = (HttpURLConnection) URI.create(DISCORD_OAUTH_TOKEN).toURL().openConnection();
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);
             conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
@@ -368,8 +363,7 @@ public class DiscordService {
      * Get user info from Discord API
      */
     private DiscordUser getUserInfo(String accessToken) throws Exception {
-        URL url = new URL(DISCORD_API_BASE + "/users/@me");
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        HttpURLConnection conn = (HttpURLConnection) URI.create(DISCORD_API_BASE + "/users/@me").toURL().openConnection();
         conn.setRequestMethod("GET");
         conn.setRequestProperty("Authorization", "Bearer " + accessToken);
         conn.setConnectTimeout(10000);
@@ -396,8 +390,7 @@ public class DiscordService {
      * Check if user is a member of the specified guild
      */
     private boolean checkGuildMembership(String accessToken, String guildId) throws Exception {
-        URL url = new URL(DISCORD_API_BASE + "/users/@me/guilds");
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        HttpURLConnection conn = (HttpURLConnection) URI.create(DISCORD_API_BASE + "/users/@me/guilds").toURL().openConnection();
         conn.setRequestMethod("GET");
         conn.setRequestProperty("Authorization", "Bearer " + accessToken);
         conn.setConnectTimeout(10000);
@@ -644,5 +637,10 @@ public class DiscordService {
             if (user != null) json.put("user", user.toJson());
             return json;
         }
+    }
+    
+    public void stop() {
+        FoliaCompat.cancelTask(cleanupTaskHandle);
+        cleanupTaskHandle = null;
     }
 }

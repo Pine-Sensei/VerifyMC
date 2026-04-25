@@ -16,7 +16,7 @@
               <span class="text-sm font-medium tracking-wide">GitHub</span>
             </a>
             <div class="px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-medium text-white/90">
-              v1.6.6
+              {{ appVersionBadge }}
             </div>
           </div>
         </div>
@@ -84,6 +84,7 @@ import { inject, computed, watch, ref, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { sessionService } from '@/services/session'
 import { LogIn, Settings } from 'lucide-vue-next'
+import { APP_VERSION } from '@/constants/app'
 
 const { t } = useI18n()
 
@@ -139,6 +140,8 @@ const secondaryAction = computed(() => {
 })
 
 // 监听配置变化
+const appVersionBadge = `v${APP_VERSION}`
+
 watch(() => config.value?.webServerPrefix, (newPrefix) => {
   if (newPrefix) {
     // Config loaded

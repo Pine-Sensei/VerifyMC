@@ -2,9 +2,14 @@
 # 全局设置
 # ----------------------------------------
 # 全局语言设置，影响插件消息和网页界面。(例如 'zh', 'en')
-language: zh
+language: en
 # 开启后，控制台会输出详细的日志，用于故障排查。
 debug: false
+# 统一控制 /vmc 管理命令和 Web 管理后台的鉴权方式。
+# op：按服务器 OP 身份判断。
+# permission：命令按 Bukkit 权限判断，Web/离线用户按 Vault 权限服务判断。
+admin_auth:
+  mode: op
 
 # ----------------------------------------
 # 网页服务器
@@ -15,6 +20,17 @@ web_port: 8080
 ws_port: 8081
 # 显示在网页界面上的服务器名称。
 web_server_prefix: '[ Name ]'
+
+ssl:
+  # 是否启用内置 HTTPS 和 WSS 服务。
+  enabled: false
+  keystore:
+    # 密钥库文件路径。相对路径将基于插件数据目录解析。
+    path: ""
+    # 密钥库和私钥的密码。
+    password: ""
+    # 密钥库类型，例如：PKCS12 或 JKS。
+    type: PKCS12
 
 # ----------------------------------------
 # 验证与白名单
@@ -72,6 +88,17 @@ frontend:
   logo_url: /logo.png
   # 显示在主页上的公告信息。
   announcement: 欢迎来到[ Name ]!
+  # 是否由插件自身托管静态前端文件。
+  # 如果你把 frontend/glassx/dist 部署到其他域名，请设为 false。
+  serve_static: true
+  # 允许跨域访问 API 的前端来源列表。
+  # 支持完全匹配，例如: https://your-pages-domain.pages.dev
+  # 也支持子域名通配，例如: https://*.example.com
+  # 所有匹配都会忽略端口；通配仅匹配单层子域名。
+  # 当前端独立部署时，还需要在前端构建时设置 VITE_BOOTSTRAP_API_BASE，
+  # 指向本插件的 HTTP 基址（不要带 /api）。
+  # 留空列表表示允许所有跨域来源。
+  allowed_origins: []
 
 # ----------------------------------------
 # 邮箱 (SMTP)
@@ -122,6 +149,10 @@ mysql:
   database: verifymc
   user: root
   password: yourpassword 
+  # 是否启用与主数据库连接时的 SSL
+  useSSL: true
+  # 是否允许获取 MySQL 公钥（部分 MySQL 8 环境可能需要开启）
+  allowPublicKeyRetrieval: false
 
 # ----------------------------------------
 # Authme集成配置
@@ -129,8 +160,6 @@ mysql:
 authme:
   # 是否启用Authme集成功能
   enabled: true
-  # 是否强制在Web注册时要求输入密码
-  require_password: true
   # 密码正则表达式
   password_regex: "^[a-zA-Z0-9_]{8,26}$"
   database:
@@ -139,7 +168,7 @@ authme:
     # AuthMe 表名
     table: authme
     # 密码格式仅支持 sha256，盐长度固定为 16。如原先不是，请在 AuthMe 中切换（ AuthMe 支持惰性回退）。
-    # 在 Authme 中切换完之后请先直接上游戏登录一次使加密格式惰性回退成 sha265 或者也可以直接在后台重置密码。
+    # 在 AuthMe 中切换后，请先直接进服登录一次以触发惰性回退到 sha256，或者也可以直接在后台重置密码。
     # VerifyMC 与 AuthMe 双向同步间隔（秒）
     sync_interval_seconds: 30
     mysql:
@@ -148,6 +177,10 @@ authme:
       database: authme
       user: root
       password: yourpassword
+      # 是否启用与 AuthMe MySQL 数据库连接时的 SSL
+      useSSL: true
+      # 是否允许获取 MySQL 公钥（部分 MySQL 8 环境可能需要开启）
+      allowPublicKeyRetrieval: false
     sqlite:
       path: plugins/AuthMe/authme.db
     columns:
@@ -212,7 +245,7 @@ bedrock:
   enabled: false
   # 基岩版玩家用户名前缀（Floodgate 常用 "."）
   prefix: "."
-  # 基岩版用户名正则表达式
+  # 基岩版用户名正则表达式，匹配原始用户名本体，不包含自动补充的前缀
   username_regex: "^[a-zA-Z0-9._-]{3,15}$"
 
 # ----------------------------------------

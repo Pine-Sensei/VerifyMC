@@ -5,6 +5,7 @@ import com.sun.net.httpserver.HttpHandler;
 import org.json.JSONException;
 import org.json.JSONObject;
 import team.kitemc.verifymc.core.PluginContext;
+import team.kitemc.verifymc.security.AdminAction;
 import team.kitemc.verifymc.web.ApiResponseFactory;
 import team.kitemc.verifymc.web.WebResponseHelper;
 
@@ -49,10 +50,9 @@ public class DiscordUnlinkHandler implements HttpHandler {
         }
 
         // Step 2: Check authorization - user must be the target user or an admin
-        boolean isAdmin = ctx.getOpsManager().isOp(authenticatedUser);
         boolean isSelf = authenticatedUser.equalsIgnoreCase(targetUsername);
 
-        if (!isSelf && !isAdmin) {
+        if (!isSelf && !ctx.getAdminAccessManager().canAccess(authenticatedUser, AdminAction.UNLINK)) {
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
                     ctx.getMessage("admin.forbidden", language)), 403);
             return;

@@ -43,13 +43,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, inject, defineAsyncComponent, type Ref } from 'vue'
+import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { sessionService } from '@/services/session'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar.vue'
-import type { AppConfig, UserInfo } from '@/types'
+import type { UserInfo } from '@/types'
 import { getPlayerMenuItems, getAdminMenuItems } from '@/config/menu'
 import { useSidebar } from '@/composables/useSidebar'
 
@@ -62,13 +62,11 @@ const AuditLog = defineAsyncComponent(() => import('@/components/dashboard/Audit
 
 const { t } = useI18n()
 const router = useRouter()
-const config = inject<Ref<AppConfig>>('config', ref({}))
 const { isCollapsed, isOpen, setTrigger, setOpen, setCollapse } = useSidebar()
 
 const activeSection = ref('profile')
 const userInfo = ref<UserInfo | null>(null)
 
-const serverName = computed(() => config.value?.webServerPrefix || 'VerifyMC')
 const isAdmin = computed(() => sessionService.isAdmin())
 
 const currentSectionTitle = computed(() => {

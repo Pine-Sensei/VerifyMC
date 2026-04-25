@@ -6,6 +6,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import team.kitemc.verifymc.core.PluginContext;
 import team.kitemc.verifymc.db.AuditRecord;
+import team.kitemc.verifymc.security.AdminAction;
+import team.kitemc.verifymc.util.FoliaCompat;
 import team.kitemc.verifymc.web.ApiResponseFactory;
 import team.kitemc.verifymc.web.WebResponseHelper;
 
@@ -28,7 +30,7 @@ public class AdminUserDeleteHandler implements HttpHandler {
         if (!WebResponseHelper.requireMethod(exchange, "POST")) return;
 
         // Require admin privileges and get operator username
-        String operator = AdminAuthUtil.requireAdmin(exchange, ctx);
+        String operator = AdminAuthUtil.requireAdmin(exchange, ctx, AdminAction.DELETE);
         if (operator == null) return;
 
         JSONObject req;
@@ -57,11 +59,11 @@ public class AdminUserDeleteHandler implements HttpHandler {
 
         boolean ok = ctx.getUserDao().deleteUser(target);
         if (ok) {
-            org.bukkit.Bukkit.getScheduler().runTask(ctx.getPlugin(), () ->
+            FoliaCompat.runTaskGlobal(ctx.getPlugin(), () ->
                     org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist remove " + target));
 
             if (ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {
-                ctx.getAuthmeService().unregisterFromAuthme(target);
+                ctx.getAuthmeService().removeUserFromAuthme(target);
             }
 
             ctx.getAuditDao().addAudit(new AuditRecord("delete", operator, target, "", System.currentTimeMillis()));

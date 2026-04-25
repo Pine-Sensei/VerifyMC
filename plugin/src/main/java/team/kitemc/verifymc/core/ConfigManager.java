@@ -2,8 +2,12 @@ package team.kitemc.verifymc.core;
 
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
+import team.kitemc.verifymc.security.AdminAuthMode;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -35,6 +39,18 @@ public class ConfigManager {
      * Validates configuration values and logs warnings for invalid settings.
      */
     private void validateConfig() {
+        String adminAuthMode = getConfig().getString("admin_auth.mode", "op");
+        String effectiveAuthMode;
+        if (!"op".equalsIgnoreCase(adminAuthMode) && !"permission".equalsIgnoreCase(adminAuthMode)) {
+            plugin.getLogger().log(Level.WARNING,
+                "Invalid admin_auth.mode: {0}. Must be one of: op, permission. Using default ''op''.",
+                adminAuthMode);
+            effectiveAuthMode = "op";
+        } else {
+            effectiveAuthMode = adminAuthMode.toLowerCase();
+        }
+        plugin.getLogger().log(Level.INFO, "Admin auth mode: {0}", effectiveAuthMode);
+
         // Validate web port
         int webPort = getWebPort();
         if (webPort < MIN_PORT || webPort > MAX_PORT) {
@@ -49,6 +65,18 @@ public class ConfigManager {
             plugin.getLogger().log(Level.WARNING,
                 "Invalid ws_port: {0}. Must be between {1} and {2}. Using default 8081.",
                 new Object[]{wsPort, MIN_PORT, MAX_PORT});
+        }
+
+        if (isSslEnabled()) {
+            validateSslKeystorePath();
+
+            if (getSslKeystoreType().isEmpty()) {
+                plugin.getLogger().warning("SSL is enabled but ssl.keystore.type is empty. Using default PKCS12.");
+            }
+
+            if (getSslKeystorePassword().isEmpty()) {
+                plugin.getLogger().warning("SSL is enabled and ssl.keystore.password is empty. Make sure the keystore intentionally uses an empty password.");
+            }
         }
 
         // Validate storage type
@@ -85,6 +113,14 @@ public class ConfigManager {
         return getConfig().getBoolean("debug", false);
     }
 
+    public AdminAuthMode getAdminAuthMode() {
+        return AdminAuthMode.fromConfig(getConfig().getString("admin_auth.mode", "op"));
+    }
+
+    public boolean isAdminAuthByPermission() {
+        return getAdminAuthMode() == AdminAuthMode.PERMISSION;
+    }
+
     public String getStorageType() {
         return getConfig().getString("storage", "file");
     }
@@ -108,9 +144,39 @@ public class ConfigManager {
         return getConfig().getString("web_server_prefix", "[VerifyMC]");
     }
 
+    public boolean isSslEnabled() {
+        return getConfig().getBoolean("ssl.enabled", false);
+    }
+
+    public String getSslKeystorePath() {
+        return getConfig().getString("ssl.keystore.path", "").trim();
+    }
+
+    public String getSslKeystorePassword() {
+        return getConfig().getString("ssl.keystore.password", "");
+    }
+
+    public String getSslKeystoreType() {
+        return getConfig().getString("ssl.keystore.type", "PKCS12").trim();
+    }
+
+    public Path resolveSslKeystorePath() throws IOException {
+        return team.kitemc.verifymc.web.ServerSslContextFactory.resolveKeystorePath(
+                plugin.getDataFolder().toPath(),
+                getSslKeystorePath());
+    }
+
+    private void validateSslKeystorePath() {
+        try {
+            resolveSslKeystorePath();
+        } catch (IOException e) {
+            plugin.getLogger().log(Level.WARNING, "SSL is enabled but {0}", e.getMessage());
+        }
+    }
+
     // --- Frontend ---
     public String getTheme() {
-        return getConfig().getString("frontend.theme", "default");
+        return getConfig().getString("frontend.theme", "glassx");
     }
 
     public String getLogoUrl() {
@@ -119,6 +185,21 @@ public class ConfigManager {
 
     public String getAnnouncement() {
         return getConfig().getString("frontend.announcement", "");
+    }
+
+    public boolean isServeStaticEnabled() {
+        return getConfig().getBoolean("frontend.serve_static", true);
+    }
+
+    public List<String> getAllowedOrigins() {
+        List<String> origins = getConfig().getStringList("frontend.allowed_origins");
+        if (origins == null || origins.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return origins.stream()
+            .map(origin -> origin == null ? "" : origin.trim())
+            .filter(origin -> !origin.isEmpty())
+            .toList();
     }
 
     public String getUsernameRegex() {
@@ -185,10 +266,6 @@ public class ConfigManager {
         return getConfig().getBoolean("authme.enabled", false);
     }
 
-    public boolean isAuthmePasswordRequired() {
-        return getConfig().getBoolean("authme.require_password", false);
-    }
-
     public String getAuthmePasswordRegex() {
         return getConfig().getString("authme.password_regex", "^[a-zA-Z0-9_]{8,26}$");
     }
@@ -212,7 +289,7 @@ public class ConfigManager {
     }
 
     public String getBedrockUsernameRegex() {
-        return getConfig().getString("bedrock.username_regex", "^\\\\.[a-zA-Z0-9_\\\\s]{3,16}$");
+        return getConfig().getString("bedrock.username_regex", "^[a-zA-Z0-9._-]{3,15}$");
     }
 
     // --- Registration ---

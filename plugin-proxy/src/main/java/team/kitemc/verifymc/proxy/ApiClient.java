@@ -7,7 +7,7 @@ import com.google.gson.JsonParser;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -20,6 +20,7 @@ import java.util.logging.Logger;
 public class ApiClient {
     private final ProxyConfig config;
     private final Logger logger;
+    @SuppressWarnings("unused")
     private final Gson gson = new Gson();
     
     // Simple cache for whitelist status
@@ -60,7 +61,7 @@ public class ApiClient {
                 logger.info("[DEBUG] API Request: " + url);
             }
             
-            HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+            HttpURLConnection conn = (HttpURLConnection) URI.create(url).toURL().openConnection();
             conn.setRequestMethod("GET");
             conn.setConnectTimeout(config.getTimeout());
             conn.setReadTimeout(config.getTimeout());
@@ -151,7 +152,6 @@ public class ApiClient {
                 try {
                     Thread.sleep(60000); // Clean every minute
                     
-                    long now = System.currentTimeMillis();
                     statusCache.entrySet().removeIf(entry -> entry.getValue().isExpired());
                     
                     if (config.isDebug()) {

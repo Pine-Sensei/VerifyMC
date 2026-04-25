@@ -1,7 +1,9 @@
 package team.kitemc.verifymc.web;
 
+import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import team.kitemc.verifymc.core.PluginContext;
+import team.kitemc.verifymc.util.EmailAddressUtil;
 import team.kitemc.verifymc.web.handler.*;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,21 +31,20 @@ public class ApiRouter {
      */
     public void registerRoutes(HttpServer server) {
         // --- Configuration endpoint ---
-        server.createContext("/api/config", new ConfigHandler(ctx));
+        registerApiRoute(server, "/api/config", new ConfigHandler(ctx));
 
         // --- Captcha endpoints ---
-        server.createContext("/api/captcha/generate", new CaptchaHandler(ctx));
-        server.createContext("/api/captcha", new CaptchaHandler(ctx));
+        registerApiRoute(server, "/api/captcha/generate", new CaptchaHandler(ctx));
+        registerApiRoute(server, "/api/captcha", new CaptchaHandler(ctx));
 
         // --- Email verification ---
-        server.createContext("/api/verify/send", new VerifyCodeHandler(ctx));
-
+        registerApiRoute(server, "/api/verify/send", new VerifyCodeHandler(ctx));
         // --- Questionnaire endpoints ---
-        server.createContext("/api/questionnaire/config", new QuestionnaireConfigHandler(ctx));
-        server.createContext("/api/questionnaire/submit", new QuestionnaireSubmitHandler(ctx, questionnaireSubmissionStore));
+        registerApiRoute(server, "/api/questionnaire/config", new QuestionnaireConfigHandler(ctx));
+        registerApiRoute(server, "/api/questionnaire/submit", new QuestionnaireSubmitHandler(ctx, questionnaireSubmissionStore));
 
         // --- Registration ---
-        server.createContext("/api/register", new RegistrationProcessingHandler(
+        registerApiRoute(server, "/api/register", new RegistrationProcessingHandler(
                 ctx.getPlugin(),
                 ctx.getVerifyCodeService(),
                 ctx.getUserDao(),
@@ -65,48 +66,54 @@ public class ApiRouter {
         ));
 
         // --- Review status check ---
-        server.createContext("/api/review/status", new ReviewStatusHandler(ctx));
+        registerApiRoute(server, "/api/review/status", new ReviewStatusHandler(ctx));
 
         // --- Login endpoints ---
-        server.createContext("/api/login", new LoginHandler(ctx, false));
-        server.createContext("/api/admin/login", new LoginHandler(ctx, true));
+        registerApiRoute(server, "/api/login", new LoginHandler(ctx, false));
+        registerApiRoute(server, "/api/admin/login", new LoginHandler(ctx, true));
 
         // --- Admin endpoints ---
-        server.createContext("/api/admin/verify", new AdminVerifyHandler(ctx));
-        server.createContext("/api/admin/users", new AdminUserListHandler(ctx));
-        server.createContext("/api/admin/user/approve", new AdminUserApproveHandler(ctx));
-        server.createContext("/api/admin/user/reject", new AdminUserRejectHandler(ctx));
-        server.createContext("/api/admin/user/delete", new AdminUserDeleteHandler(ctx));
-        server.createContext("/api/admin/user/ban", new AdminUserBanHandler(ctx));
-        server.createContext("/api/admin/user/unban", new AdminUserUnbanHandler(ctx));
-        server.createContext("/api/admin/user/password", new AdminUserPasswordHandler(ctx));
-        server.createContext("/api/admin/audits", new AdminAuditHandler(ctx));
-        server.createContext("/api/admin/sync", new AdminSyncHandler(ctx));
+        registerApiRoute(server, "/api/admin/verify", new AdminVerifyHandler(ctx));
+        registerApiRoute(server, "/api/admin/users", new AdminUserListHandler(ctx));
+        registerApiRoute(server, "/api/admin/user/approve", new AdminUserApproveHandler(ctx));
+        registerApiRoute(server, "/api/admin/user/reject", new AdminUserRejectHandler(ctx));
+        registerApiRoute(server, "/api/admin/user/delete", new AdminUserDeleteHandler(ctx));
+        registerApiRoute(server, "/api/admin/user/ban", new AdminUserBanHandler(ctx));
+        registerApiRoute(server, "/api/admin/user/unban", new AdminUserUnbanHandler(ctx));
+        registerApiRoute(server, "/api/admin/user/password", new AdminUserPasswordHandler(ctx));
+        registerApiRoute(server, "/api/admin/audits", new AdminAuditHandler(ctx));
+        registerApiRoute(server, "/api/admin/sync", new AdminSyncHandler(ctx));
 
         // --- Discord endpoints ---
-        server.createContext("/api/discord/auth", new DiscordAuthHandler(ctx));
-        server.createContext("/api/discord/callback", new DiscordCallbackHandler(ctx));
-        server.createContext("/api/discord/status", new DiscordStatusHandler(ctx));
-        server.createContext("/api/discord/unlink", new DiscordUnlinkHandler(ctx));
+        registerApiRoute(server, "/api/discord/auth", new DiscordAuthHandler(ctx));
+        registerApiRoute(server, "/api/discord/callback", new DiscordCallbackHandler(ctx));
+        registerApiRoute(server, "/api/discord/status", new DiscordStatusHandler(ctx));
+        registerApiRoute(server, "/api/discord/unlink", new DiscordUnlinkHandler(ctx));
 
         // --- Version check ---
-        server.createContext("/api/version", new VersionHandler(ctx));
+        registerApiRoute(server, "/api/version", new VersionHandler(ctx));
 
         // --- User status query ---
-        server.createContext("/api/user/status", new UserStatusHandler(ctx));
+        registerApiRoute(server, "/api/user/status", new UserStatusHandler(ctx));
 
         // --- Server status ---
-        server.createContext("/api/server/status", new ServerStatusHandler(ctx));
+        registerApiRoute(server, "/api/server/status", new ServerStatusHandler(ctx));
 
         // --- Downloads ---
-        server.createContext("/api/downloads", new DownloadsHandler(ctx));
+        registerApiRoute(server, "/api/downloads", new DownloadsHandler(ctx));
 
         // --- User profile management ---
-        server.createContext("/api/user/update", new UserUpdateHandler(ctx));
-        server.createContext("/api/user/password", new UserPasswordHandler(ctx));
+        registerApiRoute(server, "/api/user/update", new UserUpdateHandler(ctx));
+        registerApiRoute(server, "/api/user/password", new UserPasswordHandler(ctx));
 
         // --- Static files (front-end) ---
-        server.createContext("/", new StaticFileHandler(ctx));
+        if (ctx.getConfigManager().isServeStaticEnabled()) {
+            server.createContext("/", new CorsHandler(ctx, new StaticFileHandler(ctx)));
+        }
+    }
+
+    private void registerApiRoute(HttpServer server, String path, HttpHandler handler) {
+        server.createContext(path, new CorsHandler(ctx, handler));
     }
 
     // --- Utility methods used by route wiring (delegated from WebServer) ---
@@ -149,7 +156,6 @@ public class ApiRouter {
     }
 
     private boolean isValidEmail(String email) {
-        if (email == null || email.isBlank()) return false;
-        return email.matches("^[\\w.+-]+@[\\w.-]+\\.[a-zA-Z]{2,}$");
+        return EmailAddressUtil.isValid(email);
     }
 }

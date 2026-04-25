@@ -9,6 +9,7 @@ import team.kitemc.verifymc.core.PluginContext;
 import team.kitemc.verifymc.db.AuditRecord;
 import team.kitemc.verifymc.db.UserDao;
 import team.kitemc.verifymc.service.AuthmeService;
+import team.kitemc.verifymc.security.AdminAuthMode;
 import team.kitemc.verifymc.util.PasswordUtil;
 import team.kitemc.verifymc.web.ApiResponseFactory;
 import team.kitemc.verifymc.web.WebAuthHelper;
@@ -81,7 +82,8 @@ public class LoginHandler implements HttpHandler {
         String language = req.optString("language", "en");
 
         OpsManager opsManager = ctx.getOpsManager();
-        if (isAdminLogin && (opsManager == null || opsManager.getOps().isEmpty())) {
+        if (isAdminLogin && ctx.getConfigManager().getAdminAuthMode() == AdminAuthMode.OP
+                && (opsManager == null || opsManager.getOps().isEmpty())) {
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
                     ctx.getMessage("login.system_error", language)));
             return;
@@ -107,8 +109,8 @@ public class LoginHandler implements HttpHandler {
         }
 
         if (isAdminLogin) {
-            if (!opsManager.isOp(actualUsername)) {
-                ctx.getPlugin().getLogger().warning("[Security] Non-op login attempt for user: " + actualUsername);
+            if (!ctx.getAdminAccessManager().hasAnyAdminAccess(actualUsername)) {
+                ctx.getPlugin().getLogger().warning("[Security] Unauthorized admin login attempt for user: " + actualUsername);
                 WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
                         ctx.getMessage("login.not_authorized", language)));
                 return;
@@ -143,7 +145,7 @@ public class LoginHandler implements HttpHandler {
 
         WebAuthHelper webAuthHelper = ctx.getWebAuthHelper();
         String token = webAuthHelper.generateToken(actualUsername);
-        boolean isAdmin = opsManager != null && opsManager.isOp(actualUsername);
+        boolean isAdmin = ctx.getAdminAccessManager().hasAnyAdminAccess(actualUsername);
         JSONObject resp = ApiResponseFactory.success(ctx.getMessage("login.success", language));
         resp.put("token", token);
         resp.put("username", actualUsername);

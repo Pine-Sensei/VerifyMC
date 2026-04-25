@@ -3,6 +3,7 @@ package team.kitemc.verifymc.service;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 import team.kitemc.verifymc.db.UserDao;
+import team.kitemc.verifymc.util.FoliaCompat;
 import team.kitemc.verifymc.util.PasswordUtil;
 
 import java.sql.Connection;
@@ -31,10 +32,6 @@ public class AuthmeService {
 
     public boolean isAuthmeEnabled() {
         return plugin.getConfig().getBoolean("authme.enabled", false);
-    }
-
-    public boolean isPasswordRequired() {
-        return plugin.getConfig().getBoolean("authme.require_password", false);
     }
 
     public String getAuthmePassword(String username) {
@@ -81,16 +78,16 @@ public class AuthmeService {
         return Pattern.matches(regex, password);
     }
 
-    public boolean registerToAuthme(String username, String password) {
-        if (!isAuthmeEnabled()) {
-            debugLog("AuthMe not enabled, skipping registration");
+    public boolean syncApprovedUserToAuthme(String username) {
+        if (!isAuthmeEnabled() || userDao == null || username == null || username.isBlank()) {
             return false;
         }
 
-        return upsertAuthmeUser(username, password);
+        Map<String, Object> localUser = userDao.getUserByUsername(username);
+        return syncApprovedLocalUser(localUser, null, null);
     }
 
-    public boolean unregisterFromAuthme(String username) {
+    public boolean removeUserFromAuthme(String username) {
         if (!isAuthmeEnabled()) {
             debugLog("AuthMe not enabled, skipping unregistration");
             return false;
@@ -99,17 +96,13 @@ public class AuthmeService {
         return deleteAuthmeUser(username);
     }
 
-    public boolean changePasswordInAuthme(String username, String newPassword) {
+    public boolean syncUserPasswordToAuthme(String username, String newPassword) {
         if (!isAuthmeEnabled()) {
             debugLog("AuthMe not enabled, skipping password change");
             return false;
         }
 
         return updateAuthmePassword(username, newPassword);
-    }
-
-    public boolean changePassword(String username, String newPassword) {
-        return changePasswordInAuthme(username, newPassword);
     }
 
     public String encodePasswordForStorage(String plainOrEncodedPassword) {
@@ -132,39 +125,15 @@ public class AuthmeService {
 
             Map<String, AuthmeProfile> authmeProfilesByName = listAuthmeProfiles();
             Map<String, String> authmeByLowerName = new HashMap<>();
-            for (String name : authmeProfilesByName.keySet()) {
-                authmeByLowerName.put(name.toLowerCase(), name);
+            for (Map.Entry<String, AuthmeProfile> entry : authmeProfilesByName.entrySet()) {
+                authmeByLowerName.put(entry.getKey().toLowerCase(), entry.getKey());
             }
 
             for (Map<String, Object> local : localUsers) {
-                String status = (String) local.get("status");
-                String username = (String) local.get("username");
-                String password = (String) local.get("password");
-                String email = (String) local.get("email");
-                if (username == null || !"approved".equals(status)) {
-                    continue;
-                }
-                String authName = authmeByLowerName.get(username.toLowerCase());
-                if (authName == null && password != null && !password.trim().isEmpty()) {
-                    upsertAuthmeUser(username, password);
-                    continue;
-                }
-
-                if (authName != null) {
-                    AuthmeProfile profile = authmeProfilesByName.get(authName);
-                    String authPassword = profile != null ? profile.password : null;
-                    String authEmail = profile != null ? profile.email : null;
-
-                    if (password != null && !password.trim().isEmpty() && (authPassword == null || authPassword.trim().isEmpty())) {
-                        updateAuthmePassword(authName, password);
-                    }
-
-                    if (email != null && !email.trim().isEmpty() && (authEmail == null || authEmail.trim().isEmpty() || !email.equalsIgnoreCase(authEmail))) {
-                        updateAuthmeEmail(authName, email);
-                    }
-                }
+                syncApprovedLocalUser(local, authmeProfilesByName, authmeByLowerName);
             }
 
+            authmeProfilesByName = listAuthmeProfiles();
             for (Map.Entry<String, AuthmeProfile> entry : authmeProfilesByName.entrySet()) {
                 String authName = entry.getKey();
                 AuthmeProfile profile = entry.getValue();
@@ -172,27 +141,23 @@ public class AuthmeService {
                 String authEmail = profile != null ? profile.email : null;
                 Map<String, Object> local = localByLowerName.get(authName.toLowerCase());
                 if (local == null) {
-                    String localEmail = authEmail != null ? authEmail : "";
                     if (authPassword != null && !authPassword.trim().isEmpty()) {
-                        userDao.registerUser(authName, localEmail, "approved", authPassword);
-                    } else {
-                        userDao.registerUser(authName, localEmail, "approved");
+                        String localEmail = authEmail != null ? authEmail : "";
+                        userDao.registerUserWithStoredPassword(authName, localEmail, "approved", authPassword);
+                        FoliaCompat.runTaskGlobal(plugin, () ->
+                                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "whitelist add " + authName));
                     }
-                    Bukkit.getScheduler().runTask(plugin, () ->
-                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "whitelist add " + authName));
                     continue;
                 }
                 String status = (String) local.get("status");
-                if (!"approved".equals(status) && !"banned".equals(status)) {
-                    userDao.updateUserStatus(authName, "approved");
-                    Bukkit.getScheduler().runTask(plugin, () ->
-                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "whitelist add " + authName));
+                if (!"approved".equals(status)) {
+                    continue;
                 }
 
                 if (authPassword != null && !authPassword.trim().isEmpty()) {
                     String localPassword = (String) local.get("password");
                     if (localPassword == null || localPassword.trim().isEmpty() || !authPassword.equals(localPassword)) {
-                        userDao.updateUserPassword(authName, authPassword);
+                        userDao.updateUserStoredPassword(authName, authPassword);
                     }
                 }
 
@@ -207,6 +172,95 @@ public class AuthmeService {
         } catch (Exception e) {
             debugLog("Failed syncApprovedUsers: " + e.getMessage());
         }
+    }
+
+    private boolean syncApprovedLocalUser(Map<String, Object> localUser,
+                                          Map<String, AuthmeProfile> authmeProfilesByName,
+                                          Map<String, String> authmeByLowerName) {
+        if (localUser == null) {
+            return false;
+        }
+
+        String status = (String) localUser.get("status");
+        String username = (String) localUser.get("username");
+        String password = (String) localUser.get("password");
+        String email = (String) localUser.get("email");
+        if (username == null || !"approved".equals(status)) {
+            return false;
+        }
+
+        String authName = authmeByLowerName != null
+                ? authmeByLowerName.get(username.toLowerCase())
+                : findAuthmeUsername(username);
+        if (authName == null) {
+            if (password == null || password.trim().isEmpty()) {
+                return false;
+            }
+
+            boolean created = upsertAuthmeUser(username, password);
+            if (created && email != null && !email.trim().isEmpty()) {
+                updateAuthmeEmail(username, email);
+            }
+            return created;
+        }
+
+        boolean changed = false;
+        AuthmeProfile profile = authmeProfilesByName != null
+                ? authmeProfilesByName.get(authName)
+                : getAuthmeProfile(authName);
+        String authPassword = profile != null ? profile.password : null;
+        String authEmail = profile != null ? profile.email : null;
+
+        if (password != null && !password.trim().isEmpty() && !password.equals(authPassword)) {
+            changed = updateAuthmePassword(authName, password) || changed;
+        }
+
+        if (email != null && !email.trim().isEmpty() && (authEmail == null || authEmail.trim().isEmpty() || !email.equalsIgnoreCase(authEmail))) {
+            changed = updateAuthmeEmail(authName, email) || changed;
+        }
+
+        return changed;
+    }
+
+    private String findAuthmeUsername(String username) {
+        if (username == null || username.isBlank()) {
+            return null;
+        }
+
+        String sql = "SELECT " + nameColumn() + " FROM " + tableName() + " WHERE LOWER(" + nameColumn() + ") = LOWER(?)";
+        try (Connection conn = getAuthmeConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, username);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString(1);
+                }
+            }
+        } catch (Exception e) {
+            debugLog("Failed to find AuthMe user " + username + ": " + e.getMessage());
+        }
+        return null;
+    }
+
+    private AuthmeProfile getAuthmeProfile(String username) {
+        if (username == null || username.isBlank()) {
+            return null;
+        }
+
+        String sql = "SELECT " + passwordColumn() + ", " + column("mySQLColumnEmail", "email") +
+                " FROM " + tableName() + " WHERE " + nameColumn() + " = ?";
+        try (Connection conn = getAuthmeConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, username);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new AuthmeProfile(rs.getString(1), rs.getString(2));
+                }
+            }
+        } catch (Exception e) {
+            debugLog("Failed to get AuthMe profile for " + username + ": " + e.getMessage());
+        }
+        return null;
     }
 
     private Connection getAuthmeConnection() throws Exception {
@@ -439,14 +493,14 @@ public class AuthmeService {
         }
     }
 
-    private String buildStoredPassword(String plainPassword) {
-        if (plainPassword == null) {
+    private String buildStoredPassword(String plainOrStoredPassword) {
+        if (plainOrStoredPassword == null) {
             return null;
         }
-        if (PasswordUtil.isHashed(plainPassword)) {
-            return plainPassword;
+        if (PasswordUtil.isHashed(plainOrStoredPassword) || PasswordUtil.isUnsaltedSha256(plainOrStoredPassword)) {
+            return plainOrStoredPassword;
         }
-        return PasswordUtil.hash(plainPassword);
+        return PasswordUtil.hash(plainOrStoredPassword);
     }
 
     private void debugLog(String msg) {

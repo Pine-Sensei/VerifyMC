@@ -6,6 +6,7 @@ import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
@@ -98,7 +99,7 @@ public class VersionCheckService {
         try {
             debugLog("Fetching version from: " + GITHUB_POM_URL);
             
-            URL url = new URL(GITHUB_POM_URL);
+            URL url = URI.create(GITHUB_POM_URL).toURL();
             connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
             connection.setConnectTimeout(TIMEOUT_MS);

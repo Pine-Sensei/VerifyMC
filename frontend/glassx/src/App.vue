@@ -27,7 +27,6 @@ import AppFooter from '@/components/AppFooter.vue'
 import type { AppConfig } from '@/types'
 
 const config = inject<Ref<AppConfig>>('config', ref({}))
-const reloadConfig = inject<() => Promise<boolean>>('reloadConfig', async () => false)
 const { setNotificationSystem } = useNotification()
 
 const notificationSystemRef = ref()
@@ -51,10 +50,4 @@ watch(
   },
   { immediate: true }
 )
-
-// 暴露重载配置方法给全局
-if (typeof window !== 'undefined') {
-  (window as Window & { reloadVerifyMCConfig?: () => Promise<boolean> }).reloadVerifyMCConfig = reloadConfig
-}
 </script>
-

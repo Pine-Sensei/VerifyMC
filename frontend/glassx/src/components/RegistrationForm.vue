@@ -13,7 +13,7 @@
         </div>
     </div>
 
-    <div :class="shouldShowPassword ? 'w-full max-w-xl' : 'w-full max-w-md'">
+    <div class="w-full max-w-xl">
       <div class="lg:hidden text-center mb-6">
         <h2 class="text-2xl font-bold text-white">{{ $t('register.title') }}</h2>
         <p class="text-white/60">{{ $t('register.subtitle') }}</p>
@@ -75,7 +75,7 @@
               <p v-if="errors.email" class="mt-1 text-sm text-red-400">{{ errors.email }}</p>
             </div>
 
-            <div v-if="shouldShowPassword">
+            <div>
               <Label for="password" class="mb-1">{{ $t('register.form.password') }}</Label>
               <Input
                 id="password"
@@ -104,10 +104,10 @@
                   type="button"
                   variant="secondary"
                   @click="sendCode"
-                  :disabled="sending || !form.email || cooldownSeconds > 0"
+                  :disabled="sending || !form.email || emailCooldownSeconds > 0"
                   class="whitespace-nowrap"
                 >
-                  {{ sending ? $t('register.sending') : cooldownSeconds > 0 ? `${cooldownSeconds}s` : $t('register.sendCode') }}
+                  {{ sending ? $t('register.sending') : emailCooldownSeconds > 0 ? `${emailCooldownSeconds}s` : $t('register.sendCode') }}
                 </Button>
               </div>
               <p v-if="errors.code" class="mt-1 text-sm text-red-400">{{ errors.code }}</p>
@@ -175,6 +175,7 @@ import { ref, computed, reactive, onMounted, watch, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiService } from '@/services/api'
 import { useNotification } from '@/composables/useNotification'
+import { useCooldown } from '@/composables/useCooldown'
 import DiscordLink from '@/components/DiscordLink.vue'
 import QuestionnaireForm from '@/components/QuestionnaireForm.vue'
 import type { ConfigResponse, QuestionnaireSubmission, RegisterRequest } from '@/services/api'
@@ -200,7 +201,7 @@ const config = ref<ConfigResponse>({
   announcement: '',
   webServerPrefix: '',
   usernameRegex: '',
-  authme: { enabled: false, requirePassword: false, passwordRegex: '' },
+  authme: { enabled: false, passwordRegex: '^[a-zA-Z0-9_]{8,26}$' },
   captcha: { enabled: false, emailEnabled: true, type: 'math' },
   questionnaire: { enabled: false, passScore: 60 }
 })
@@ -222,7 +223,6 @@ const bedrockPrefix = computed(() => config.value.bedrock?.prefix || '.')
 const selectedPlatform = ref<'java' | 'bedrock'>('java')
 
 const authmeConfig = computed(() => config.value.authme)
-const shouldShowPassword = computed(() => authmeConfig.value?.enabled && authmeConfig.value?.requirePassword)
 
 onMounted(async () => {
   try {
@@ -341,12 +341,10 @@ const validateEmail = () => {
 }
 const validatePassword = () => {
   errors.password = ''
-  if (shouldShowPassword.value) {
-    if (!form.password) {
-      errors.password = t('register.validation.password_required')
-    } else if (authmeConfig.value?.passwordRegex && !new RegExp(authmeConfig.value.passwordRegex).test(form.password)) {
-      errors.password = t('register.validation.password_format', { regex: authmeConfig.value.passwordRegex })
-    }
+  if (!form.password) {
+    errors.password = t('register.validation.password_required')
+  } else if (authmeConfig.value?.passwordRegex && !new RegExp(authmeConfig.value.passwordRegex).test(form.password)) {
+    errors.password = t('register.validation.password_format', { regex: authmeConfig.value.passwordRegex })
   }
 }
 const validateCode = () => {
@@ -375,7 +373,7 @@ const isBasicStepValid = computed(() => {
   let valid = form.username && form.email && !errors.username && !errors.email
   if (emailEnabled.value) valid = valid && !!form.code && !errors.code
   if (captchaEnabled.value) valid = valid && !!form.captchaAnswer && !errors.captcha
-  if (shouldShowPassword.value) valid = valid && !!form.password && !errors.password
+  valid = valid && !!form.password && !errors.password
   if (discordRequired.value) valid = valid && discordLinked.value && !errors.discord
   return valid
 })
@@ -414,29 +412,14 @@ const onQuestionnairePassed = async (result: QuestionnaireSubmission) => {
   await handleSubmit()
 }
 
-const cooldownSeconds = ref(0)
-const cooldownTimer = ref<ReturnType<typeof setInterval> | null>(null)
-const startCooldown = (seconds: number) => {
-  cooldownSeconds.value = seconds
-  if (cooldownTimer.value) clearInterval(cooldownTimer.value)
-  cooldownTimer.value = setInterval(() => {
-    cooldownSeconds.value--
-    if (cooldownSeconds.value <= 0) {
-      clearInterval(cooldownTimer.value!)
-      cooldownTimer.value = null
-    }
-  }, 1000)
-}
+const { cooldownSeconds: emailCooldownSeconds, startCooldown: startEmailCooldown, stopCooldown: stopEmailCooldown } = useCooldown()
 
 onUnmounted(() => {
-  if (cooldownTimer.value) {
-    clearInterval(cooldownTimer.value)
-    cooldownTimer.value = null
-  }
+  stopEmailCooldown()
 })
 
 const sendCode = async () => {
-  if (sending.value || cooldownSeconds.value > 0) return
+  if (sending.value || emailCooldownSeconds.value > 0) return
   validateEmail()
   if (errors.email) return
   sending.value = true
@@ -445,9 +428,9 @@ const sendCode = async () => {
     const res = await apiService.sendCode({ email, language: locale.value })
     if (res.success) {
       success(t('register.codeSent'))
-      startCooldown(60)
+      startEmailCooldown(60)
     } else if (res.remainingSeconds && res.remainingSeconds > 0) {
-      startCooldown(res.remainingSeconds)
+      startEmailCooldown(res.remainingSeconds)
       error(res.message || t('register.sendFailed'))
     } else {
       error(res.message || t('register.sendFailed'))
@@ -470,6 +453,7 @@ const handleSubmit = async () => {
     const registerData: RegisterRequest = {
       username: getNormalizedUsername(),
       email: form.email.trim().toLowerCase(),
+      password: form.password,
       language: locale.value,
       platform: selectedPlatform.value
     }
@@ -479,7 +463,6 @@ const handleSubmit = async () => {
       registerData.captchaToken = captchaToken.value
       registerData.captchaAnswer = form.captchaAnswer
     }
-    if (shouldShowPassword.value) registerData.password = form.password
     if (questionnaireResult.value) registerData.questionnaire = questionnaireResult.value
 
     const response = await apiService.register(registerData)

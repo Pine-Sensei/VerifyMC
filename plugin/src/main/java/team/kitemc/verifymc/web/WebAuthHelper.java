@@ -15,6 +15,7 @@ import team.kitemc.verifymc.core.I18nManager;
 
 public class WebAuthHelper {
     private static final long TOKEN_EXPIRY_TIME = 3600000;
+    @SuppressWarnings("unused")
     private final Plugin plugin;
     private final I18nManager i18nManager;
     private final ConcurrentHashMap<String, TokenInfo> validTokens = new ConcurrentHashMap<>();

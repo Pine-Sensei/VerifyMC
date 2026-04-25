@@ -186,7 +186,7 @@ const loadAuditLogs = async () => {
     }
   } catch (error) {
     console.error('Failed to load audit logs:', error)
-    notification.error(t('common.error'))
+    notification.error(error instanceof Error ? error.message : t('common.error'))
   } finally {
     loading.value = false
   }

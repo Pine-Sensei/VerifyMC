@@ -5,6 +5,7 @@ import com.sun.net.httpserver.HttpHandler;
 import org.json.JSONException;
 import org.json.JSONObject;
 import team.kitemc.verifymc.core.PluginContext;
+import team.kitemc.verifymc.security.AdminAction;
 import team.kitemc.verifymc.web.ApiResponseFactory;
 import team.kitemc.verifymc.web.WebResponseHelper;
 
@@ -23,7 +24,7 @@ public class AdminSyncHandler implements HttpHandler {
         if (!WebResponseHelper.requireMethod(exchange, "POST")) return;
 
         // Require admin privileges
-        if (AdminAuthUtil.requireAdmin(exchange, ctx) == null) return;
+        if (AdminAuthUtil.requireAdmin(exchange, ctx, AdminAction.SYNC) == null) return;
 
         JSONObject req;
         try {

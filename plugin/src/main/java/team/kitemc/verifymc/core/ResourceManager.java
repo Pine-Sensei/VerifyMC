@@ -1,15 +1,10 @@
 package team.kitemc.verifymc.core;
 
-import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
-import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-import java.util.zip.ZipEntry;
 import java.util.function.BiFunction;
 
 /**
@@ -137,42 +132,6 @@ public class ResourceManager implements BiFunction<String, String, String> {
      */
     public File getStaticDir() {
         return new File(plugin.getDataFolder(), "static");
-    }
-
-    /**
-     * Read a file as a string (UTF-8).
-     */
-    public String readFileAsString(File file) {
-        try {
-            return new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            plugin.getLogger().warning("Failed to read file: " + file.getAbsolutePath());
-            return "";
-        }
-    }
-
-    /**
-     * Read the email template for the given type and language.
-     *
-     * @param type     e.g. "verify_code" or "review_approved"
-     * @param language e.g. "en" or "zh"
-     */
-    public String getEmailTemplate(String type, String language) {
-        File emailDir = new File(plugin.getDataFolder(), "email");
-
-        // Try language-specific template first
-        File langFile = new File(emailDir, type + "_" + language + ".html");
-        if (langFile.exists()) {
-            return readFileAsString(langFile);
-        }
-
-        // Fallback to English
-        File enFile = new File(emailDir, type + "_en.html");
-        if (enFile.exists()) {
-            return readFileAsString(enFile);
-        }
-
-        return "<html><body><p>Template not found: " + type + "</p></body></html>";
     }
 
     /**

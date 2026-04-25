@@ -43,11 +43,15 @@
 
         <div class="flex flex-col gap-2">
           <Label>{{ $t('register.form.email') }}</Label>
-          <Input v-model="form.email" :placeholder="$t('register.form.email_placeholder')" :disabled="saving" />
+          <Input
+            v-model="form.email"
+            :placeholder="$t('register.form.email_placeholder')"
+            :disabled="saving || emailVerificationEnabled"
+          />
         </div>
       </div>
 
-      <div class="mt-5 flex justify-end">
+      <div v-if="!emailVerificationEnabled" class="mt-5 flex justify-end">
         <Button @click="saveProfile" :disabled="saving" variant="default">
           <div v-if="saving" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
           {{ saving ? $t('common.loading') : $t('common.save') }}
@@ -154,6 +158,7 @@ const passwordForm = ref({
 })
 
 const discordEnabled = computed(() => config.value?.discord?.enabled)
+const emailVerificationEnabled = computed(() => config.value?.authMethods?.includes('email') ?? false)
 
 const statusClass = computed(() => {
   const colors = getStatusColors(userStatus.value)

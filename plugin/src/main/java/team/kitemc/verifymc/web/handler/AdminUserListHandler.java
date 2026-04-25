@@ -5,7 +5,7 @@ import com.sun.net.httpserver.HttpHandler;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import team.kitemc.verifymc.core.PluginContext;
-import team.kitemc.verifymc.web.ApiResponseFactory;
+import team.kitemc.verifymc.security.AdminAction;
 import team.kitemc.verifymc.web.WebResponseHelper;
 
 import java.io.IOException;
@@ -31,7 +31,7 @@ public class AdminUserListHandler implements HttpHandler {
         if (!WebResponseHelper.requireMethod(exchange, "GET")) return;
 
         // Require admin privileges
-        if (AdminAuthUtil.requireAdmin(exchange, ctx) == null) return;
+        if (AdminAuthUtil.requireAdmin(exchange, ctx, AdminAction.LIST) == null) return;
 
         // Parse query params
         String query = exchange.getRequestURI().getQuery();
