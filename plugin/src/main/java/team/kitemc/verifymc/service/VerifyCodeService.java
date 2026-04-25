@@ -67,7 +67,7 @@ public class VerifyCodeService {
     private void cleanupExpiredEntries() {
         long currentTime = System.currentTimeMillis();
         codeMap.entrySet().removeIf(entry -> entry.getValue().expire < currentTime);
-        targetRateLimitMap.entrySet().removeIf(entry -> (currentTime - entry.getValue()) > getRateLimitMillis(channelFromStoredKey(entry.getKey())));
+        targetRateLimitMap.entrySet().removeIf(entry -> (currentTime - entry.getValue()) > getRateLimitMillis(channelFromStoredKey(entry.getKey()), purposeFromStoredKey(entry.getKey())));
         ipRateLimitMap.entrySet().removeIf(entry -> entry.getValue().windowStart + getSmsRateLimitIpWindowMs() < currentTime);
         debugLog("Cleanup completed. Active codes: " + codeMap.size()
                 + ", target limits: " + targetRateLimitMap.size()
@@ -89,11 +89,15 @@ public class VerifyCodeService {
     }
 
     public long getRemainingCooldownSeconds(Channel channel, String target) {
-        Long lastSentTime = targetRateLimitMap.get(storedKey(channel, target));
+        return getRemainingCooldownSeconds(channel, Purpose.REGISTER, target);
+    }
+
+    public long getRemainingCooldownSeconds(Channel channel, Purpose purpose, String target) {
+        Long lastSentTime = targetRateLimitMap.get(storedKey(channel, purpose, target));
         if (lastSentTime == null) {
             return 0;
         }
-        long remainingMillis = getRateLimitMillis(channel) - (System.currentTimeMillis() - lastSentTime);
+        long remainingMillis = getRateLimitMillis(channel, purpose) - (System.currentTimeMillis() - lastSentTime);
         return toRemainingSeconds(remainingMillis);
     }
 
@@ -126,6 +130,10 @@ public class VerifyCodeService {
     }
 
     public CodeIssueResult issueCode(Channel channel, String target, String ip) {
+        return issueCode(channel, Purpose.REGISTER, target, ip);
+    }
+
+    public CodeIssueResult issueCode(Channel channel, Purpose purpose, String target, String ip) {
         String normalizedTarget = normalize(channel, target);
         if (channel == Channel.SMS && ip != null && !canSendFromIp(ip)) {
             return CodeIssueResult.rateLimited(getRemainingIpCooldownSeconds(ip));
@@ -133,11 +141,11 @@ public class VerifyCodeService {
 
         long currentTime = System.currentTimeMillis();
         AtomicReference<CodeIssueResult> resultRef = new AtomicReference<>();
-        String key = storedKey(channel, normalizedTarget);
+        String key = storedKey(channel, purpose, normalizedTarget);
 
         targetRateLimitMap.compute(key, (ignored, lastSentTime) -> {
             if (lastSentTime != null) {
-                long remainingMillis = getRateLimitMillis(channel) - (currentTime - lastSentTime);
+                long remainingMillis = getRateLimitMillis(channel, purpose) - (currentTime - lastSentTime);
                 long remainingSeconds = toRemainingSeconds(remainingMillis);
                 if (remainingSeconds > 0) {
                     resultRef.set(CodeIssueResult.rateLimited(remainingSeconds));
@@ -145,13 +153,13 @@ public class VerifyCodeService {
                 }
             }
 
-            String code = generateNumericCode(getCodeLength(channel));
-            long expireTime = currentTime + getExpireMillis(channel);
-            codeMap.put(key, new CodeEntry(code, expireTime, getMaxAttempts(channel)));
+            String code = generateNumericCode(getCodeLength(channel, purpose));
+            long expireTime = currentTime + getExpireMillis(channel, purpose);
+            codeMap.put(key, new CodeEntry(code, expireTime, getMaxAttempts(channel, purpose)));
             if (channel == Channel.SMS && ip != null && !ip.isEmpty()) {
                 recordIpSend(ip, currentTime);
             }
-            resultRef.set(CodeIssueResult.issued(code, toRemainingSeconds(getRateLimitMillis(channel))));
+            resultRef.set(CodeIssueResult.issued(code, toRemainingSeconds(getRateLimitMillis(channel, purpose))));
             debugLog("Issued " + channel + " code for key: " + key);
             return currentTime;
         });
@@ -169,7 +177,11 @@ public class VerifyCodeService {
     }
 
     public void revokeCode(Channel channel, String target) {
-        String storedKey = storedKey(channel, target);
+        revokeCode(channel, Purpose.REGISTER, target);
+    }
+
+    public void revokeCode(Channel channel, Purpose purpose, String target) {
+        String storedKey = storedKey(channel, purpose, target);
         codeMap.remove(storedKey);
         targetRateLimitMap.remove(storedKey);
         debugLog("Revoked code and cooldown for key: " + storedKey);
@@ -180,7 +192,11 @@ public class VerifyCodeService {
     }
 
     public VerifyResult verifyCode(Channel channel, String target, String code) {
-        String storedKey = storedKey(channel, target);
+        return verifyCode(channel, Purpose.REGISTER, target, code);
+    }
+
+    public VerifyResult verifyCode(Channel channel, Purpose purpose, String target, String code) {
+        String storedKey = storedKey(channel, purpose, target);
         CodeEntry entry = codeMap.get(storedKey);
         if (entry == null) {
             return VerifyResult.failure(0, false, false);
@@ -223,7 +239,11 @@ public class VerifyCodeService {
     }
 
     private String storedKey(Channel channel, String target) {
-        return channel.name().toLowerCase() + ":" + normalize(channel, target);
+        return storedKey(channel, Purpose.REGISTER, target);
+    }
+
+    private String storedKey(Channel channel, Purpose purpose, String target) {
+        return purpose.name().toLowerCase() + ":" + channel.name().toLowerCase() + ":" + normalize(channel, target);
     }
 
     private String normalize(Channel channel, String target) {
@@ -233,29 +253,53 @@ public class VerifyCodeService {
     }
 
     private Channel channelFromStoredKey(String key) {
-        if (key != null && key.startsWith("sms:")) {
+        if (key != null && (key.startsWith("sms:") || key.contains(":sms:"))) {
             return Channel.SMS;
         }
         return Channel.EMAIL;
     }
 
-    private int getCodeLength(Channel channel) {
+    private Purpose purposeFromStoredKey(String key) {
+        if (key == null) {
+            return Purpose.REGISTER;
+        }
+        int split = key.indexOf(':');
+        if (split <= 0) {
+            return Purpose.REGISTER;
+        }
+        try {
+            return Purpose.valueOf(key.substring(0, split).toUpperCase());
+        } catch (IllegalArgumentException ignored) {
+            return Purpose.REGISTER;
+        }
+    }
+
+    private int getCodeLength(Channel channel, Purpose purpose) {
+        if (channel == Channel.EMAIL && configManager != null && purpose != Purpose.REGISTER) {
+            return configManager.getEmailCodeLength();
+        }
         return channel == Channel.SMS && configManager != null ? configManager.getSmsCodeLength() : 6;
     }
 
-    private long getExpireMillis(Channel channel) {
+    private long getExpireMillis(Channel channel, Purpose purpose) {
+        if (channel == Channel.EMAIL && configManager != null && purpose != Purpose.REGISTER) {
+            return configManager.getEmailCodeExpireSeconds() * 1000L;
+        }
         return channel == Channel.SMS && configManager != null
                 ? configManager.getSmsExpireSeconds() * 1000L
                 : DEFAULT_EMAIL_EXPIRE_MILLIS;
     }
 
-    private long getRateLimitMillis(Channel channel) {
+    private long getRateLimitMillis(Channel channel, Purpose purpose) {
+        if (channel == Channel.EMAIL && configManager != null && purpose != Purpose.REGISTER) {
+            return configManager.getEmailCodeCooldownSeconds() * 1000L;
+        }
         return channel == Channel.SMS && configManager != null
                 ? configManager.getSmsSendCooldownSeconds() * 1000L
                 : DEFAULT_EMAIL_RATE_LIMIT_MILLIS;
     }
 
-    private int getMaxAttempts(Channel channel) {
+    private int getMaxAttempts(Channel channel, Purpose purpose) {
         return channel == Channel.SMS && configManager != null
                 ? configManager.getSmsMaxAttempts()
                 : DEFAULT_EMAIL_MAX_ATTEMPTS;
@@ -279,6 +323,13 @@ public class VerifyCodeService {
     public enum Channel {
         EMAIL,
         SMS
+    }
+
+    public enum Purpose {
+        REGISTER,
+        LOGIN,
+        FORGOT_PASSWORD,
+        PROFILE_PASSWORD_RESET
     }
 
     public record CodeIssueResult(boolean issued, String code, long remainingSeconds) {

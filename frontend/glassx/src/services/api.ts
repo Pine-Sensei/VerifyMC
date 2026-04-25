@@ -10,6 +10,17 @@ export interface ApiResponse<T = unknown> {
 
 export interface ConfigResponse {
   authMethods: string[]
+  login?: {
+    allowedMethods: string[]
+    usernameCaseSensitive: boolean
+  }
+  forgotPassword?: {
+    enabled: boolean
+    allowedMethods: string[]
+  }
+  user?: {
+    passwordResetMethods: string[]
+  }
   auth?: {
     mustAuthMethods: string[]
     optionAuthMethods: string[]
@@ -119,8 +130,10 @@ export interface CaptchaResponse {
 
 export interface SendCodeRequest {
   channel?: 'email' | 'sms'
+  purpose?: 'register' | 'login' | 'forgot_password' | 'profile_password_reset'
   email?: string
   phone?: string
+  countryCode?: string
   language: string
 }
 
@@ -134,6 +147,7 @@ export interface RegisterRequest {
   email: string
   code?: string
   phone?: string
+  countryCode?: string
   smsCode?: string
   username: string
   password: string
@@ -150,17 +164,32 @@ export interface RegisterResponse {
 }
 
 export interface AdminLoginRequest {
-  username: string
-  password: string
+  username?: string
+  identifier?: string
+  identifierType?: 'username' | 'email' | 'phone'
+  authMethod?: 'password' | 'code'
+  password?: string
+  code?: string
+  countryCode?: string
+  selectedUsername?: string
   language: string
 }
 
 export interface AdminLoginResponse {
   success: boolean
-  token: string
+  token?: string
   message: string
   isAdmin?: boolean
   username?: string
+  code?: string
+  accounts?: AccountSummary[]
+}
+
+export interface AccountSummary {
+  username: string
+  status?: string
+  email?: string
+  phone?: string
 }
 
 export interface PendingListResponse {
@@ -253,6 +282,9 @@ class ApiService {
         let errorMessage = `HTTP error: ${response.status}`
         try {
           const errorData = await response.json()
+          if (errorData?.code === 'ACCOUNT_SELECTION_REQUIRED') {
+            return errorData
+          }
           errorMessage = errorData?.message || errorMessage
         } catch {
           // 无法解析 JSON，使用默认错误消息
@@ -305,6 +337,33 @@ class ApiService {
   // 发送验证码
   async sendCode(data: SendCodeRequest): Promise<SendCodeResponse> {
     return this.request<SendCodeResponse>('/verify/send', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async sendForgotPasswordCode(data: {
+    identifier: string
+    identifierType: 'email' | 'phone'
+    countryCode?: string
+    language: string
+  }): Promise<SendCodeResponse & { accountCount?: number }> {
+    return this.request('/forgot-password/send', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async resetForgotPassword(data: {
+    identifier: string
+    identifierType: 'email' | 'phone'
+    countryCode?: string
+    code: string
+    newPassword: string
+    selectedUsername?: string
+    language: string
+  }): Promise<{ success: boolean; message?: string; code?: string; accounts?: AccountSummary[] }> {
+    return this.request('/forgot-password/reset', {
       method: 'POST',
       body: JSON.stringify(data),
     })
@@ -537,11 +596,23 @@ class ApiService {
 
   // 用户修改密码
   async userChangePassword(data: {
-    currentPassword: string
+    method?: 'current_password' | 'email_code' | 'phone_code'
+    currentPassword?: string
+    code?: string
     newPassword: string
     language: string
   }): Promise<{ success: boolean; message?: string }> {
     return this.request('/user/password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async sendUserPasswordCode(data: {
+    method: 'email_code' | 'phone_code'
+    language: string
+  }): Promise<SendCodeResponse> {
+    return this.request('/user/password/code', {
       method: 'POST',
       body: JSON.stringify(data),
     })

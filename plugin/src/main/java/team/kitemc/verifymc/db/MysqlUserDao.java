@@ -400,6 +400,26 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
     }
 
     @Override
+    public List<Map<String, Object>> getUsersByEmail(String email) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        if (email == null || email.isEmpty()) {
+            return result;
+        }
+        String sql = "SELECT * FROM users WHERE LOWER(email)=LOWER(?) ORDER BY regTime DESC";
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
+            ps.setString(1, email);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    result.add(mapUserFromResultSet(rs));
+                }
+            }
+        } catch (SQLException e) {
+            debugLog("Error getting users by email: " + e.getMessage());
+        }
+        return result;
+    }
+
+    @Override
     public Map<String, Object> getUserByPhone(String phone) {
         debugLog("Getting user by phone: " + phone);
         if (phone == null || phone.isEmpty()) {
@@ -419,6 +439,26 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
         }
         debugLog("User not found by phone");
         return null;
+    }
+
+    @Override
+    public List<Map<String, Object>> getUsersByPhone(String phone) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        if (phone == null || phone.isEmpty()) {
+            return result;
+        }
+        String sql = "SELECT * FROM users WHERE phone=? ORDER BY regTime DESC";
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
+            ps.setString(1, phone);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    result.add(mapUserFromResultSet(rs));
+                }
+            }
+        } catch (SQLException e) {
+            debugLog("Error getting users by phone: " + e.getMessage());
+        }
+        return result;
     }
 
     @Override

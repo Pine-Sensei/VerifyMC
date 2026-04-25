@@ -433,6 +433,22 @@ public class FileUserDao implements UserDao {
     }
 
     @Override
+    public List<Map<String, Object>> getUsersByEmail(String email) {
+        debugLog("Getting users by email: " + email);
+        if (email == null || email.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map<String, Object> user : users.values()) {
+            Object userEmail = user.get("email");
+            if (userEmail != null && userEmail.toString().equalsIgnoreCase(email)) {
+                result.add(user);
+            }
+        }
+        return result;
+    }
+
+    @Override
     public Map<String, Object> getUserByPhone(String phone) {
         debugLog("Getting user by phone: " + phone);
         if (phone == null || phone.isEmpty()) {
@@ -447,6 +463,22 @@ public class FileUserDao implements UserDao {
         }
         debugLog("User not found by phone");
         return null;
+    }
+
+    @Override
+    public List<Map<String, Object>> getUsersByPhone(String phone) {
+        debugLog("Getting users by phone: " + phone);
+        if (phone == null || phone.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map<String, Object> user : users.values()) {
+            Object userPhone = user.get("phone");
+            if (userPhone != null && userPhone.toString().equalsIgnoreCase(phone)) {
+                result.add(user);
+            }
+        }
+        return result;
     }
 
     @Override

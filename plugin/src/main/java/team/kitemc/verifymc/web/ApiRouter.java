@@ -40,6 +40,8 @@ public class ApiRouter {
 
         // --- Email verification ---
         registerApiRoute(server, "/api/verify/send", new VerifyCodeHandler(ctx));
+        registerApiRoute(server, "/api/forgot-password/send", new ForgotPasswordHandler(ctx, true));
+        registerApiRoute(server, "/api/forgot-password/reset", new ForgotPasswordHandler(ctx, false));
         // --- Questionnaire endpoints ---
         registerApiRoute(server, "/api/questionnaire/config", new QuestionnaireConfigHandler(ctx));
         registerApiRoute(server, "/api/questionnaire/submit", new QuestionnaireSubmitHandler(ctx, questionnaireSubmissionStore));
@@ -106,6 +108,7 @@ public class ApiRouter {
 
         // --- User profile management ---
         registerApiRoute(server, "/api/user/update", new UserUpdateHandler(ctx));
+        registerApiRoute(server, "/api/user/password/code", new UserPasswordCodeHandler(ctx));
         registerApiRoute(server, "/api/user/password", new UserPasswordHandler(ctx));
 
         // --- Static files (front-end) ---

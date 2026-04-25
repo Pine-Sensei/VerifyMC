@@ -63,8 +63,22 @@
     <Card class="p-6">
       <h3 class="text-lg font-semibold text-white mb-5">{{ $t('dashboard.profile.change_password') }}</h3>
 
+      <div v-if="passwordResetMethods.length > 1" class="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-2 rounded-lg bg-white/5 p-1">
+        <Button
+          v-for="method in passwordResetMethods"
+          :key="method"
+          type="button"
+          variant="outline"
+          class="border-transparent"
+          :class="passwordForm.method === method ? 'bg-white/20 text-white' : 'text-white/60 hover:bg-white/10'"
+          @click="passwordForm.method = method"
+        >
+          {{ $t(`dashboard.profile.password_methods.${method}`) }}
+        </Button>
+      </div>
+
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="flex flex-col gap-2">
+        <div v-if="passwordForm.method === 'current_password'" class="flex flex-col gap-2">
           <Label>{{ $t('dashboard.profile.current_password') }}</Label>
           <Input
             v-model="passwordForm.currentPassword"
@@ -72,6 +86,21 @@
             :placeholder="$t('dashboard.profile.current_password_placeholder')"
             :disabled="changingPassword"
           />
+        </div>
+
+        <div v-else class="flex flex-col gap-2">
+          <Label>{{ $t('login.form.code') }}</Label>
+          <div class="flex flex-col sm:flex-row gap-2">
+            <Input
+              v-model="passwordForm.code"
+              inputmode="numeric"
+              :placeholder="$t('login.form.code_placeholder')"
+              :disabled="changingPassword"
+            />
+            <Button type="button" variant="secondary" class="whitespace-nowrap" :disabled="sendingPasswordCode" @click="sendPasswordCode">
+              {{ sendingPasswordCode ? $t('register.sending') : $t('register.sendCode') }}
+            </Button>
+          </div>
         </div>
 
         <div class="flex flex-col gap-2">
@@ -146,6 +175,7 @@ const userStatus = ref<UserStatusType>('pending')
 const rejectReason = ref<string>('')
 const saving = ref(false)
 const changingPassword = ref(false)
+const sendingPasswordCode = ref(false)
 const discordStatus = ref<DiscordStatus | null>(null)
 
 const form = ref({
@@ -153,12 +183,18 @@ const form = ref({
 })
 
 const passwordForm = ref({
+  method: 'current_password' as 'current_password' | 'email_code' | 'phone_code',
   currentPassword: '',
+  code: '',
   newPassword: '',
 })
 
 const discordEnabled = computed(() => config.value?.discord?.enabled)
 const emailVerificationEnabled = computed(() => config.value?.authMethods?.includes('email') ?? false)
+const passwordResetMethods = computed(() => {
+  const methods = config.value?.user?.passwordResetMethods || ['current_password']
+  return methods.length ? methods : ['current_password']
+})
 
 const statusClass = computed(() => {
   const colors = getStatusColors(userStatus.value)
@@ -235,7 +271,7 @@ const saveProfile = async () => {
 }
 
 const changePassword = async () => {
-  if (!passwordForm.value.currentPassword || !passwordForm.value.newPassword) {
+  if (!passwordForm.value.newPassword || (passwordForm.value.method === 'current_password' && !passwordForm.value.currentPassword) || (passwordForm.value.method !== 'current_password' && !passwordForm.value.code)) {
     notification.error(t('dashboard.profile.password_required'))
     return
   }
@@ -243,13 +279,15 @@ const changePassword = async () => {
   changingPassword.value = true
   try {
     const response = await apiService.userChangePassword({
+      method: passwordForm.value.method,
       currentPassword: passwordForm.value.currentPassword,
+      code: passwordForm.value.code,
       newPassword: passwordForm.value.newPassword,
       language: locale.value,
     })
     if (response.success) {
       notification.success(t('dashboard.profile.password_change_success'))
-      passwordForm.value = { currentPassword: '', newPassword: '' }
+      passwordForm.value = { method: passwordForm.value.method, currentPassword: '', code: '', newPassword: '' }
     } else {
       notification.error(response.message || t('common.error'))
     }
@@ -257,6 +295,22 @@ const changePassword = async () => {
     notification.error(t('common.error'))
   } finally {
     changingPassword.value = false
+  }
+}
+
+const sendPasswordCode = async () => {
+  if (passwordForm.value.method === 'current_password') return
+  sendingPasswordCode.value = true
+  try {
+    const response = await apiService.sendUserPasswordCode({
+      method: passwordForm.value.method,
+      language: locale.value,
+    })
+    response.success ? notification.success(response.message) : notification.error(response.message)
+  } catch (error) {
+    notification.error(error instanceof Error ? error.message : t('register.send_failed'))
+  } finally {
+    sendingPasswordCode.value = false
   }
 }
 

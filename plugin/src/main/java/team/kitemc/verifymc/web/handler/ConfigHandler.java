@@ -27,6 +27,20 @@ public class ConfigHandler implements HttpHandler {
 
         JSONObject config = new JSONObject();
         config.put("authMethods", new JSONArray(ctx.getConfigManager().getAuthMethods()));
+        JSONObject loginConfig = new JSONObject();
+        loginConfig.put("allowedMethods", new JSONArray(ctx.getConfigManager().getAllowedLoginMethods()));
+        loginConfig.put("usernameCaseSensitive", ctx.getConfigManager().isUsernameCaseSensitive());
+        config.put("login", loginConfig);
+
+        JSONObject forgotPasswordConfig = new JSONObject();
+        forgotPasswordConfig.put("enabled", ctx.getConfigManager().isForgotPasswordEnabled());
+        forgotPasswordConfig.put("allowedMethods", new JSONArray(ctx.getConfigManager().getForgotPasswordMethods()));
+        config.put("forgotPassword", forgotPasswordConfig);
+
+        JSONObject userConfig = new JSONObject();
+        userConfig.put("passwordResetMethods", new JSONArray(ctx.getConfigManager().getUserPasswordResetMethods()));
+        config.put("user", userConfig);
+
         JSONObject authConfig = new JSONObject();
         authConfig.put("mustAuthMethods", new JSONArray(ctx.getConfigManager().getMustAuthMethods()));
         authConfig.put("optionAuthMethods", new JSONArray(ctx.getConfigManager().getOptionAuthMethods()));

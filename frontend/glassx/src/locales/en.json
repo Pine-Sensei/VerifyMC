@@ -150,15 +150,38 @@
     "title": "Login",
     "subtitle": "Enter your account credentials",
     "form": {
-      "username": "Username/Email",
-      "username_placeholder": "Enter username or email",
+      "username": "Username",
+      "username_placeholder": "Enter username",
+      "email": "Email",
+      "email_placeholder": "Enter email",
+      "phone": "Phone",
+      "phone_placeholder": "Enter phone number",
+      "country_code": "Country Code",
       "password": "Password",
       "password_placeholder": "Enter password",
+      "code": "Verification Code",
+      "code_placeholder": "Enter verification code",
       "submit": "Login"
     },
+    "methods": {
+      "username": "Username",
+      "email": "Email",
+      "phone": "Phone"
+    },
+    "auth": {
+      "password": "Password",
+      "code": "Code"
+    },
+    "forgot_password": "Forgot password?",
+    "account_select": "Choose the account to continue",
     "validation": {
-      "username_required": "Please enter username or email",
-      "password_required": "Please enter password"
+      "username_required": "Please enter username",
+      "email_required": "Please enter email",
+      "phone_required": "Please enter phone number",
+      "country_code_required": "Please enter country code",
+      "password_required": "Please enter password",
+      "code_required": "Please enter verification code",
+      "account_required": "Please choose an account"
     },
     "messages": {
       "success": "Login successful, redirecting to admin panel...",
@@ -167,6 +190,14 @@
       "not_authorized": "You do not have admin privileges",
       "system_error": "System configuration error, please contact server admin"
     }
+  },
+  "forgot_password": {
+    "title": "Reset Password",
+    "subtitle": "Reset your password with an email or SMS code",
+    "reset": "Reset Password",
+    "required": "Please enter the code and new password",
+    "success": "Password reset successfully",
+    "back_login": "Back to login"
   },
   "admin": {
     "title": "Admin Panel",
@@ -387,6 +418,11 @@
       "change_password_btn": "Change Password",
       "password_required": "Please fill in all password fields",
       "password_change_success": "Password changed successfully",
+      "password_methods": {
+        "current_password": "Current password",
+        "email_code": "Email code",
+        "phone_code": "SMS code"
+      },
       "save_success": "Profile saved successfully"
     },
     "downloads": {

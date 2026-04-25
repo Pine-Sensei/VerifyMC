@@ -114,15 +114,23 @@
             </div>
 
             <div v-if="smsEnabled">
-              <Label for="phone" class="mb-1">{{ $t('register.form.phone') }}</Label>
-              <Input
-                id="phone"
-                v-model="form.phone"
-                type="tel"
-                :placeholder="$t('register.form.phone_placeholder')"
-                :class="{ 'border-red-500 focus-visible:ring-red-500': errors.phone }"
-                @blur="validatePhone"
-              />
+              <div class="grid grid-cols-[7rem_1fr] gap-2">
+                <div>
+                  <Label for="countryCode" class="mb-1">{{ $t('login.form.country_code') }}</Label>
+                  <Input id="countryCode" v-model="form.countryCode" placeholder="+86" :class="{ 'border-red-500 focus-visible:ring-red-500': errors.phone }" @blur="validatePhone" />
+                </div>
+                <div>
+                  <Label for="phone" class="mb-1">{{ $t('register.form.phone') }}</Label>
+                  <Input
+                    id="phone"
+                    v-model="form.phone"
+                    type="tel"
+                    :placeholder="$t('register.form.phone_placeholder')"
+                    :class="{ 'border-red-500 focus-visible:ring-red-500': errors.phone }"
+                    @blur="validatePhone"
+                  />
+                </div>
+              </div>
               <p v-if="errors.phone" class="mt-1 text-sm text-red-400">{{ errors.phone }}</p>
 
               <Label for="smsCode" class="mt-3 mb-1">{{ $t('register.form.sms_code') }}</Label>
@@ -294,10 +302,10 @@ const refreshCaptcha = async () => {
   }
 }
 
-const form = reactive({ username: '', email: '', code: '', phone: '', smsCode: '', password: '', captchaAnswer: '' })
+const form = reactive({ username: '', email: '', code: '', countryCode: '+86', phone: '', smsCode: '', password: '', captchaAnswer: '' })
 const errors = reactive({ username: '', email: '', code: '', phone: '', smsCode: '', password: '', captcha: '', discord: '' })
 
-const normalizedPhone = computed(() => normalizePhone(form.phone))
+const normalizedPhone = computed(() => normalizePhone(form.phone, form.countryCode))
 
 const onDiscordLinked = () => {
   discordLinked.value = true
@@ -388,13 +396,14 @@ const validateEmail = () => {
     errors.email = t('register.validation.email_format')
   }
 }
-const normalizePhone = (phone: string) => {
+const normalizePhone = (phone: string, countryCode = '') => {
   const trimmed = phone.trim()
   if (!trimmed) return ''
   const hasPlus = trimmed.startsWith('+')
+  if (!hasPlus && !countryCode.trim()) return ''
   let digits = trimmed.replace(/\D/g, '')
   if (digits.startsWith('00')) digits = digits.slice(2)
-  if (!hasPlus && digits.length === 11 && digits.startsWith('1')) digits = `86${digits}`
+  if (!hasPlus) digits = `${countryCode.replace(/\D/g, '')}${digits}`
   return digits ? `+${digits}` : ''
 }
 const validatePhone = () => {
@@ -402,6 +411,10 @@ const validatePhone = () => {
   const required = mustAuthMethods.value.includes('sms')
   if (required && !form.phone) {
     errors.phone = t('register.validation.phone_required')
+    return
+  }
+  if (form.phone && !form.countryCode.trim() && !form.phone.trim().startsWith('+')) {
+    errors.phone = t('login.validation.country_code_required')
     return
   }
   const normalized = normalizedPhone.value
@@ -538,7 +551,7 @@ const sendSmsCode = async () => {
   if (errors.phone) return
   smsSending.value = true
   try {
-    const res = await apiService.sendCode({ channel: 'sms', phone: normalizedPhone.value, language: locale.value })
+    const res = await apiService.sendCode({ channel: 'sms', phone: form.phone, countryCode: form.countryCode, language: locale.value })
     if (res.success) {
       success(t('register.smsCodeSent'))
       startSmsCooldown(res.remainingSeconds || config.value.sms?.cooldownSeconds || 60)
@@ -574,6 +587,7 @@ const handleSubmit = async () => {
     if (emailEnabled.value) registerData.code = form.code
     if (smsEnabled.value) {
       registerData.phone = normalizedPhone.value
+      registerData.countryCode = form.countryCode
       registerData.smsCode = form.smsCode
     }
     if (captchaEnabled.value) {

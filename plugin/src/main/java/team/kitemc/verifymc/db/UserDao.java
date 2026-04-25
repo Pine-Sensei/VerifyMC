@@ -66,6 +66,18 @@ public interface UserDao {
 
     Map<String, Object> getUserByEmail(String email);
 
+    default List<Map<String, Object>> getUsersByEmail(String email) {
+        if (email == null || email.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        return getAllUsers().stream()
+                .filter(user -> {
+                    Object value = user.get("email");
+                    return value != null && value.toString().equalsIgnoreCase(email);
+                })
+                .collect(java.util.stream.Collectors.toList());
+    }
+
     default Map<String, Object> getUserByPhone(String phone) {
         if (phone == null || phone.isEmpty()) {
             return null;
@@ -77,6 +89,18 @@ public interface UserDao {
             }
         }
         return null;
+    }
+
+    default List<Map<String, Object>> getUsersByPhone(String phone) {
+        if (phone == null || phone.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        return getAllUsers().stream()
+                .filter(user -> {
+                    Object value = user.get("phone");
+                    return value != null && value.toString().equalsIgnoreCase(phone);
+                })
+                .collect(java.util.stream.Collectors.toList());
     }
 
     boolean deleteUser(String username);

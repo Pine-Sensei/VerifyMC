@@ -6,6 +6,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import team.kitemc.verifymc.core.PluginContext;
 import team.kitemc.verifymc.db.AuditRecord;
+import team.kitemc.verifymc.service.VerifyCodeService;
 import team.kitemc.verifymc.util.PasswordUtil;
 import team.kitemc.verifymc.web.ApiResponseFactory;
 import team.kitemc.verifymc.web.WebResponseHelper;
@@ -37,10 +38,17 @@ public class UserPasswordHandler implements HttpHandler {
         }
 
         String language = req.optString("language", "en");
+        String method = req.optString("method", req.optString("authMethod", "current_password")).trim().toLowerCase();
         String currentPassword = req.optString("currentPassword", "");
         String newPassword = req.optString("newPassword", "");
 
-        if (currentPassword.isBlank() || newPassword.isBlank()) {
+        if (!ctx.getConfigManager().isUserPasswordResetMethodEnabled(method)) {
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("user.password_reset_method_not_enabled", language)), 400);
+            return;
+        }
+
+        if (newPassword.isBlank() || ("current_password".equals(method) && currentPassword.isBlank())) {
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
                     ctx.getMessage("admin.password_required", language)));
             return;
@@ -61,16 +69,37 @@ public class UserPasswordHandler implements HttpHandler {
         }
 
         String storedPassword = (String) user.get("password");
-        if (storedPassword == null || storedPassword.isBlank()) {
+        if ("current_password".equals(method) && (storedPassword == null || storedPassword.isBlank())) {
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
                     ctx.getMessage("user.password_not_set", language)));
             return;
         }
 
-        if (!PasswordUtil.verify(currentPassword, storedPassword)) {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
-                    ctx.getMessage("user.current_password_incorrect", language)));
-            return;
+        if ("current_password".equals(method)) {
+            if (!PasswordUtil.verify(currentPassword, storedPassword)) {
+                WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                        ctx.getMessage("user.current_password_incorrect", language)));
+                return;
+            }
+        } else {
+            VerifyCodeService.Channel channel = "phone_code".equals(method)
+                    ? VerifyCodeService.Channel.SMS
+                    : VerifyCodeService.Channel.EMAIL;
+            String target = "phone_code".equals(method)
+                    ? String.valueOf(user.getOrDefault("phone", ""))
+                    : String.valueOf(user.getOrDefault("email", ""));
+            if (target.isBlank()) {
+                WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                        ctx.getMessage(channel == VerifyCodeService.Channel.SMS ? "sms.required" : "email.required", language)), 400);
+                return;
+            }
+            VerifyCodeService.VerifyResult verify = ctx.getVerifyCodeService()
+                    .verifyCode(channel, VerifyCodeService.Purpose.PROFILE_PASSWORD_RESET, target, req.optString("code", ""));
+            if (!verify.success()) {
+                WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                        ctx.getMessage("verify.wrong_code", language)));
+                return;
+            }
         }
 
         boolean updated = ctx.getUserDao().updatePassword(username, newPassword);
@@ -82,7 +111,7 @@ public class UserPasswordHandler implements HttpHandler {
 
             ctx.getAuditDao().addAudit(new AuditRecord(
                 "password_change", username, username, 
-                "User changed own password", System.currentTimeMillis()
+                "User changed own password by " + method, System.currentTimeMillis()
             ));
             
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.success(

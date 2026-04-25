@@ -37,18 +37,19 @@ public class VerifyCodeHandler implements HttpHandler {
         }
 
         String channel = req.optString("channel", req.has("phone") ? "sms" : "email").trim().toLowerCase();
+        String purpose = req.optString("purpose", "register").trim().toLowerCase();
         if ("sms".equals(channel)) {
-            handleSms(exchange, req);
+            handleSms(exchange, req, purpose);
             return;
         }
-        handleEmail(exchange, req);
+        handleEmail(exchange, req, purpose);
     }
 
-    private void handleEmail(HttpExchange exchange, JSONObject req) throws IOException {
+    private void handleEmail(HttpExchange exchange, JSONObject req, String purpose) throws IOException {
         String email = EmailAddressUtil.normalize(req.optString("email", ""));
         String language = req.optString("language", "en");
 
-        if (!ctx.getConfigManager().isEmailAuthEnabled()) {
+        if (!isEmailPurposeEnabled(purpose)) {
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
                     ctx.getMessage("email.not_enabled", language)));
             return;
@@ -75,13 +76,19 @@ public class VerifyCodeHandler implements HttpHandler {
             }
         }
 
-        if (ctx.getUserDao().countUsersByEmail(email) >= ctx.getConfigManager().getMaxAccountsPerEmail()) {
+        if ("register".equals(purpose) && ctx.getUserDao().countUsersByEmail(email) >= ctx.getConfigManager().getMaxAccountsPerEmail()) {
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
                     ctx.getMessage("register.email_limit", language)));
             return;
         }
+        if ("login".equals(purpose) && ctx.getUserDao().countUsersByEmail(email) == 0) {
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("login.user_not_found", language)));
+            return;
+        }
 
-        VerifyCodeService.CodeIssueResult issueResult = ctx.getVerifyCodeService().issueCode(VerifyCodeService.Channel.EMAIL, email, null);
+        VerifyCodeService.CodeIssueResult issueResult = ctx.getVerifyCodeService().issueCode(
+                VerifyCodeService.Channel.EMAIL, parsePurpose(purpose), email, null);
         if (!issueResult.issued()) {
             sendRateLimited(exchange, "email.rate_limited", language, issueResult.remainingSeconds());
             return;
@@ -91,20 +98,26 @@ public class VerifyCodeHandler implements HttpHandler {
         if (sent) {
             sendIssued(exchange, ctx.getMessage("email.sent", language), issueResult.remainingSeconds());
         } else {
-            ctx.getVerifyCodeService().revokeCode(VerifyCodeService.Channel.EMAIL, email);
+            ctx.getVerifyCodeService().revokeCode(VerifyCodeService.Channel.EMAIL, parsePurpose(purpose), email);
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
                     ctx.getMessage("email.failed", language)));
         }
     }
 
-    private void handleSms(HttpExchange exchange, JSONObject req) throws IOException {
-        String phone = PhoneNumberUtil.normalize(req.optString("phone", ""));
+    private void handleSms(HttpExchange exchange, JSONObject req, String purpose) throws IOException {
+        String rawPhone = req.optString("phone", "");
         String language = req.optString("language", "en");
+        if (AuthFlowSupport.missingRequiredCountryCode(rawPhone, req.optString("countryCode", ""))) {
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("sms.country_code_required", language)));
+            return;
+        }
+        String phone = AuthFlowSupport.normalizePhone(req.optString("countryCode", ""), rawPhone);
         String ip = exchange.getRemoteAddress() != null && exchange.getRemoteAddress().getAddress() != null
                 ? exchange.getRemoteAddress().getAddress().getHostAddress()
                 : "";
 
-        if (!ctx.getConfigManager().isSmsAuthEnabled()) {
+        if (!isSmsPurposeEnabled(purpose)) {
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
                     ctx.getMessage("sms.not_enabled", language)));
             return;
@@ -116,13 +129,19 @@ public class VerifyCodeHandler implements HttpHandler {
             return;
         }
 
-        if (ctx.getUserDao().countUsersByPhone(phone) >= ctx.getConfigManager().getMaxAccountsPerPhone()) {
+        if ("register".equals(purpose) && ctx.getUserDao().countUsersByPhone(phone) >= ctx.getConfigManager().getMaxAccountsPerPhone()) {
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
                     ctx.getMessage("register.phone_limit", language)));
             return;
         }
+        if ("login".equals(purpose) && ctx.getUserDao().countUsersByPhone(phone) == 0) {
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("login.user_not_found", language)));
+            return;
+        }
 
-        VerifyCodeService.CodeIssueResult issueResult = ctx.getVerifyCodeService().issueCode(VerifyCodeService.Channel.SMS, phone, ip);
+        VerifyCodeService.CodeIssueResult issueResult = ctx.getVerifyCodeService().issueCode(
+                VerifyCodeService.Channel.SMS, parsePurpose(purpose), phone, ip);
         if (!issueResult.issued()) {
             sendRateLimited(exchange, "sms.rate_limited", language, issueResult.remainingSeconds());
             return;
@@ -132,10 +151,37 @@ public class VerifyCodeHandler implements HttpHandler {
         if (sent.success()) {
             sendIssued(exchange, ctx.getMessage("sms.sent", language), issueResult.remainingSeconds());
         } else {
-            ctx.getVerifyCodeService().revokeCode(VerifyCodeService.Channel.SMS, phone);
+            ctx.getVerifyCodeService().revokeCode(VerifyCodeService.Channel.SMS, parsePurpose(purpose), phone);
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
                     ctx.getMessage("sms.failed", language)));
         }
+    }
+
+    private boolean isEmailPurposeEnabled(String purpose) {
+        return switch (purpose) {
+            case "login" -> ctx.getConfigManager().isLoginMethodEnabled("email_code");
+            case "forgot_password" -> ctx.getConfigManager().isForgotPasswordEnabled()
+                    && ctx.getConfigManager().isForgotPasswordMethodEnabled("email_code");
+            default -> ctx.getConfigManager().isEmailAuthEnabled();
+        };
+    }
+
+    private boolean isSmsPurposeEnabled(String purpose) {
+        return switch (purpose) {
+            case "login" -> ctx.getConfigManager().isLoginMethodEnabled("phone_code");
+            case "forgot_password" -> ctx.getConfigManager().isForgotPasswordEnabled()
+                    && ctx.getConfigManager().isForgotPasswordMethodEnabled("phone_code");
+            default -> ctx.getConfigManager().isSmsAuthEnabled();
+        };
+    }
+
+    private VerifyCodeService.Purpose parsePurpose(String purpose) {
+        return switch (purpose) {
+            case "login" -> VerifyCodeService.Purpose.LOGIN;
+            case "forgot_password" -> VerifyCodeService.Purpose.FORGOT_PASSWORD;
+            case "profile_password_reset" -> VerifyCodeService.Purpose.PROFILE_PASSWORD_RESET;
+            default -> VerifyCodeService.Purpose.REGISTER;
+        };
     }
 
     private void sendRateLimited(HttpExchange exchange, String key, String language, long remainingSeconds) throws IOException {

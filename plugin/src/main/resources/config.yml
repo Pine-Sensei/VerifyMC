@@ -13,6 +13,13 @@ ssl:
     type: PKCS12
 auth_methods:
   - email
+login:
+  allowed_methods:
+    - username
+    - email_password
+    - email_code
+    - phone_password
+    - phone_code
 auth:
   must_auth_methods:
     - email
@@ -25,6 +32,19 @@ register:
   auto_approve: false
 username_regex: "^[a-zA-Z0-9_-]{3,16}$"
 username_case_sensitive: false
+user:
+  password_reset_methods:
+    - current_password
+    - email_code
+    - phone_code
+forgot_password:
+  enabled: true
+  allowed_methods:
+    - email_code
+    - phone_code
+  code_length: 6
+  expire_seconds: 300
+  send_cooldown_seconds: 60
 user_notification:
   enabled: true
   on_approve: true

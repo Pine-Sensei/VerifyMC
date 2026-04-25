@@ -23,6 +23,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: "login.title" },
   },
   {
+    path: "/forgot-password",
+    name: "ForgotPassword",
+    component: () => import("./pages/ForgotPassword.vue"),
+    meta: { title: "forgot_password.title" },
+  },
+  {
     path: "/dashboard",
     name: "Dashboard",
     component: () => import("./pages/Dashboard.vue"),

@@ -150,15 +150,38 @@
     "title": "登录",
     "subtitle": "请输入您的账户信息",
     "form": {
-      "username": "用户名/邮箱",
-      "username_placeholder": "请输入用户名或邮箱",
+      "username": "用户名",
+      "username_placeholder": "请输入用户名",
+      "email": "邮箱",
+      "email_placeholder": "请输入邮箱",
+      "phone": "手机号",
+      "phone_placeholder": "请输入手机号",
+      "country_code": "国家码",
       "password": "密码",
       "password_placeholder": "请输入密码",
+      "code": "验证码",
+      "code_placeholder": "请输入验证码",
       "submit": "登录"
     },
+    "methods": {
+      "username": "用户名",
+      "email": "邮箱",
+      "phone": "手机"
+    },
+    "auth": {
+      "password": "密码",
+      "code": "验证码"
+    },
+    "forgot_password": "忘记密码？",
+    "account_select": "请选择要登录的账号",
     "validation": {
-      "username_required": "请输入用户名或邮箱",
-      "password_required": "请输入密码"
+      "username_required": "请输入用户名",
+      "email_required": "请输入邮箱",
+      "phone_required": "请输入手机号",
+      "country_code_required": "请输入国家码",
+      "password_required": "请输入密码",
+      "code_required": "请输入验证码",
+      "account_required": "请选择账号"
     },
     "messages": {
       "success": "登录成功，正在跳转到管理页面...",
@@ -167,6 +190,14 @@
       "not_authorized": "您没有管理员权限",
       "system_error": "系统配置错误，请联系服务器管理员"
     }
+  },
+  "forgot_password": {
+    "title": "找回密码",
+    "subtitle": "通过邮箱或手机验证码重置密码",
+    "reset": "重置密码",
+    "required": "请填写验证码和新密码",
+    "success": "密码已重置",
+    "back_login": "返回登录"
   },
   "admin": {
     "title": "管理面板",
@@ -381,6 +412,11 @@
       "change_password_btn": "更改密码",
       "password_required": "请填写所有密码字段",
       "password_change_success": "密码修改成功",
+      "password_methods": {
+        "current_password": "当前密码",
+        "email_code": "邮箱验证码",
+        "phone_code": "短信验证码"
+      },
       "save_success": "资料保存成功"
     },
     "downloads": {

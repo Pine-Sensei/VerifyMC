@@ -259,6 +259,176 @@ public class ConfigManager {
         return getMustAuthMethods().contains("sms") || getOptionAuthMethods().contains("sms");
     }
 
+    // --- Login methods ---
+    public List<String> getAllowedLoginMethods() {
+        List<String> configured = normalizeLoginMethods(getConfig().getStringList("login.allowed_methods"));
+        if (!configured.isEmpty()) {
+            return configured;
+        }
+
+        List<String> legacy = normalizeAuthMethods(getConfig().getStringList("auth_methods"));
+        if (legacy.isEmpty()) {
+            return List.of("username");
+        }
+
+        java.util.LinkedHashSet<String> mapped = new java.util.LinkedHashSet<>();
+        mapped.add("username");
+        for (String method : legacy) {
+            switch (method) {
+                case "username" -> mapped.add("username");
+                case "email" -> {
+                    mapped.add("email_password");
+                    mapped.add("email_code");
+                }
+                case "phone", "sms" -> {
+                    mapped.add("phone_password");
+                    mapped.add("phone_code");
+                }
+                default -> {
+                    if (isValidLoginMethod(method)) {
+                        mapped.add(method);
+                    }
+                }
+            }
+        }
+        if (mapped.isEmpty()) {
+            mapped.add("username");
+        }
+        return List.copyOf(mapped);
+    }
+
+    public boolean isLoginMethodEnabled(String method) {
+        if (method == null || method.isBlank()) {
+            return false;
+        }
+        return getAllowedLoginMethods().contains(method.trim().toLowerCase());
+    }
+
+    public boolean isLoginCodeEnabled(VerifyIdentifier identifier) {
+        return isLoginMethodEnabled(identifier.configPrefix() + "_code");
+    }
+
+    public boolean isLoginPasswordEnabled(VerifyIdentifier identifier) {
+        if (identifier == VerifyIdentifier.USERNAME) {
+            return isLoginMethodEnabled("username");
+        }
+        return isLoginMethodEnabled(identifier.configPrefix() + "_password");
+    }
+
+    private List<String> normalizeLoginMethods(List<String> methods) {
+        if (methods == null || methods.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return methods.stream()
+                .filter(method -> method != null && !method.trim().isEmpty())
+                .map(method -> method.trim().toLowerCase())
+                .flatMap(method -> switch (method) {
+                    case "email" -> java.util.stream.Stream.of("email_password", "email_code");
+                    case "phone" -> java.util.stream.Stream.of("phone_password", "phone_code");
+                    default -> java.util.stream.Stream.of(method);
+                })
+                .filter(this::isValidLoginMethod)
+                .distinct()
+                .toList();
+    }
+
+    private boolean isValidLoginMethod(String method) {
+        return "username".equals(method)
+                || "email_password".equals(method)
+                || "email_code".equals(method)
+                || "phone_password".equals(method)
+                || "phone_code".equals(method);
+    }
+
+    // --- Password reset ---
+    public boolean isForgotPasswordEnabled() {
+        return getConfig().getBoolean("forgot_password.enabled", false);
+    }
+
+    public List<String> getForgotPasswordMethods() {
+        List<String> methods = normalizeCodeMethods(getConfig().getStringList("forgot_password.allowed_methods"));
+        if (methods.isEmpty()) {
+            methods = normalizeCodeMethods(getConfig().getStringList("forgot_password.forgot_password_methods"));
+        }
+        if (methods.isEmpty()) {
+            methods = normalizeCodeMethods(getConfig().getStringList("forgot_password.methods"));
+        }
+        return methods.isEmpty() ? List.of("email_code") : methods;
+    }
+
+    public boolean isForgotPasswordMethodEnabled(String method) {
+        return method != null && getForgotPasswordMethods().contains(method.trim().toLowerCase());
+    }
+
+    public List<String> getUserPasswordResetMethods() {
+        List<String> methods = normalizePasswordResetMethods(getConfig().getStringList("user.password_reset_methods"));
+        return methods.isEmpty() ? List.of("current_password") : methods;
+    }
+
+    public boolean isUserPasswordResetMethodEnabled(String method) {
+        return method != null && getUserPasswordResetMethods().contains(method.trim().toLowerCase());
+    }
+
+    private List<String> normalizeCodeMethods(List<String> methods) {
+        if (methods == null || methods.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return methods.stream()
+                .filter(method -> method != null && !method.trim().isEmpty())
+                .map(method -> method.trim().toLowerCase())
+                .map(method -> "email".equals(method) ? "email_code" : method)
+                .map(method -> "phone".equals(method) || "sms".equals(method) ? "phone_code" : method)
+                .filter(method -> "email_code".equals(method) || "phone_code".equals(method))
+                .distinct()
+                .toList();
+    }
+
+    private List<String> normalizePasswordResetMethods(List<String> methods) {
+        if (methods == null || methods.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return methods.stream()
+                .filter(method -> method != null && !method.trim().isEmpty())
+                .map(method -> method.trim().toLowerCase())
+                .map(method -> "email".equals(method) ? "email_code" : method)
+                .map(method -> "phone".equals(method) || "sms".equals(method) ? "phone_code" : method)
+                .filter(method -> "current_password".equals(method) || "email_code".equals(method) || "phone_code".equals(method))
+                .distinct()
+                .toList();
+    }
+
+    public int getEmailCodeLength() {
+        int length = getConfig().getInt("verification.email.code_length",
+                getConfig().getInt("forgot_password.code_length", 6));
+        return Math.max(4, Math.min(length, 8));
+    }
+
+    public int getEmailCodeExpireSeconds() {
+        return Math.max(60, getConfig().getInt("verification.email.expire_seconds",
+                getConfig().getInt("forgot_password.expire_seconds", 300)));
+    }
+
+    public int getEmailCodeCooldownSeconds() {
+        return Math.max(1, getConfig().getInt("verification.email.send_cooldown_seconds",
+                getConfig().getInt("forgot_password.send_cooldown_seconds", 60)));
+    }
+
+    public enum VerifyIdentifier {
+        USERNAME("username"),
+        EMAIL("email"),
+        PHONE("phone");
+
+        private final String configPrefix;
+
+        VerifyIdentifier(String configPrefix) {
+            this.configPrefix = configPrefix;
+        }
+
+        public String configPrefix() {
+            return configPrefix;
+        }
+    }
+
     // --- Email ---
     public String getEmailSubject() {
         return getConfig().getString("email_subject", "VerifyMC Verification Code");
