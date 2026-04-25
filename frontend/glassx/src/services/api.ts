@@ -172,6 +172,7 @@ export interface AdminLoginRequest {
   code?: string
   countryCode?: string
   selectedUsername?: string
+  selectionToken?: string
   language: string
 }
 
@@ -183,6 +184,7 @@ export interface AdminLoginResponse {
   username?: string
   code?: string
   accounts?: AccountSummary[]
+  selectionToken?: string
 }
 
 export interface AccountSummary {
@@ -361,8 +363,9 @@ class ApiService {
     code: string
     newPassword: string
     selectedUsername?: string
+    selectionToken?: string
     language: string
-  }): Promise<{ success: boolean; message?: string; code?: string; accounts?: AccountSummary[] }> {
+  }): Promise<{ success: boolean; message?: string; code?: string; accounts?: AccountSummary[]; selectionToken?: string }> {
     return this.request('/forgot-password/reset', {
       method: 'POST',
       body: JSON.stringify(data),

@@ -7,7 +7,6 @@ import org.json.JSONObject;
 import team.kitemc.verifymc.core.PluginContext;
 import team.kitemc.verifymc.db.AuditRecord;
 import team.kitemc.verifymc.service.VerifyCodeService;
-import team.kitemc.verifymc.util.PasswordUtil;
 import team.kitemc.verifymc.web.ApiResponseFactory;
 import team.kitemc.verifymc.web.WebResponseHelper;
 
@@ -69,14 +68,15 @@ public class UserPasswordHandler implements HttpHandler {
         }
 
         String storedPassword = (String) user.get("password");
-        if ("current_password".equals(method) && (storedPassword == null || storedPassword.isBlank())) {
+        if ("current_password".equals(method) && (storedPassword == null || storedPassword.isBlank())
+                && (ctx.getAuthmeService() == null || !ctx.getAuthmeService().hasAuthmeUser(username))) {
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
                     ctx.getMessage("user.password_not_set", language)));
             return;
         }
 
         if ("current_password".equals(method)) {
-            if (!PasswordUtil.verify(currentPassword, storedPassword)) {
+            if (!AuthFlowSupport.verifyPassword(ctx, username, currentPassword, storedPassword)) {
                 WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
                         ctx.getMessage("user.current_password_incorrect", language)));
                 return;
@@ -102,16 +102,20 @@ public class UserPasswordHandler implements HttpHandler {
             }
         }
 
-        boolean updated = ctx.getUserDao().updatePassword(username, newPassword);
+        boolean updated = true;
+        for (Map<String, Object> linkedUser : AuthFlowSupport.collectSharedPasswordUsers(ctx.getUserDao(), user)) {
+            String linkedUsername = String.valueOf(linkedUser.get("username"));
+            updated = ctx.getUserDao().updatePassword(linkedUsername, newPassword) && updated;
+
+            if (ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {
+                ctx.getAuthmeService().syncUserPasswordToAuthme(linkedUsername, newPassword);
+            }
+        }
 
         if (updated) {
-            if (ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {
-                ctx.getAuthmeService().syncUserPasswordToAuthme(username, newPassword);
-            }
-
             ctx.getAuditDao().addAudit(new AuditRecord(
                 "password_change", username, username, 
-                "User changed own password by " + method, System.currentTimeMillis()
+                "User changed shared password by " + method, System.currentTimeMillis()
             ));
             
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.success(

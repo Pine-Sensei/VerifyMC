@@ -212,6 +212,10 @@ public class VerifyMC extends JavaPlugin {
 
         // Version check service
         context.setVersionCheckService(new VersionCheckService(this));
+        context.setAccountSelectionService(new AccountSelectionService(
+                Math.min(
+                        context.getConfigManager().getEmailCodeExpireSeconds() * 1000L,
+                        context.getConfigManager().getSmsExpireSeconds() * 1000L)));
 
         // Registration application service
         context.setRegistrationApplicationService(new RegistrationApplicationService());

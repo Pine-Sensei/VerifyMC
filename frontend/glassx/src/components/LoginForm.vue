@@ -138,7 +138,8 @@ const form = reactive({
   countryCode: '+86',
   password: '',
   code: '',
-  selectedUsername: ''
+  selectedUsername: '',
+  selectionToken: ''
 })
 
 const allowedMethods = computed(() => config.value?.login?.allowedMethods?.length ? config.value.login.allowedMethods : ['username', 'email_password'])
@@ -164,6 +165,7 @@ watch(identifierType, () => {
   authMethod.value = authOptions.value[0] || 'password'
   accounts.value = []
   form.selectedUsername = ''
+  form.selectionToken = ''
 })
 
 watch(authOptions, options => {
@@ -186,6 +188,7 @@ const loadConfig = async () => {
 }
 
 const validateForm = () => {
+  const needsPrimaryCredential = !(form.selectionToken && accounts.value.length > 0)
   if (!form.identifier.trim()) {
     notification.error(t(`login.validation.${identifierType.value}_required`))
     return false
@@ -194,11 +197,11 @@ const validateForm = () => {
     notification.error(t('login.validation.country_code_required'))
     return false
   }
-  if (authMethod.value === 'password' && !form.password) {
+  if (needsPrimaryCredential && authMethod.value === 'password' && !form.password) {
     notification.error(t('login.validation.password_required'))
     return false
   }
-  if (authMethod.value === 'code' && !form.code.trim()) {
+  if (needsPrimaryCredential && authMethod.value === 'code' && !form.code.trim()) {
     notification.error(t('login.validation.code_required'))
     return false
   }
@@ -220,6 +223,9 @@ const sendLoginCode = async () => {
   }
 
   sendingCode.value = true
+  accounts.value = []
+  form.selectedUsername = ''
+  form.selectionToken = ''
   try {
     const response = await apiService.sendCode({
       channel: identifierType.value === 'phone' ? 'sms' : 'email',
@@ -250,16 +256,21 @@ const handleSubmit = async () => {
       code: form.code.trim(),
       countryCode: identifierType.value === 'phone' ? form.countryCode.trim() : undefined,
       selectedUsername: form.selectedUsername || undefined,
+      selectionToken: form.selectionToken || undefined,
       language: locale.value
     })
 
-    if (response.code === 'ACCOUNT_SELECTION_REQUIRED' && response.accounts?.length) {
+    if (response.code === 'ACCOUNT_SELECTION_REQUIRED' && response.accounts?.length && response.selectionToken) {
       accounts.value = response.accounts
+      form.selectionToken = response.selectionToken
       notification.info(response.message || t('login.account_select'))
       return
     }
 
     if (response.success && response.token) {
+      accounts.value = []
+      form.selectedUsername = ''
+      form.selectionToken = ''
       sessionService.setToken(response.token)
       sessionService.setUserInfo({
         username: response.username || form.selectedUsername || form.identifier.trim(),
@@ -274,6 +285,11 @@ const handleSubmit = async () => {
       notification.error(response.message || t('login.messages.error'))
     }
   } catch (error) {
+    if (form.selectionToken) {
+      accounts.value = []
+      form.selectedUsername = ''
+      form.selectionToken = ''
+    }
     notification.error(error instanceof Error ? error.message : t('login.messages.invalid_credentials'))
   } finally {
     loading.value = false

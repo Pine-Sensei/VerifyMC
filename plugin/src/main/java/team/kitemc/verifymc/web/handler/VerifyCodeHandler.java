@@ -61,13 +61,15 @@ public class VerifyCodeHandler implements HttpHandler {
             return;
         }
 
-        if (ctx.getConfigManager().isEmailAliasLimitEnabled() && EmailAddressUtil.hasAlias(email)) {
+        if ("register".equals(purpose)
+                && ctx.getConfigManager().isEmailAliasLimitEnabled()
+                && EmailAddressUtil.hasAlias(email)) {
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
                     ctx.getMessage("register.alias_not_allowed", language)));
             return;
         }
 
-        if (ctx.getConfigManager().isEmailDomainWhitelistEnabled()) {
+        if ("register".equals(purpose) && ctx.getConfigManager().isEmailDomainWhitelistEnabled()) {
             String domain = EmailAddressUtil.extractDomain(email);
             if (!ctx.getConfigManager().getEmailDomainWhitelist().contains(domain)) {
                 WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(

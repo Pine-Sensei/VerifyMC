@@ -189,10 +189,12 @@ const passwordForm = ref({
   newPassword: '',
 })
 
+type PasswordResetMethod = 'current_password' | 'email_code' | 'phone_code'
+
 const discordEnabled = computed(() => config.value?.discord?.enabled)
 const emailVerificationEnabled = computed(() => config.value?.authMethods?.includes('email') ?? false)
-const passwordResetMethods = computed(() => {
-  const methods = config.value?.user?.passwordResetMethods || ['current_password']
+const passwordResetMethods = computed<PasswordResetMethod[]>(() => {
+  const methods = (config.value?.user?.passwordResetMethods || ['current_password']) as PasswordResetMethod[]
   return methods.length ? methods : ['current_password']
 })
 

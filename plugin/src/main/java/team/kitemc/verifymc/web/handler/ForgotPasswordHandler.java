@@ -9,6 +9,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import team.kitemc.verifymc.core.ConfigManager;
 import team.kitemc.verifymc.db.AuditRecord;
+import team.kitemc.verifymc.service.AccountSelectionService;
 import team.kitemc.verifymc.service.VerifyCodeService;
 import team.kitemc.verifymc.sms.SmsSendResult;
 import team.kitemc.verifymc.util.EmailAddressUtil;
@@ -128,41 +129,72 @@ public class ForgotPasswordHandler implements HttpHandler {
             return;
         }
 
+        String selectionToken = req.optString("selectionToken", "").trim();
         String selectedUsername = req.optString("selectedUsername", "").trim();
-        if (users.size() > 1 && selectedUsername.isBlank()) {
-            JSONObject response = ApiResponseFactory.failure(ctx.getMessage("login.account_selection_required", language));
-            response.put("code", "ACCOUNT_SELECTION_REQUIRED");
-            response.put("accounts", AuthFlowSupport.accountSummaries(users));
-            WebResponseHelper.sendJson(exchange, response, 409);
-            return;
+        List<Map<String, Object>> targetUsers = users;
+        Map<String, Object> selectedUser = users.get(0);
+
+        if (!selectionToken.isBlank()) {
+            AccountSelectionService.ConsumeResult selection = ctx.getAccountSelectionService().consume(
+                    selectionToken,
+                    AccountSelectionService.Purpose.FORGOT_PASSWORD,
+                    selectedUsername);
+            if (!selection.valid()) {
+                WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                        ctx.getMessage("verify.wrong_code", language)), 409);
+                return;
+            }
+
+            selectedUser = ctx.getUserDao().getUserByUsernameExact(selection.username());
+            if (selectedUser == null) {
+                WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                        ctx.getMessage("verify.wrong_code", language)), 409);
+                return;
+            }
+
+            targetUsers = selection.entry().usernames().stream()
+                    .map(ctx.getUserDao()::getUserByUsernameExact)
+                    .filter(java.util.Objects::nonNull)
+                    .toList();
+        } else {
+            VerifyCodeService.Channel channel = identifierType == ConfigManager.VerifyIdentifier.PHONE
+                    ? VerifyCodeService.Channel.SMS
+                    : VerifyCodeService.Channel.EMAIL;
+            VerifyCodeService.VerifyResult verify = ctx.getVerifyCodeService()
+                    .verifyCode(channel, VerifyCodeService.Purpose.FORGOT_PASSWORD, identifier, req.optString("code", ""));
+            if (!verify.success()) {
+                WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(ctx.getMessage("verify.wrong_code", language)));
+                return;
+            }
+
+            if (users.size() > 1) {
+                JSONObject response = AuthFlowSupport.accountSelectionRequiredResponse(
+                        ctx,
+                        AccountSelectionService.Purpose.FORGOT_PASSWORD,
+                        identifierType,
+                        identifier,
+                        users,
+                        language);
+                WebResponseHelper.sendJson(exchange, response, 409);
+                return;
+            }
         }
 
-        Map<String, Object> user = AuthFlowSupport.selectUser(users, selectedUsername,
-                ctx.getConfigManager().isUsernameCaseSensitive());
-        if (user == null) {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(ctx.getMessage("login.user_not_found", language)));
-            return;
-        }
-
-        VerifyCodeService.Channel channel = identifierType == ConfigManager.VerifyIdentifier.PHONE
-                ? VerifyCodeService.Channel.SMS
-                : VerifyCodeService.Channel.EMAIL;
-        VerifyCodeService.VerifyResult verify = ctx.getVerifyCodeService()
-                .verifyCode(channel, VerifyCodeService.Purpose.FORGOT_PASSWORD, identifier, req.optString("code", ""));
-        if (!verify.success()) {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(ctx.getMessage("verify.wrong_code", language)));
-            return;
-        }
-
-        String username = String.valueOf(user.get("username"));
-        boolean updated = ctx.getUserDao().updateUserPassword(username, newPassword);
-        if (updated && ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {
-            ctx.getAuthmeService().syncUserPasswordToAuthme(username, newPassword);
+        boolean updated = !targetUsers.isEmpty();
+        for (Map<String, Object> user : targetUsers) {
+            String username = String.valueOf(user.get("username"));
+            updated = ctx.getUserDao().updateUserPassword(username, newPassword) && updated;
+            if (ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {
+                ctx.getAuthmeService().syncUserPasswordToAuthme(username, newPassword);
+            }
         }
         if (updated && ctx.getAuditDao() != null) {
             ctx.getAuditDao().addAudit(new AuditRecord(
-                    "forgot_password_reset", username, username,
-                    "User reset password by " + identifierType.configPrefix(), System.currentTimeMillis()));
+                    "forgot_password_reset",
+                    String.valueOf(selectedUser.get("username")),
+                    String.valueOf(selectedUser.get("username")),
+                    "Reset shared password for " + targetUsers.size() + " account(s) by " + identifierType.configPrefix(),
+                    System.currentTimeMillis()));
         }
 
         WebResponseHelper.sendJson(exchange, updated

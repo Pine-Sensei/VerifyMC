@@ -117,7 +117,8 @@ const form = reactive({
   countryCode: '+86',
   code: '',
   newPassword: '',
-  selectedUsername: ''
+  selectedUsername: '',
+  selectionToken: ''
 })
 
 const identifierOptions = computed<IdentifierType[]>(() => {
@@ -137,6 +138,7 @@ watch(identifierOptions, options => {
 watch(identifierType, () => {
   accounts.value = []
   form.selectedUsername = ''
+  form.selectionToken = ''
 })
 
 const loadConfig = async () => {
@@ -162,6 +164,9 @@ const validateIdentifier = () => {
 const sendCode = async () => {
   if (!validateIdentifier()) return
   sending.value = true
+  accounts.value = []
+  form.selectedUsername = ''
+  form.selectionToken = ''
   try {
     const response = await apiService.sendForgotPasswordCode({
       identifier: form.identifier.trim(),
@@ -179,7 +184,8 @@ const sendCode = async () => {
 
 const resetPassword = async () => {
   if (!validateIdentifier()) return
-  if (!form.code.trim() || !form.newPassword) {
+  const needsVerificationCode = !(form.selectionToken && accounts.value.length > 0)
+  if ((needsVerificationCode && !form.code.trim()) || !form.newPassword) {
     notification.error(t('forgot_password.required'))
     return
   }
@@ -197,22 +203,32 @@ const resetPassword = async () => {
       code: form.code.trim(),
       newPassword: form.newPassword,
       selectedUsername: form.selectedUsername || undefined,
+      selectionToken: form.selectionToken || undefined,
       language: locale.value
     })
 
-    if (response.code === 'ACCOUNT_SELECTION_REQUIRED' && response.accounts?.length) {
+    if (response.code === 'ACCOUNT_SELECTION_REQUIRED' && response.accounts?.length && response.selectionToken) {
       accounts.value = response.accounts
+      form.selectionToken = response.selectionToken
       notification.info(response.message || t('login.account_select'))
       return
     }
 
     if (response.success) {
+      accounts.value = []
+      form.selectedUsername = ''
+      form.selectionToken = ''
       notification.success(response.message || t('forgot_password.success'))
       router.push('/login')
     } else {
       notification.error(response.message || t('common.error'))
     }
   } catch (error) {
+    if (form.selectionToken) {
+      accounts.value = []
+      form.selectedUsername = ''
+      form.selectionToken = ''
+    }
     notification.error(error instanceof Error ? error.message : t('common.error'))
   } finally {
     loading.value = false

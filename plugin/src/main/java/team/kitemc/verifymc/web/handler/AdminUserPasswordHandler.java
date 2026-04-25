@@ -11,6 +11,8 @@ import team.kitemc.verifymc.web.ApiResponseFactory;
 import team.kitemc.verifymc.web.WebResponseHelper;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Changes a user's password (stored and/or AuthMe).
@@ -48,14 +50,30 @@ public class AdminUserPasswordHandler implements HttpHandler {
             return;
         }
 
-        boolean ok = ctx.getUserDao().updatePassword(target, password);
+        Map<String, Object> seedUser = ctx.getUserDao().getUserByUsername(target);
+        if (seedUser == null) {
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("error.user_not_found", language)));
+            return;
+        }
 
-        if (ok && ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {
-            ctx.getAuthmeService().syncUserPasswordToAuthme(target, password);
+        List<Map<String, Object>> linkedUsers = AuthFlowSupport.collectSharedPasswordUsers(ctx.getUserDao(), seedUser);
+        boolean ok = !linkedUsers.isEmpty();
+        for (Map<String, Object> linkedUser : linkedUsers) {
+            String linkedUsername = String.valueOf(linkedUser.get("username"));
+            ok = ctx.getUserDao().updatePassword(linkedUsername, password) && ok;
+            if (ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {
+                ctx.getAuthmeService().syncUserPasswordToAuthme(linkedUsername, password);
+            }
         }
 
         if (ok) {
-            ctx.getAuditDao().addAudit(new AuditRecord("password_change", operator, target, "", System.currentTimeMillis()));
+            ctx.getAuditDao().addAudit(new AuditRecord(
+                    "password_change",
+                    operator,
+                    target,
+                    "Updated shared password for " + linkedUsers.size() + " account(s)",
+                    System.currentTimeMillis()));
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.success(
                     ctx.getMessage("admin.password_change_success", language)));
         } else {

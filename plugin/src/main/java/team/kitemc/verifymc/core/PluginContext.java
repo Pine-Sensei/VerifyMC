@@ -34,8 +34,9 @@ public class PluginContext {
     private AuthmeService authmeService;
     private CaptchaService captchaService;
     private QuestionnaireService questionnaireService;
-    private DiscordService discordService;
-    private VersionCheckService versionCheckService;
+     private DiscordService discordService;
+     private VersionCheckService versionCheckService;
+    private AccountSelectionService accountSelectionService;
 
     // Application services
     private RegistrationApplicationService registrationApplicationService;
@@ -73,6 +74,7 @@ public class PluginContext {
     public QuestionnaireService getQuestionnaireService() { return questionnaireService; }
     public DiscordService getDiscordService() { return discordService; }
     public VersionCheckService getVersionCheckService() { return versionCheckService; }
+    public AccountSelectionService getAccountSelectionService() { return accountSelectionService; }
     public RegistrationApplicationService getRegistrationApplicationService() { return registrationApplicationService; }
     public ReviewApplicationService getReviewApplicationService() { return reviewApplicationService; }
     public QuestionnaireApplicationService getQuestionnaireApplicationService() { return questionnaireApplicationService; }
@@ -90,6 +92,7 @@ public class PluginContext {
     public void setQuestionnaireService(QuestionnaireService questionnaireService) { this.questionnaireService = questionnaireService; }
     public void setDiscordService(DiscordService discordService) { this.discordService = discordService; }
     public void setVersionCheckService(VersionCheckService versionCheckService) { this.versionCheckService = versionCheckService; }
+    public void setAccountSelectionService(AccountSelectionService accountSelectionService) { this.accountSelectionService = accountSelectionService; }
     public void setRegistrationApplicationService(RegistrationApplicationService svc) { this.registrationApplicationService = svc; }
     public void setReviewApplicationService(ReviewApplicationService svc) { this.reviewApplicationService = svc; }
     public void setQuestionnaireApplicationService(QuestionnaireApplicationService svc) { this.questionnaireApplicationService = svc; }

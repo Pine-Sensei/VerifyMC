@@ -7,12 +7,10 @@ import org.json.JSONObject;
 import team.kitemc.verifymc.core.OpsManager;
 import team.kitemc.verifymc.core.PluginContext;
 import team.kitemc.verifymc.core.ConfigManager;
-import team.kitemc.verifymc.db.AuditRecord;
 import team.kitemc.verifymc.db.UserDao;
-import team.kitemc.verifymc.service.AuthmeService;
+import team.kitemc.verifymc.service.AccountSelectionService;
 import team.kitemc.verifymc.service.VerifyCodeService;
 import team.kitemc.verifymc.security.AdminAuthMode;
-import team.kitemc.verifymc.util.PasswordUtil;
 import team.kitemc.verifymc.web.ApiResponseFactory;
 import team.kitemc.verifymc.web.WebAuthHelper;
 import team.kitemc.verifymc.web.WebResponseHelper;
@@ -86,6 +84,7 @@ public class LoginHandler implements HttpHandler {
         String password = req.optString("password", "");
         String code = req.optString("code", "");
         String selectedUsername = req.optString("selectedUsername", "").trim();
+        String selectionToken = req.optString("selectionToken", "").trim();
         String language = req.optString("language", "en");
 
         if (!isConfigured(identifierType, authMethod)) {
@@ -120,39 +119,41 @@ public class LoginHandler implements HttpHandler {
             return;
         }
 
-        if (identifierType != ConfigManager.VerifyIdentifier.USERNAME && matches.size() > 1 && selectedUsername.isBlank()) {
-            JSONObject resp = ApiResponseFactory.failure(ctx.getMessage("login.account_selection_required", language));
-            resp.put("code", "ACCOUNT_SELECTION_REQUIRED");
-            resp.put("accounts", AuthFlowSupport.accountSummaries(matches));
-            WebResponseHelper.sendJson(exchange, resp, 409);
-            return;
-        }
-
-        Map<String, Object> user = AuthFlowSupport.selectUser(matches, selectedUsername,
-                ctx.getConfigManager().isUsernameCaseSensitive());
-        if (user == null) {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
-                    ctx.getMessage("login.user_not_found", language)));
-            return;
-        }
-
-        String actualUsername = (String) user.get("username");
-        if (actualUsername == null || actualUsername.isEmpty()) {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
-                    ctx.getMessage("login.user_not_found", language)));
-            return;
-        }
-
+        List<Map<String, Object>> eligibleMatches = matches;
         if (isAdminLogin) {
-            if (!ctx.getAdminAccessManager().hasAnyAdminAccess(actualUsername)) {
-                ctx.getPlugin().getLogger().warning("[Security] Unauthorized admin login attempt for user: " + actualUsername);
+            eligibleMatches = matches.stream()
+                    .filter(user -> ctx.getAdminAccessManager().hasAnyAdminAccess(String.valueOf(user.get("username"))))
+                    .toList();
+            if (eligibleMatches.isEmpty()) {
+                ctx.getPlugin().getLogger().warning("[Security] Unauthorized admin login attempt for identifier: " + identifier);
                 WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
                         ctx.getMessage("login.not_authorized", language)));
                 return;
             }
         }
 
-        String storedPassword = (String) user.get("password");
+        if (!selectionToken.isBlank()) {
+            AccountSelectionService.ConsumeResult selection = ctx.getAccountSelectionService().consume(
+                    selectionToken,
+                    AccountSelectionService.Purpose.LOGIN,
+                    selectedUsername);
+            if (!selection.valid()) {
+                WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                        ctx.getMessage("login.failed", language)), 409);
+                return;
+            }
+
+            Map<String, Object> selectedUser = userDao.getUserByUsernameExact(selection.username());
+            if (selectedUser == null) {
+                WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                        ctx.getMessage("login.failed", language)), 409);
+                return;
+            }
+
+            completeLogin(exchange, selectedUser, language);
+            return;
+        }
+
         if ("code".equals(authMethod)) {
             VerifyCodeService.Channel channel = identifierType == ConfigManager.VerifyIdentifier.PHONE
                     ? VerifyCodeService.Channel.SMS
@@ -165,26 +166,31 @@ public class LoginHandler implements HttpHandler {
                 return;
             }
         } else {
-            if (!verifyPassword(actualUsername, password, storedPassword)) {
-                ctx.getPlugin().getLogger().warning("[Security] Failed login attempt - User: " + actualUsername + ", IP: " + clientIp + ", Reason: Invalid password");
+            Map<String, Object> verifiedUser = AuthFlowSupport.verifyPasswordAgainstUsers(ctx, eligibleMatches, password);
+            if (verifiedUser == null) {
+                ctx.getPlugin().getLogger().warning("[Security] Failed login attempt - Identifier: " + identifier + ", IP: " + clientIp + ", Reason: Invalid password");
                 WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
                         ctx.getMessage("login.failed", language)));
                 return;
             }
 
-            if (storedPassword != null && PasswordUtil.needsMigration(storedPassword)) {
-                migratePassword(actualUsername, password, storedPassword);
-            }
+            AuthFlowSupport.synchronizeSharedPasswords(ctx, eligibleMatches, password);
         }
 
-        WebAuthHelper webAuthHelper = ctx.getWebAuthHelper();
-        String token = webAuthHelper.generateToken(actualUsername);
-        boolean isAdmin = ctx.getAdminAccessManager().hasAnyAdminAccess(actualUsername);
-        JSONObject resp = ApiResponseFactory.success(ctx.getMessage("login.success", language));
-        resp.put("token", token);
-        resp.put("username", actualUsername);
-        resp.put("isAdmin", isAdmin);
-        WebResponseHelper.sendJson(exchange, resp);
+        if (identifierType != ConfigManager.VerifyIdentifier.USERNAME && eligibleMatches.size() > 1) {
+            JSONObject resp = AuthFlowSupport.accountSelectionRequiredResponse(
+                    ctx,
+                    AccountSelectionService.Purpose.LOGIN,
+                    identifierType,
+                    identifier,
+                    eligibleMatches,
+                    language);
+            WebResponseHelper.sendJson(exchange, resp, 409);
+            return;
+        }
+
+        Map<String, Object> user = eligibleMatches.get(0);
+        completeLogin(exchange, user, language);
     }
 
     private String inferIdentifier(String identifier) {
@@ -207,44 +213,28 @@ public class LoginHandler implements HttpHandler {
         return ctx.getConfigManager().isLoginPasswordEnabled(identifierType);
     }
 
-    private boolean verifyPassword(String actualUsername, String password, String storedPassword) {
-        AuthmeService authmeService = ctx.getAuthmeService();
-        boolean passwordValid = false;
-
-        if (authmeService != null && authmeService.isAuthmeEnabled() && authmeService.hasAuthmeUser(actualUsername)) {
-            String authmePassword = authmeService.getAuthmePassword(actualUsername);
-            if (authmePassword != null && !authmePassword.isEmpty()) {
-                passwordValid = PasswordUtil.verify(password, authmePassword);
-            }
+    private void completeLogin(HttpExchange exchange, Map<String, Object> user, String language) throws IOException {
+        String actualUsername = (String) user.get("username");
+        if (actualUsername == null || actualUsername.isEmpty()) {
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("login.user_not_found", language)));
+            return;
         }
 
-        if (!passwordValid && storedPassword != null && !storedPassword.isEmpty()) {
-            passwordValid = PasswordUtil.verify(password, storedPassword);
+        if (isAdminLogin && !ctx.getAdminAccessManager().hasAnyAdminAccess(actualUsername)) {
+            ctx.getPlugin().getLogger().warning("[Security] Unauthorized admin login attempt for user: " + actualUsername);
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("login.not_authorized", language)));
+            return;
         }
-        return passwordValid;
-    }
 
-    private void migratePassword(String username, String plainPassword, String oldStoredPassword) {
-        try {
-            String migrationType = PasswordUtil.isPlaintext(oldStoredPassword) ? "plaintext" : "unsalted-sha256";
-            boolean success = ctx.getUserDao().updateUserPassword(username, plainPassword);
-
-            if (success) {
-                ctx.getPlugin().getLogger().info("[VerifyMC] Password migration successful - User: " + username +
-                        ", From: " + migrationType + ", To: salted-sha256");
-
-                if (ctx.getAuditDao() != null) {
-                    ctx.getAuditDao().addAudit(new AuditRecord(
-                            "password_migration", "system", username,
-                            "Migrated from " + migrationType + " to salted-sha256",
-                            System.currentTimeMillis()));
-                }
-            } else {
-                ctx.getPlugin().getLogger().warning("[VerifyMC] Password migration failed - User: " + username);
-            }
-        } catch (Exception e) {
-            ctx.getPlugin().getLogger().log(java.util.logging.Level.WARNING,
-                    "[VerifyMC] Password migration error - User: " + username, e);
-        }
+        WebAuthHelper webAuthHelper = ctx.getWebAuthHelper();
+        String token = webAuthHelper.generateToken(actualUsername);
+        boolean isAdmin = ctx.getAdminAccessManager().hasAnyAdminAccess(actualUsername);
+        JSONObject resp = ApiResponseFactory.success(ctx.getMessage("login.success", language));
+        resp.put("token", token);
+        resp.put("username", actualUsername);
+        resp.put("isAdmin", isAdmin);
+        WebResponseHelper.sendJson(exchange, resp);
     }
 }
