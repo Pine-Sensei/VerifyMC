@@ -128,7 +128,8 @@ public class LoginHandler implements HttpHandler {
             return;
         }
 
-        Map<String, Object> user = selectUser(matches, selectedUsername);
+        Map<String, Object> user = AuthFlowSupport.selectUser(matches, selectedUsername,
+                ctx.getConfigManager().isUsernameCaseSensitive());
         if (user == null) {
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
                     ctx.getMessage("login.user_not_found", language)));
@@ -193,7 +194,7 @@ public class LoginHandler implements HttpHandler {
         if (identifier.contains("@")) {
             return "email";
         }
-        if (identifier.startsWith("+")) {
+        if (identifier.startsWith("+") || identifier.startsWith("00")) {
             return "phone";
         }
         return "username";
@@ -204,19 +205,6 @@ public class LoginHandler implements HttpHandler {
             return identifierType != ConfigManager.VerifyIdentifier.USERNAME && ctx.getConfigManager().isLoginCodeEnabled(identifierType);
         }
         return ctx.getConfigManager().isLoginPasswordEnabled(identifierType);
-    }
-
-    private Map<String, Object> selectUser(List<Map<String, Object>> users, String selectedUsername) {
-        if (users.size() == 1 && selectedUsername.isBlank()) {
-            return users.get(0);
-        }
-        for (Map<String, Object> user : users) {
-            Object username = user.get("username");
-            if (username != null && username.toString().equalsIgnoreCase(selectedUsername)) {
-                return user;
-            }
-        }
-        return null;
     }
 
     private boolean verifyPassword(String actualUsername, String password, String storedPassword) {

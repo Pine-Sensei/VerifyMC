@@ -65,16 +65,15 @@ public class ForgotPasswordHandler implements HttpHandler {
             return;
         }
 
-        List<Map<String, Object>> users = AuthFlowSupport.findUsers(ctx.getUserDao(), identifierType, identifier);
-        if (users.isEmpty()) {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
-                    ctx.getMessage("login.user_not_found", language)));
-            return;
-        }
-
         VerifyCodeService.Channel channel = identifierType == ConfigManager.VerifyIdentifier.PHONE
                 ? VerifyCodeService.Channel.SMS
                 : VerifyCodeService.Channel.EMAIL;
+        List<Map<String, Object>> users = AuthFlowSupport.findUsers(ctx.getUserDao(), identifierType, identifier);
+        if (users.isEmpty()) {
+            sendIssued(exchange, channel, language, 0);
+            return;
+        }
+
         String ip = exchange.getRemoteAddress() != null && exchange.getRemoteAddress().getAddress() != null
                 ? exchange.getRemoteAddress().getAddress().getHostAddress()
                 : "";
@@ -104,11 +103,7 @@ public class ForgotPasswordHandler implements HttpHandler {
             return;
         }
 
-        JSONObject response = ApiResponseFactory.success(ctx.getMessage(
-                channel == VerifyCodeService.Channel.SMS ? "sms.sent" : "email.sent", language));
-        response.put("remainingSeconds", issue.remainingSeconds());
-        response.put("accountCount", users.size());
-        WebResponseHelper.sendJson(exchange, response);
+        sendIssued(exchange, channel, language, issue.remainingSeconds());
     }
 
     private void resetPassword(HttpExchange exchange, JSONObject req) throws IOException {
@@ -142,7 +137,8 @@ public class ForgotPasswordHandler implements HttpHandler {
             return;
         }
 
-        Map<String, Object> user = selectUser(users, selectedUsername);
+        Map<String, Object> user = AuthFlowSupport.selectUser(users, selectedUsername,
+                ctx.getConfigManager().isUsernameCaseSensitive());
         if (user == null) {
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(ctx.getMessage("login.user_not_found", language)));
             return;
@@ -203,16 +199,10 @@ public class ForgotPasswordHandler implements HttpHandler {
         return normalized;
     }
 
-    private Map<String, Object> selectUser(List<Map<String, Object>> users, String selectedUsername) {
-        if (users.size() == 1 && selectedUsername.isBlank()) {
-            return users.get(0);
-        }
-        for (Map<String, Object> user : users) {
-            Object username = user.get("username");
-            if (username != null && username.toString().equalsIgnoreCase(selectedUsername)) {
-                return user;
-            }
-        }
-        return null;
+    private void sendIssued(HttpExchange exchange, VerifyCodeService.Channel channel, String language, long remainingSeconds) throws IOException {
+        JSONObject response = ApiResponseFactory.success(ctx.getMessage(
+                channel == VerifyCodeService.Channel.SMS ? "sms.sent" : "email.sent", language));
+        response.put("remainingSeconds", remainingSeconds);
+        WebResponseHelper.sendJson(exchange, response);
     }
 }

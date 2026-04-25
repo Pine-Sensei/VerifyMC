@@ -34,7 +34,8 @@ public final class AuthFlowSupport {
 
     public static boolean missingRequiredCountryCode(String raw, String countryCode) {
         String phone = raw == null ? "" : raw.trim();
-        return !phone.startsWith("+") && (countryCode == null || countryCode.trim().isEmpty());
+        return !phone.startsWith("+") && !phone.startsWith("00")
+                && (countryCode == null || countryCode.trim().isEmpty());
     }
 
     public static String normalizePhone(String countryCode, String phone) {
@@ -78,6 +79,24 @@ public final class AuthFlowSupport {
             accounts.put(account);
         }
         return accounts;
+    }
+
+    public static Map<String, Object> selectUser(List<Map<String, Object>> users, String selectedUsername, boolean usernameCaseSensitive) {
+        if (users.size() == 1 && (selectedUsername == null || selectedUsername.isBlank())) {
+            return users.get(0);
+        }
+        String expected = selectedUsername == null ? "" : selectedUsername.trim();
+        for (Map<String, Object> user : users) {
+            Object username = user.get("username");
+            if (username == null) {
+                continue;
+            }
+            String actual = username.toString();
+            if (usernameCaseSensitive ? actual.equals(expected) : actual.equalsIgnoreCase(expected)) {
+                return user;
+            }
+        }
+        return null;
     }
 
     private static String maskEmail(String email) {

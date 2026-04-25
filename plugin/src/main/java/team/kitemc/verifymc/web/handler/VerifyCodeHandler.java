@@ -81,9 +81,8 @@ public class VerifyCodeHandler implements HttpHandler {
                     ctx.getMessage("register.email_limit", language)));
             return;
         }
-        if ("login".equals(purpose) && ctx.getUserDao().countUsersByEmail(email) == 0) {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
-                    ctx.getMessage("login.user_not_found", language)));
+        if (isMaskedSuccessPurpose(purpose) && ctx.getUserDao().countUsersByEmail(email) == 0) {
+            sendIssued(exchange, ctx.getMessage("email.sent", language), 0);
             return;
         }
 
@@ -134,9 +133,8 @@ public class VerifyCodeHandler implements HttpHandler {
                     ctx.getMessage("register.phone_limit", language)));
             return;
         }
-        if ("login".equals(purpose) && ctx.getUserDao().countUsersByPhone(phone) == 0) {
-            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
-                    ctx.getMessage("login.user_not_found", language)));
+        if (isMaskedSuccessPurpose(purpose) && ctx.getUserDao().countUsersByPhone(phone) == 0) {
+            sendIssued(exchange, ctx.getMessage("sms.sent", language), 0);
             return;
         }
 
@@ -182,6 +180,10 @@ public class VerifyCodeHandler implements HttpHandler {
             case "profile_password_reset" -> VerifyCodeService.Purpose.PROFILE_PASSWORD_RESET;
             default -> VerifyCodeService.Purpose.REGISTER;
         };
+    }
+
+    private boolean isMaskedSuccessPurpose(String purpose) {
+        return "login".equals(purpose) || "forgot_password".equals(purpose);
     }
 
     private void sendRateLimited(HttpExchange exchange, String key, String language, long remainingSeconds) throws IOException {

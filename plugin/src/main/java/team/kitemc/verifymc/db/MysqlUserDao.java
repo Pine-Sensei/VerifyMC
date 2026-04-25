@@ -567,7 +567,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
         if (searchQuery == null || searchQuery.trim().isEmpty()) {
             sql = "SELECT * FROM users ORDER BY regTime DESC LIMIT ? OFFSET ?";
         } else {
-            sql = "SELECT * FROM users WHERE LOWER(username) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?) ORDER BY regTime DESC LIMIT ? OFFSET ?";
+            sql = "SELECT * FROM users WHERE LOWER(username) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?) OR phone LIKE ? ORDER BY regTime DESC LIMIT ? OFFSET ?";
         }
 
         try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
@@ -578,8 +578,9 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
                 String searchPattern = "%" + searchQuery.trim() + "%";
                 ps.setString(1, searchPattern);
                 ps.setString(2, searchPattern);
-                ps.setInt(3, pageSize);
-                ps.setInt(4, offset);
+                ps.setString(3, searchPattern);
+                ps.setInt(4, pageSize);
+                ps.setInt(5, offset);
             }
 
             try (ResultSet rs = ps.executeQuery()) {
@@ -604,7 +605,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
         if (searchQuery == null || searchQuery.trim().isEmpty()) {
             sql = "SELECT COUNT(*) FROM users";
         } else {
-            sql = "SELECT COUNT(*) FROM users WHERE LOWER(username) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?)";
+            sql = "SELECT COUNT(*) FROM users WHERE LOWER(username) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?) OR phone LIKE ?";
         }
 
         try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
@@ -612,6 +613,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
                 String searchPattern = "%" + searchQuery.trim() + "%";
                 ps.setString(1, searchPattern);
                 ps.setString(2, searchPattern);
+                ps.setString(3, searchPattern);
             }
 
             try (ResultSet rs = ps.executeQuery()) {
@@ -653,7 +655,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
         if (searchQuery == null || searchQuery.trim().isEmpty()) {
             sql = "SELECT COUNT(*) FROM users WHERE status != 'pending'";
         } else {
-            sql = "SELECT COUNT(*) FROM users WHERE status != 'pending' AND (LOWER(username) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?))";
+            sql = "SELECT COUNT(*) FROM users WHERE status != 'pending' AND (LOWER(username) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?) OR phone LIKE ?)";
         }
 
         try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
@@ -661,6 +663,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
                 String searchPattern = "%" + searchQuery.trim() + "%";
                 ps.setString(1, searchPattern);
                 ps.setString(2, searchPattern);
+                ps.setString(3, searchPattern);
             }
 
             try (ResultSet rs = ps.executeQuery()) {
@@ -709,7 +712,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
         if (searchQuery == null || searchQuery.trim().isEmpty()) {
             sql = "SELECT * FROM users WHERE status != 'pending' ORDER BY regTime DESC LIMIT ? OFFSET ?";
         } else {
-            sql = "SELECT * FROM users WHERE status != 'pending' AND (LOWER(username) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?)) ORDER BY regTime DESC LIMIT ? OFFSET ?";
+            sql = "SELECT * FROM users WHERE status != 'pending' AND (LOWER(username) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?) OR phone LIKE ?) ORDER BY regTime DESC LIMIT ? OFFSET ?";
         }
 
         try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
@@ -720,8 +723,9 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
                 String searchPattern = "%" + searchQuery.trim() + "%";
                 ps.setString(1, searchPattern);
                 ps.setString(2, searchPattern);
-                ps.setInt(3, pageSize);
-                ps.setInt(4, offset);
+                ps.setString(3, searchPattern);
+                ps.setInt(4, pageSize);
+                ps.setInt(5, offset);
             }
 
             try (ResultSet rs = ps.executeQuery()) {
