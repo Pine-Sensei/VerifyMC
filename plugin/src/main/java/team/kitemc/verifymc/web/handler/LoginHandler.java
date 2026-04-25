@@ -176,7 +176,8 @@ public class LoginHandler implements HttpHandler {
                 return;
             }
 
-            AuthFlowSupport.SharedPasswordUpdateResult syncResult = AuthFlowSupport.synchronizeSharedPasswords(ctx, eligibleMatches, password);
+            List<Map<String, Object>> sharedUsers = AuthFlowSupport.resolveSharedPasswordGroup(userDao, verifiedUser);
+            AuthFlowSupport.SharedPasswordUpdateResult syncResult = AuthFlowSupport.synchronizeSharedPasswords(ctx, sharedUsers, password);
             if (!syncResult.success()) {
                 ctx.getPlugin().getLogger().warning("[Security] Shared password synchronization failed - Identifier: " + identifier + ", IP: " + clientIp);
                 WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(

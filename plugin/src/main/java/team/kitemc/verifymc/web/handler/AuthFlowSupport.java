@@ -183,6 +183,14 @@ public final class AuthFlowSupport {
         return SharedPasswordUpdateResult.success(usernames);
     }
 
+    public static List<Map<String, Object>> resolveSharedPasswordGroup(UserDao userDao, Map<String, Object> seedUser) {
+        if (seedUser == null) {
+            return List.of();
+        }
+        List<Map<String, Object>> sharedUsers = collectSharedPasswordUsers(userDao, seedUser);
+        return sharedUsers.isEmpty() ? List.of(seedUser) : sharedUsers;
+    }
+
     public static List<Map<String, Object>> collectSharedPasswordUsers(UserDao userDao, Map<String, Object> seedUser) {
         LinkedHashMap<String, Map<String, Object>> users = new LinkedHashMap<>();
         addUser(users, seedUser);

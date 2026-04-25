@@ -131,7 +131,6 @@ public class ForgotPasswordHandler implements HttpHandler {
 
         String selectionToken = req.optString("selectionToken", "").trim();
         String selectedUsername = req.optString("selectedUsername", "").trim();
-        List<Map<String, Object>> targetUsers = users;
         Map<String, Object> selectedUser = users.get(0);
 
         if (!selectionToken.isBlank()) {
@@ -154,10 +153,6 @@ public class ForgotPasswordHandler implements HttpHandler {
                 return;
             }
 
-            targetUsers = selection.entry().usernames().stream()
-                    .map(ctx.getUserDao()::getUserByUsernameExact)
-                    .filter(java.util.Objects::nonNull)
-                    .toList();
         } else {
             VerifyCodeService.Channel channel = identifierType == ConfigManager.VerifyIdentifier.PHONE
                     ? VerifyCodeService.Channel.SMS
@@ -182,6 +177,7 @@ public class ForgotPasswordHandler implements HttpHandler {
             }
         }
 
+        List<Map<String, Object>> targetUsers = AuthFlowSupport.resolveSharedPasswordGroup(ctx.getUserDao(), selectedUser);
         AuthFlowSupport.SharedPasswordUpdateResult updateResult = AuthFlowSupport.synchronizeSharedPasswords(ctx, targetUsers, newPassword);
         boolean updated = updateResult.success();
         if (updated && ctx.getAuditDao() != null) {
@@ -189,7 +185,7 @@ public class ForgotPasswordHandler implements HttpHandler {
                     "forgot_password_reset",
                     String.valueOf(selectedUser.get("username")),
                     String.valueOf(selectedUser.get("username")),
-                    "Reset shared password for " + targetUsers.size() + " account(s) by " + identifierType.configPrefix(),
+                    "Reset shared password for " + updateResult.usernames().size() + " account(s) by " + identifierType.configPrefix(),
                     System.currentTimeMillis()));
         }
 

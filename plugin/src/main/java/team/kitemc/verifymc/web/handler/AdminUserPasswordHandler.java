@@ -50,6 +50,13 @@ public class AdminUserPasswordHandler implements HttpHandler {
             return;
         }
 
+        String passwordRegex = ctx.getConfigManager().getAuthmePasswordRegex();
+        if (!password.matches(passwordRegex)) {
+            WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                    ctx.getMessage("admin.invalid_password", language).replace("{regex}", passwordRegex)), 400);
+            return;
+        }
+
         Map<String, Object> seedUser = ctx.getUserDao().getUserByUsername(target);
         if (seedUser == null) {
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
@@ -57,7 +64,7 @@ public class AdminUserPasswordHandler implements HttpHandler {
             return;
         }
 
-        List<Map<String, Object>> linkedUsers = AuthFlowSupport.collectSharedPasswordUsers(ctx.getUserDao(), seedUser);
+        List<Map<String, Object>> linkedUsers = AuthFlowSupport.resolveSharedPasswordGroup(ctx.getUserDao(), seedUser);
         AuthFlowSupport.SharedPasswordUpdateResult updateResult = AuthFlowSupport.synchronizeSharedPasswords(ctx, linkedUsers, password);
         boolean ok = updateResult.success();
 
@@ -66,7 +73,7 @@ public class AdminUserPasswordHandler implements HttpHandler {
                     "password_change",
                     operator,
                     target,
-                    "Updated shared password for " + linkedUsers.size() + " account(s)",
+                    "Updated shared password for " + updateResult.usernames().size() + " account(s)",
                     System.currentTimeMillis()));
             WebResponseHelper.sendJson(exchange, ApiResponseFactory.success(
                     ctx.getMessage("admin.password_change_success", language)));
