@@ -136,6 +136,8 @@ public class LoginHandler implements HttpHandler {
             AccountSelectionService.ConsumeResult selection = ctx.getAccountSelectionService().consume(
                     selectionToken,
                     AccountSelectionService.Purpose.LOGIN,
+                    identifierType.configPrefix(),
+                    identifier,
                     selectedUsername);
             if (!selection.valid()) {
                 WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
@@ -174,7 +176,13 @@ public class LoginHandler implements HttpHandler {
                 return;
             }
 
-            AuthFlowSupport.synchronizeSharedPasswords(ctx, eligibleMatches, password);
+            AuthFlowSupport.SharedPasswordUpdateResult syncResult = AuthFlowSupport.synchronizeSharedPasswords(ctx, eligibleMatches, password);
+            if (!syncResult.success()) {
+                ctx.getPlugin().getLogger().warning("[Security] Shared password synchronization failed - Identifier: " + identifier + ", IP: " + clientIp);
+                WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
+                        ctx.getMessage("login.failed", language)));
+                return;
+            }
         }
 
         if (identifierType != ConfigManager.VerifyIdentifier.USERNAME && eligibleMatches.size() > 1) {

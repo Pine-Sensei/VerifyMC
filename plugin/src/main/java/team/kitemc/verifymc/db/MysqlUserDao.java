@@ -257,6 +257,64 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
     }
 
     @Override
+    public boolean updateSharedPasswords(Collection<String> usernames, String plainPassword) {
+        if (usernames == null || usernames.isEmpty() || plainPassword == null || plainPassword.isEmpty()) {
+            return false;
+        }
+
+        List<String> normalizedUsernames = usernames.stream()
+                .filter(username -> username != null && !username.isBlank())
+                .distinct()
+                .toList();
+        if (normalizedUsernames.isEmpty() || normalizedUsernames.size() != usernames.size()) {
+            return false;
+        }
+
+        String sql = "UPDATE users SET password=? WHERE username=?";
+        Connection connection = null;
+        boolean previousAutoCommit = true;
+        try {
+            connection = getConnection();
+            previousAutoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                String hashedPassword = PasswordUtil.hash(plainPassword);
+                for (String username : normalizedUsernames) {
+                    ps.setString(1, hashedPassword);
+                    ps.setString(2, username);
+                    if (ps.executeUpdate() <= 0) {
+                        connection.rollback();
+                        return false;
+                    }
+                }
+            }
+
+            connection.commit();
+            debugLog("Shared password updated for " + normalizedUsernames.size() + " users");
+            return true;
+        } catch (SQLException e) {
+            debugLog("Error updating shared passwords: " + e.getMessage());
+            if (connection != null) {
+                try {
+                    connection.rollback();
+                } catch (SQLException rollbackError) {
+                    debugLog("Rollback failed while updating shared passwords: " + rollbackError.getMessage());
+                }
+            }
+            return false;
+        } finally {
+            if (connection != null) {
+                try {
+                    connection.setAutoCommit(previousAutoCommit);
+                } catch (SQLException e) {
+                    debugLog("Failed to restore auto-commit after shared password update: " + e.getMessage());
+                }
+            }
+        }
+    }
+
+    @Override
     public boolean updateUserStoredPassword(String username, String storedPassword) {
         String sql = "UPDATE users SET password=? WHERE username=?";
         try (PreparedStatement ps = getConnection().prepareStatement(sql)) {

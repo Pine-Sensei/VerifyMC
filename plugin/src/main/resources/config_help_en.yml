@@ -43,6 +43,20 @@ ssl:
 #   Both email and captcha: auth_methods: [email, captcha]
 auth_methods:
   - email
+# Login method configuration.
+# Options:
+# - username: username + password login
+# - email_password: email + password login
+# - email_code: email verification code login
+# - phone_password: phone number + password login
+# - phone_code: phone verification code login
+login:
+  allowed_methods:
+    - username
+    - email_password
+    - email_code
+    - phone_password
+    - phone_code
 # Registration authentication rules. Every must_auth_methods entry is required; option_auth_methods entries count toward min_option_auth_methods.
 auth:
   must_auth_methods:
@@ -70,6 +84,49 @@ register:
 username_regex: "^[a-zA-Z0-9_-]{3,16}$"
 # If false, usernames that only differ by case (e.g., "Player" and "player") are treated as the same.
 username_case_sensitive: false
+user:
+  # Methods allowed when a logged-in user changes their password.
+  # Options:
+  # - current_password: enter current password
+  # - email_code: email verification code
+  # - phone_code: phone verification code
+  password_reset_methods:
+    - current_password
+    - email_code
+    - phone_code
+
+# ----------------------------------------
+# Forgot Password
+# ----------------------------------------
+forgot_password:
+  # Whether to enable the forgot password flow.
+  enabled: true
+  # Methods allowed for password recovery.
+  # Options: email_code, phone_code
+  allowed_methods:
+    - email_code
+    - phone_code
+  # Verification code length for password recovery.
+  code_length: 6
+  # Verification code expiry in seconds for password recovery.
+  expire_seconds: 300
+  # Send cooldown in seconds for password recovery codes.
+  send_cooldown_seconds: 60
+
+# ----------------------------------------
+# Email Verification Codes
+# ----------------------------------------
+verification:
+  email:
+    # Email verification code length.
+    # Falls back to forgot_password.code_length when unset.
+    code_length: 6
+    # Email verification code expiry in seconds.
+    # Falls back to forgot_password.expire_seconds when unset.
+    expire_seconds: 300
+    # Email verification send cooldown in seconds.
+    # Falls back to forgot_password.send_cooldown_seconds when unset.
+    send_cooldown_seconds: 60
 
 # ----------------------------------------
 # User Notification

@@ -339,6 +339,37 @@ public class FileUserDao implements UserDao {
     }
 
     @Override
+    public boolean updateSharedPasswords(Collection<String> usernames, String plainPassword) {
+        debugLog("updateSharedPasswords called for " + (usernames == null ? 0 : usernames.size()) + " users");
+        if (usernames == null || usernames.isEmpty() || plainPassword == null || plainPassword.isEmpty()) {
+            return false;
+        }
+
+        String hashedPassword = PasswordUtil.hash(plainPassword);
+        Map<String, Map<String, Object>> pendingUpdates = new HashMap<>();
+        for (String username : usernames) {
+            if (username == null || username.isBlank()) {
+                debugLog("updateSharedPasswords aborted: blank username");
+                return false;
+            }
+            String key = username.toLowerCase();
+            Map<String, Object> user = users.get(key);
+            if (user == null) {
+                debugLog("updateSharedPasswords aborted: user not found - " + username);
+                return false;
+            }
+            pendingUpdates.put(key, user);
+        }
+
+        for (Map.Entry<String, Map<String, Object>> entry : pendingUpdates.entrySet()) {
+            entry.getValue().put("password", hashedPassword);
+        }
+        saveLater();
+        debugLog("Shared password updated for " + pendingUpdates.size() + " users");
+        return true;
+    }
+
+    @Override
     public boolean updateUserStoredPassword(String username, String storedPassword) {
         debugLog("updateUserStoredPassword called: username=" + username);
         String key = username.toLowerCase();

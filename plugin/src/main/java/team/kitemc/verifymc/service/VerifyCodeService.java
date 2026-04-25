@@ -275,14 +275,14 @@ public class VerifyCodeService {
     }
 
     private int getCodeLength(Channel channel, Purpose purpose) {
-        if (channel == Channel.EMAIL && configManager != null && purpose != Purpose.REGISTER) {
+        if (channel == Channel.EMAIL && configManager != null) {
             return configManager.getEmailCodeLength();
         }
         return channel == Channel.SMS && configManager != null ? configManager.getSmsCodeLength() : 6;
     }
 
     private long getExpireMillis(Channel channel, Purpose purpose) {
-        if (channel == Channel.EMAIL && configManager != null && purpose != Purpose.REGISTER) {
+        if (channel == Channel.EMAIL && configManager != null) {
             return configManager.getEmailCodeExpireSeconds() * 1000L;
         }
         return channel == Channel.SMS && configManager != null
@@ -291,7 +291,7 @@ public class VerifyCodeService {
     }
 
     private long getRateLimitMillis(Channel channel, Purpose purpose) {
-        if (channel == Channel.EMAIL && configManager != null && purpose != Purpose.REGISTER) {
+        if (channel == Channel.EMAIL && configManager != null) {
             return configManager.getEmailCodeCooldownSeconds() * 1000L;
         }
         return channel == Channel.SMS && configManager != null

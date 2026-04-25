@@ -102,15 +102,11 @@ public class UserPasswordHandler implements HttpHandler {
             }
         }
 
-        boolean updated = true;
-        for (Map<String, Object> linkedUser : AuthFlowSupport.collectSharedPasswordUsers(ctx.getUserDao(), user)) {
-            String linkedUsername = String.valueOf(linkedUser.get("username"));
-            updated = ctx.getUserDao().updatePassword(linkedUsername, newPassword) && updated;
-
-            if (ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {
-                ctx.getAuthmeService().syncUserPasswordToAuthme(linkedUsername, newPassword);
-            }
-        }
+        AuthFlowSupport.SharedPasswordUpdateResult updateResult = AuthFlowSupport.synchronizeSharedPasswords(
+                ctx,
+                AuthFlowSupport.collectSharedPasswordUsers(ctx.getUserDao(), user),
+                newPassword);
+        boolean updated = updateResult.success();
 
         if (updated) {
             ctx.getAuditDao().addAudit(new AuditRecord(

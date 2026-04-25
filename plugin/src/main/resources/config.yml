@@ -45,6 +45,11 @@ forgot_password:
   code_length: 6
   expire_seconds: 300
   send_cooldown_seconds: 60
+verification:
+  email:
+    code_length: 6
+    expire_seconds: 300
+    send_cooldown_seconds: 60
 user_notification:
   enabled: true
   on_approve: true

@@ -44,6 +44,20 @@ ssl:
 #   同时使用邮箱和图形验证码: auth_methods: [email, captcha]
 auth_methods:
   - email
+# 登录方式配置。
+# 可选:
+# - username：用户名 + 密码登录
+# - email_password：邮箱 + 密码登录
+# - email_code：邮箱验证码登录
+# - phone_password：手机号 + 密码登录
+# - phone_code：手机号验证码登录
+login:
+  allowed_methods:
+    - username
+    - email_password
+    - email_code
+    - phone_password
+    - phone_code
 # 注册验证规则。must_auth_methods 中的方式必须全部完成；option_auth_methods 中的方式按 min_option_auth_methods 要求完成。
 auth:
   must_auth_methods:
@@ -71,6 +85,49 @@ register:
 username_regex: "^[a-zA-Z0-9_-]{3,16}$"
 # 如果为 false，则仅大小写不同的用户名（例如 "Player" 和 "player"）将被视为相同。
 username_case_sensitive: false
+user:
+  # 用户在已登录状态下修改密码时允许使用的验证方式。
+  # 可选:
+  # - current_password：输入当前密码
+  # - email_code：邮箱验证码
+  # - phone_code：手机验证码
+  password_reset_methods:
+    - current_password
+    - email_code
+    - phone_code
+
+# ----------------------------------------
+# 忘记密码
+# ----------------------------------------
+forgot_password:
+  # 是否启用忘记密码功能。
+  enabled: true
+  # 允许用于找回密码的方式。
+  # 可选: email_code, phone_code
+  allowed_methods:
+    - email_code
+    - phone_code
+  # 找回密码验证码长度。
+  code_length: 6
+  # 找回密码验证码有效期（秒）。
+  expire_seconds: 300
+  # 找回密码验证码发送冷却（秒）。
+  send_cooldown_seconds: 60
+
+# ----------------------------------------
+# 邮箱验证码
+# ----------------------------------------
+verification:
+  email:
+    # 邮箱验证码长度。
+    # 未配置时会回退到 forgot_password.code_length。
+    code_length: 6
+    # 邮箱验证码有效期（秒）。
+    # 未配置时会回退到 forgot_password.expire_seconds。
+    expire_seconds: 300
+    # 邮箱验证码发送冷却（秒）。
+    # 未配置时会回退到 forgot_password.send_cooldown_seconds。
+    send_cooldown_seconds: 60
 
 # ----------------------------------------
 # 用户通知

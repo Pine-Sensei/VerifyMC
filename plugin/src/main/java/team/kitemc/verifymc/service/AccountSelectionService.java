@@ -44,20 +44,27 @@ public class AccountSelectionService {
         return token;
     }
 
-    public ConsumeResult consume(String token, Purpose purpose, String selectedUsername) {
+    public ConsumeResult consume(String token, Purpose purpose, String identifierType, String identifier, String selectedUsername) {
         cleanupExpiredSelections();
         if (token == null || token.isBlank() || selectedUsername == null || selectedUsername.isBlank()) {
             return ConsumeResult.invalid();
         }
 
-        SelectionEntry entry = selections.remove(token);
+        SelectionEntry entry = selections.get(token);
         if (entry == null || entry.expireAt < System.currentTimeMillis() || entry.purpose != purpose) {
+            return ConsumeResult.invalid();
+        }
+
+        String expectedIdentifierType = identifierType == null ? "" : identifierType.trim();
+        String expectedIdentifier = identifier == null ? "" : identifier.trim();
+        if (!entry.identifierType.equals(expectedIdentifierType) || !entry.identifier.equals(expectedIdentifier)) {
             return ConsumeResult.invalid();
         }
 
         String expected = selectedUsername.trim();
         for (String username : entry.usernames) {
             if (username.equals(expected)) {
+                selections.remove(token, entry);
                 return ConsumeResult.success(entry, username);
             }
         }

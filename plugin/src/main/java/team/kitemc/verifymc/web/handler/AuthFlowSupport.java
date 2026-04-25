@@ -9,6 +9,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import team.kitemc.verifymc.core.ConfigManager;
 import team.kitemc.verifymc.core.PluginContext;
+import team.kitemc.verifymc.db.AuditRecord;
 import team.kitemc.verifymc.db.UserDao;
 import team.kitemc.verifymc.service.AuthmeService;
 import team.kitemc.verifymc.util.PasswordUtil;
@@ -159,20 +160,27 @@ public final class AuthFlowSupport {
         return passwordValid;
     }
 
-    public static void synchronizeSharedPasswords(PluginContext ctx, List<Map<String, Object>> users, String plainPassword) {
+    public static SharedPasswordUpdateResult synchronizeSharedPasswords(PluginContext ctx, List<Map<String, Object>> users, String plainPassword) {
         if (plainPassword == null || plainPassword.isEmpty()) {
-            return;
+            return SharedPasswordUpdateResult.skippedResult();
         }
-        for (Map<String, Object> user : deduplicateUsers(users).values()) {
-            String username = String.valueOf(user.getOrDefault("username", ""));
-            if (username.isBlank()) {
-                continue;
-            }
-            ctx.getUserDao().updateUserPassword(username, plainPassword);
-            if (ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {
-                ctx.getAuthmeService().syncUserPasswordToAuthme(username, plainPassword);
+        List<String> usernames = usernames(users);
+        if (usernames.isEmpty()) {
+            return SharedPasswordUpdateResult.failure(List.of());
+        }
+        if (!ctx.getUserDao().updateSharedPasswords(usernames, plainPassword)) {
+            return SharedPasswordUpdateResult.failure(usernames);
+        }
+
+        if (ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {
+            for (String username : usernames) {
+                if (!ctx.getAuthmeService().syncUserPasswordToAuthme(username, plainPassword)) {
+                    ctx.getPlugin().getLogger().warning("[VerifyMC] Failed to sync shared password to AuthMe for user: " + username);
+                    recordAuthmeSyncFailure(ctx, username, usernames);
+                }
             }
         }
+        return SharedPasswordUpdateResult.success(usernames);
     }
 
     public static List<Map<String, Object>> collectSharedPasswordUsers(UserDao userDao, Map<String, Object> seedUser) {
@@ -209,17 +217,6 @@ public final class AuthFlowSupport {
         return List.copyOf(names);
     }
 
-    private static LinkedHashMap<String, Map<String, Object>> deduplicateUsers(List<Map<String, Object>> users) {
-        LinkedHashMap<String, Map<String, Object>> unique = new LinkedHashMap<>();
-        if (users == null) {
-            return unique;
-        }
-        for (Map<String, Object> user : users) {
-            addUser(unique, user);
-        }
-        return unique;
-    }
-
     private static void addUser(Map<String, Map<String, Object>> users, Map<String, Object> user) {
         if (user == null) {
             return;
@@ -244,5 +241,32 @@ public final class AuthFlowSupport {
             return "***";
         }
         return phone.substring(0, Math.min(3, phone.length())) + "****" + phone.substring(phone.length() - 3);
+    }
+
+    private static void recordAuthmeSyncFailure(PluginContext ctx, String username, List<String> usernames) {
+        if (ctx.getAuditDao() == null) {
+            return;
+        }
+        ctx.getAuditDao().addAudit(new AuditRecord(
+                "authme_password_sync_failed",
+                "system",
+                username,
+                "Failed to sync shared password to AuthMe for user " + username
+                        + " within group [" + String.join(", ", usernames) + "]",
+                System.currentTimeMillis()));
+    }
+
+    public record SharedPasswordUpdateResult(boolean success, boolean skipped, List<String> usernames) {
+        public static SharedPasswordUpdateResult success(List<String> usernames) {
+            return new SharedPasswordUpdateResult(true, false, List.copyOf(usernames));
+        }
+
+        public static SharedPasswordUpdateResult failure(List<String> usernames) {
+            return new SharedPasswordUpdateResult(false, false, List.copyOf(usernames));
+        }
+
+        public static SharedPasswordUpdateResult skippedResult() {
+            return new SharedPasswordUpdateResult(true, true, List.of());
+        }
     }
 }

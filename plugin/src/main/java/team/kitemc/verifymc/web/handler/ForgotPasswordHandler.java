@@ -138,6 +138,8 @@ public class ForgotPasswordHandler implements HttpHandler {
             AccountSelectionService.ConsumeResult selection = ctx.getAccountSelectionService().consume(
                     selectionToken,
                     AccountSelectionService.Purpose.FORGOT_PASSWORD,
+                    identifierType.configPrefix(),
+                    identifier,
                     selectedUsername);
             if (!selection.valid()) {
                 WebResponseHelper.sendJson(exchange, ApiResponseFactory.failure(
@@ -180,14 +182,8 @@ public class ForgotPasswordHandler implements HttpHandler {
             }
         }
 
-        boolean updated = !targetUsers.isEmpty();
-        for (Map<String, Object> user : targetUsers) {
-            String username = String.valueOf(user.get("username"));
-            updated = ctx.getUserDao().updateUserPassword(username, newPassword) && updated;
-            if (ctx.getAuthmeService() != null && ctx.getAuthmeService().isAuthmeEnabled()) {
-                ctx.getAuthmeService().syncUserPasswordToAuthme(username, newPassword);
-            }
-        }
+        AuthFlowSupport.SharedPasswordUpdateResult updateResult = AuthFlowSupport.synchronizeSharedPasswords(ctx, targetUsers, newPassword);
+        boolean updated = updateResult.success();
         if (updated && ctx.getAuditDao() != null) {
             ctx.getAuditDao().addAudit(new AuditRecord(
                     "forgot_password_reset",

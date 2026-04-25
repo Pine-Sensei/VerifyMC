@@ -1,5 +1,6 @@
 package team.kitemc.verifymc.db;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -224,6 +225,22 @@ public interface UserDao {
 
     default boolean updatePassword(String username, String plainPassword) {
         return updateUserPassword(username, plainPassword);
+    }
+
+    /**
+     * Updates multiple users' passwords atomically within the backing storage.
+     * Implementations must avoid leaving partial updates behind.
+     */
+    default boolean updateSharedPasswords(Collection<String> usernames, String plainPassword) {
+        if (usernames == null || usernames.isEmpty()) {
+            return false;
+        }
+        for (String username : usernames) {
+            if (username == null || username.isBlank() || !updateUserPassword(username, plainPassword)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
