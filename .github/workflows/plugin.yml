@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [master]
 
+permissions:
+  contents: write
+
 env:
   RELEASE: false
   VERSION: '0.0.0'
@@ -129,7 +132,7 @@ jobs:
           python3 -c "import yaml; d=yaml.safe_load(open('version.yml', encoding='utf-8')); open('release_notes.md','w',encoding='utf-8').write(d['release_notes'])"
 
       - name: Create GitHub Release
-        if: env.RELEASE == 'true'
+        if: env.RELEASE == 'true' && github.event_name == 'push'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ env.VERSION }}
