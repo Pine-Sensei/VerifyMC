@@ -37,13 +37,16 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Core Vue libraries
-          vendor: ["vue", "vue-router", "vue-i18n"],
-          // UI utilities
-          utils: ["axios", "lucide-vue-next"],
-          // Separate large components
-          components: ["@/components/HeroGeometric.vue"],
+        manualChunks: (id) => {
+          if (id.includes("node_modules/vue") || id.includes("node_modules/vue-router") || id.includes("node_modules/vue-i18n")) {
+            return "vendor"
+          }
+          if (id.includes("node_modules/axios") || id.includes("node_modules/lucide-vue-next")) {
+            return "utils"
+          }
+          if (id.includes("src/components/HeroGeometric.vue")) {
+            return "components"
+          }
         },
         // Optimize asset naming
         assetFileNames: (assetInfo) => {

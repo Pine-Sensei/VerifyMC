@@ -10,6 +10,13 @@ public interface UserDao {
                          Integer questionnaireScore, Boolean questionnairePassed,
                          String questionnaireReviewSummary, Long questionnaireScoredAt);
 
+    default boolean registerUser(String username, String email, String phone, String status, String password,
+                                 Integer questionnaireScore, Boolean questionnairePassed,
+                                 String questionnaireReviewSummary, Long questionnaireScoredAt) {
+        return registerUser(username, email, status, password, questionnaireScore, questionnairePassed,
+                questionnaireReviewSummary, questionnaireScoredAt);
+    }
+
     boolean registerUserWithStoredPassword(String username, String email, String status, String storedPassword);
 
     boolean updateUserStatus(String username, String status);
@@ -26,6 +33,10 @@ public interface UserDao {
     boolean updateUserStoredPassword(String username, String storedPassword);
 
     boolean updateUserEmail(String username, String email);
+
+    default boolean updateUserPhone(String username, String phone) {
+        return false;
+    }
 
     List<Map<String, Object>> getAllUsers();
 
@@ -55,11 +66,38 @@ public interface UserDao {
 
     Map<String, Object> getUserByEmail(String email);
 
+    default Map<String, Object> getUserByPhone(String phone) {
+        if (phone == null || phone.isEmpty()) {
+            return null;
+        }
+        for (Map<String, Object> user : getAllUsers()) {
+            Object userPhone = user.get("phone");
+            if (userPhone != null && userPhone.toString().equalsIgnoreCase(phone)) {
+                return user;
+            }
+        }
+        return null;
+    }
+
     boolean deleteUser(String username);
 
     void save();
 
     int countUsersByEmail(String email);
+
+    default int countUsersByPhone(String phone) {
+        if (phone == null || phone.isEmpty()) {
+            return 0;
+        }
+        int count = 0;
+        for (Map<String, Object> user : getAllUsers()) {
+            Object userPhone = user.get("phone");
+            if (userPhone != null && userPhone.toString().equalsIgnoreCase(phone)) {
+                count++;
+            }
+        }
+        return count;
+    }
 
     List<Map<String, Object>> getPendingUsers();
 
@@ -142,7 +180,8 @@ public interface UserDao {
         }
         String username = String.valueOf(user.getOrDefault("username", "")).toLowerCase();
         String email = String.valueOf(user.getOrDefault("email", "")).toLowerCase();
-        return username.contains(normalizedSearch) || email.contains(normalizedSearch);
+        String phone = String.valueOf(user.getOrDefault("phone", "")).toLowerCase();
+        return username.contains(normalizedSearch) || email.contains(normalizedSearch) || phone.contains(normalizedSearch);
     }
 
     default long getRegTimeAsLong(Object regTime) {

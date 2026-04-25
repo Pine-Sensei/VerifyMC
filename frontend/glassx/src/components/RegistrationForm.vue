@@ -113,6 +113,43 @@
               <p v-if="errors.code" class="mt-1 text-sm text-red-400">{{ errors.code }}</p>
             </div>
 
+            <div v-if="smsEnabled">
+              <Label for="phone" class="mb-1">{{ $t('register.form.phone') }}</Label>
+              <Input
+                id="phone"
+                v-model="form.phone"
+                type="tel"
+                :placeholder="$t('register.form.phone_placeholder')"
+                :class="{ 'border-red-500 focus-visible:ring-red-500': errors.phone }"
+                @blur="validatePhone"
+              />
+              <p v-if="errors.phone" class="mt-1 text-sm text-red-400">{{ errors.phone }}</p>
+
+              <Label for="smsCode" class="mt-3 mb-1">{{ $t('register.form.sms_code') }}</Label>
+              <div class="flex flex-col sm:flex-row gap-2">
+                <Input
+                  id="smsCode"
+                  v-model="form.smsCode"
+                  type="text"
+                  inputmode="numeric"
+                  :placeholder="$t('register.form.sms_code_placeholder')"
+                  :class="{ 'border-red-500 focus-visible:ring-red-500': errors.smsCode }"
+                  @blur="validateSmsCode"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  @click="sendSmsCode"
+                  :disabled="smsSending || !form.phone || smsCooldownSeconds > 0"
+                  class="whitespace-nowrap"
+                >
+                  {{ smsSending ? $t('register.sending') : smsCooldownSeconds > 0 ? `${smsCooldownSeconds}s` : $t('register.sendSmsCode') }}
+                </Button>
+              </div>
+              <p v-if="errors.smsCode" class="mt-1 text-sm text-red-400">{{ errors.smsCode }}</p>
+              <p class="mt-1 text-xs text-white/50">{{ $t('register.form.phone_hint') }}</p>
+            </div>
+
             <div v-if="captchaEnabled">
               <Label for="captcha" class="mb-1">{{ $t('register.form.captcha') }}</Label>
               <div class="flex flex-col sm:flex-row gap-2 items-center">
@@ -152,7 +189,8 @@
         <div v-else class="space-y-4">
           <div class="rounded-lg border border-white/10 bg-white/5 p-4 text-sm text-white/80">
             <p class="mb-1"><strong>{{ $t('register.summary.username') }}:</strong> {{ getNormalizedUsername() }}</p>
-            <p class="mb-1"><strong>{{ $t('register.summary.email') }}:</strong> {{ form.email }}</p>
+            <p v-if="form.email" class="mb-1"><strong>{{ $t('register.summary.email') }}:</strong> {{ form.email }}</p>
+            <p v-if="form.phone" class="mb-1"><strong>{{ $t('register.summary.phone') }}:</strong> {{ normalizedPhone }}</p>
             <p v-if="questionnaireResult"><strong>{{ $t('register.summary.questionnaire') }}:</strong> {{ questionnaireResult.passed ? $t('questionnaire.passed') : $t('questionnaire.failed') }} ({{ questionnaireResult.score }}/{{ questionnaireResult.passScore }})</p>
           </div>
 
@@ -192,6 +230,7 @@ const currentStep = ref<RegisterStep>('basic')
 
 const loading = ref(false)
 const sending = ref(false)
+const smsSending = ref(false)
 const registrationSubmitted = ref(false)
 const registrationSuccessMessage = ref('')
 const config = ref<ConfigResponse>({
@@ -201,15 +240,22 @@ const config = ref<ConfigResponse>({
   announcement: '',
   webServerPrefix: '',
   usernameRegex: '',
+  auth: { mustAuthMethods: [], optionAuthMethods: [], minOptionAuthMethods: 0 },
   authme: { enabled: false, passwordRegex: '^[a-zA-Z0-9_]{8,26}$' },
   captcha: { enabled: false, emailEnabled: true, type: 'math' },
+  sms: { enabled: false, provider: 'aliyun', codeLength: 6, cooldownSeconds: 60 },
   questionnaire: { enabled: false, passScore: 60 }
 })
 
 const captchaImage = ref('')
 const captchaToken = ref('')
-const captchaEnabled = computed(() => config.value.captcha?.enabled || false)
-const emailEnabled = computed(() => config.value.captcha?.emailEnabled !== false)
+const mustAuthMethods = computed(() => config.value.auth?.mustAuthMethods?.length ? config.value.auth.mustAuthMethods : config.value.authMethods)
+const optionAuthMethods = computed(() => config.value.auth?.optionAuthMethods || [])
+const enabledAuthMethods = computed(() => new Set([...mustAuthMethods.value, ...optionAuthMethods.value]))
+const minOptionAuthMethods = computed(() => config.value.auth?.minOptionAuthMethods || 0)
+const captchaEnabled = computed(() => enabledAuthMethods.value.has('captcha') || config.value.captcha?.enabled || false)
+const emailEnabled = computed(() => enabledAuthMethods.value.has('email') || config.value.captcha?.emailEnabled === true)
+const smsEnabled = computed(() => enabledAuthMethods.value.has('sms') || config.value.sms?.enabled || false)
 
 const discordLinked = ref(false)
 const discordEnabled = computed(() => config.value.discord?.enabled || false)
@@ -248,8 +294,10 @@ const refreshCaptcha = async () => {
   }
 }
 
-const form = reactive({ username: '', email: '', code: '', password: '', captchaAnswer: '' })
-const errors = reactive({ username: '', email: '', code: '', password: '', captcha: '', discord: '' })
+const form = reactive({ username: '', email: '', code: '', phone: '', smsCode: '', password: '', captchaAnswer: '' })
+const errors = reactive({ username: '', email: '', code: '', phone: '', smsCode: '', password: '', captcha: '', discord: '' })
+
+const normalizedPhone = computed(() => normalizePhone(form.phone))
 
 const onDiscordLinked = () => {
   discordLinked.value = true
@@ -333,10 +381,32 @@ watch(() => form.username, () => {
 })
 const validateEmail = () => {
   errors.email = ''
-  if (!form.email) {
+  const required = mustAuthMethods.value.includes('email')
+  if (required && !form.email) {
     errors.email = t('register.validation.email_required')
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+  } else if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
     errors.email = t('register.validation.email_format')
+  }
+}
+const normalizePhone = (phone: string) => {
+  const trimmed = phone.trim()
+  if (!trimmed) return ''
+  const hasPlus = trimmed.startsWith('+')
+  let digits = trimmed.replace(/\D/g, '')
+  if (digits.startsWith('00')) digits = digits.slice(2)
+  if (!hasPlus && digits.length === 11 && digits.startsWith('1')) digits = `86${digits}`
+  return digits ? `+${digits}` : ''
+}
+const validatePhone = () => {
+  errors.phone = ''
+  const required = mustAuthMethods.value.includes('sms')
+  if (required && !form.phone) {
+    errors.phone = t('register.validation.phone_required')
+    return
+  }
+  const normalized = normalizedPhone.value
+  if (form.phone && !/^\+\d{8,15}$/.test(normalized)) {
+    errors.phone = t('register.validation.phone_format')
   }
 }
 const validatePassword = () => {
@@ -349,8 +419,14 @@ const validatePassword = () => {
 }
 const validateCode = () => {
   errors.code = ''
-  if (emailEnabled.value && !form.code) {
+  if (mustAuthMethods.value.includes('email') && !form.code) {
     errors.code = t('register.validation.code_required')
+  }
+}
+const validateSmsCode = () => {
+  errors.smsCode = ''
+  if (mustAuthMethods.value.includes('sms') && !form.smsCode) {
+    errors.smsCode = t('register.validation.sms_code_required')
   }
 }
 const validateCaptcha = () => {
@@ -365,18 +441,30 @@ const validateForm = () => {
   validateEmail()
   validatePassword()
   validateCode()
+  validatePhone()
+  validateSmsCode()
   validateCaptcha()
   validateDiscord()
 }
 
 const isBasicStepValid = computed(() => {
-  let valid = form.username && form.email && !errors.username && !errors.email
-  if (emailEnabled.value) valid = valid && !!form.code && !errors.code
-  if (captchaEnabled.value) valid = valid && !!form.captchaAnswer && !errors.captcha
+  let valid = !!form.username && !errors.username && !!form.password && !errors.password
+  if (mustAuthMethods.value.includes('email')) valid = valid && !!form.email && !!form.code && !errors.email && !errors.code
+  if (mustAuthMethods.value.includes('sms')) valid = valid && !!form.phone && !!form.smsCode && !errors.phone && !errors.smsCode
+  if (mustAuthMethods.value.includes('captcha')) valid = valid && !!form.captchaAnswer && !errors.captcha
+  const completedOptional = optionAuthMethods.value.filter(isAuthMethodCompleted).length
+  if (minOptionAuthMethods.value > 0) valid = valid && completedOptional >= minOptionAuthMethods.value
   valid = valid && !!form.password && !errors.password
   if (discordRequired.value) valid = valid && discordLinked.value && !errors.discord
   return valid
 })
+
+const isAuthMethodCompleted = (method: string) => {
+  if (method === 'email') return !!form.email && !!form.code && !errors.email && !errors.code
+  if (method === 'sms') return !!form.phone && !!form.smsCode && !errors.phone && !errors.smsCode
+  if (method === 'captcha') return !!form.captchaAnswer && !errors.captcha
+  return false
+}
 
 const isFinalStepValid = computed(() => {
   if (!isBasicStepValid.value) return false
@@ -413,9 +501,11 @@ const onQuestionnairePassed = async (result: QuestionnaireSubmission) => {
 }
 
 const { cooldownSeconds: emailCooldownSeconds, startCooldown: startEmailCooldown, stopCooldown: stopEmailCooldown } = useCooldown()
+const { cooldownSeconds: smsCooldownSeconds, startCooldown: startSmsCooldown, stopCooldown: stopSmsCooldown } = useCooldown()
 
 onUnmounted(() => {
   stopEmailCooldown()
+  stopSmsCooldown()
 })
 
 const sendCode = async () => {
@@ -425,7 +515,7 @@ const sendCode = async () => {
   sending.value = true
   try {
     const email = form.email.trim().toLowerCase()
-    const res = await apiService.sendCode({ email, language: locale.value })
+    const res = await apiService.sendCode({ channel: 'email', email, language: locale.value })
     if (res.success) {
       success(t('register.codeSent'))
       startEmailCooldown(60)
@@ -439,6 +529,29 @@ const sendCode = async () => {
     error(t('register.sendFailed'))
   } finally {
     sending.value = false
+  }
+}
+
+const sendSmsCode = async () => {
+  if (smsSending.value || smsCooldownSeconds.value > 0) return
+  validatePhone()
+  if (errors.phone) return
+  smsSending.value = true
+  try {
+    const res = await apiService.sendCode({ channel: 'sms', phone: normalizedPhone.value, language: locale.value })
+    if (res.success) {
+      success(t('register.smsCodeSent'))
+      startSmsCooldown(res.remainingSeconds || config.value.sms?.cooldownSeconds || 60)
+    } else if (res.remainingSeconds && res.remainingSeconds > 0) {
+      startSmsCooldown(res.remainingSeconds)
+      error(res.message || t('register.sendSmsFailed'))
+    } else {
+      error(res.message || t('register.sendSmsFailed'))
+    }
+  } catch {
+    error(t('register.sendSmsFailed'))
+  } finally {
+    smsSending.value = false
   }
 }
 
@@ -459,6 +572,10 @@ const handleSubmit = async () => {
     }
 
     if (emailEnabled.value) registerData.code = form.code
+    if (smsEnabled.value) {
+      registerData.phone = normalizedPhone.value
+      registerData.smsCode = form.smsCode
+    }
     if (captchaEnabled.value) {
       registerData.captchaToken = captchaToken.value
       registerData.captchaAnswer = form.captchaAnswer

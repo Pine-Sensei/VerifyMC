@@ -4,6 +4,7 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import team.kitemc.verifymc.core.PluginContext;
 import team.kitemc.verifymc.util.EmailAddressUtil;
+import team.kitemc.verifymc.util.PhoneNumberUtil;
 import team.kitemc.verifymc.web.handler.*;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -62,6 +63,7 @@ public class ApiRouter {
                 () -> ctx.getConfigManager().isUsernameCaseSensitive(),
                 (username, platform) -> normalizeUsername(username, platform),
                 (email) -> isValidEmail(email),
+                (phone) -> isValidPhone(phone),
                 (msg) -> ctx.debugLog(msg)
         ));
 
@@ -157,5 +159,9 @@ public class ApiRouter {
 
     private boolean isValidEmail(String email) {
         return EmailAddressUtil.isValid(email);
+    }
+
+    private boolean isValidPhone(String phone) {
+        return PhoneNumberUtil.isValid(phone);
     }
 }

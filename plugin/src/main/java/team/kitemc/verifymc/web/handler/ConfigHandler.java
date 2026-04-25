@@ -27,6 +27,11 @@ public class ConfigHandler implements HttpHandler {
 
         JSONObject config = new JSONObject();
         config.put("authMethods", new JSONArray(ctx.getConfigManager().getAuthMethods()));
+        JSONObject authConfig = new JSONObject();
+        authConfig.put("mustAuthMethods", new JSONArray(ctx.getConfigManager().getMustAuthMethods()));
+        authConfig.put("optionAuthMethods", new JSONArray(ctx.getConfigManager().getOptionAuthMethods()));
+        authConfig.put("minOptionAuthMethods", ctx.getConfigManager().getMinOptionAuthMethods());
+        config.put("auth", authConfig);
         config.put("theme", ctx.getConfigManager().getTheme());
         config.put("logoUrl", ctx.getConfigManager().getLogoUrl());
         config.put("announcement", ctx.getConfigManager().getAnnouncement());
@@ -39,14 +44,18 @@ public class ConfigHandler implements HttpHandler {
         authmeConfig.put("passwordRegex", ctx.getConfigManager().getAuthmePasswordRegex());
         config.put("authme", authmeConfig);
 
-        List<String> authMethods = ctx.getConfigManager().getAuthMethods();
-        boolean captchaEnabled = authMethods.contains("captcha");
-        boolean emailEnabled = authMethods.contains("email");
         JSONObject captchaConfig = new JSONObject();
-        captchaConfig.put("enabled", captchaEnabled);
-        captchaConfig.put("emailEnabled", emailEnabled);
+        captchaConfig.put("enabled", ctx.getConfigManager().isCaptchaAuthEnabled());
+        captchaConfig.put("emailEnabled", ctx.getConfigManager().isEmailAuthEnabled());
         captchaConfig.put("type", ctx.getConfigManager().getCaptchaType());
         config.put("captcha", captchaConfig);
+
+        JSONObject smsConfig = new JSONObject();
+        smsConfig.put("enabled", ctx.getConfigManager().isSmsAuthEnabled());
+        smsConfig.put("provider", ctx.getConfigManager().getSmsProvider());
+        smsConfig.put("codeLength", ctx.getConfigManager().getSmsCodeLength());
+        smsConfig.put("cooldownSeconds", ctx.getConfigManager().getSmsSendCooldownSeconds());
+        config.put("sms", smsConfig);
 
         JSONObject questionnaireConfig = new JSONObject();
         questionnaireConfig.put("enabled", ctx.getQuestionnaireService() != null && ctx.getQuestionnaireService().isEnabled());

@@ -212,15 +212,51 @@ public class ConfigManager {
 
     // --- Auth methods ---
     public List<String> getAuthMethods() {
-        return getConfig().getStringList("auth_methods");
+        List<String> legacy = getConfig().getStringList("auth_methods");
+        if (legacy == null || legacy.isEmpty()) {
+            return getMustAuthMethods();
+        }
+        return legacy;
+    }
+
+    public List<String> getMustAuthMethods() {
+        List<String> methods = getConfig().getStringList("auth.must_auth_methods");
+        if (methods == null || methods.isEmpty()) {
+            methods = getConfig().getStringList("auth_methods");
+        }
+        return normalizeAuthMethods(methods);
+    }
+
+    public List<String> getOptionAuthMethods() {
+        return normalizeAuthMethods(getConfig().getStringList("auth.option_auth_methods"));
+    }
+
+    public int getMinOptionAuthMethods() {
+        int configured = getConfig().getInt("auth.min_option_auth_methods", 0);
+        return Math.max(0, Math.min(configured, getOptionAuthMethods().size()));
+    }
+
+    private List<String> normalizeAuthMethods(List<String> methods) {
+        if (methods == null || methods.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return methods.stream()
+            .filter(method -> method != null && !method.trim().isEmpty())
+            .map(method -> method.trim().toLowerCase())
+            .distinct()
+            .toList();
     }
 
     public boolean isEmailAuthEnabled() {
-        return getAuthMethods().contains("email");
+        return getMustAuthMethods().contains("email") || getOptionAuthMethods().contains("email");
     }
 
     public boolean isCaptchaAuthEnabled() {
-        return getAuthMethods().contains("captcha");
+        return getMustAuthMethods().contains("captcha") || getOptionAuthMethods().contains("captcha");
+    }
+
+    public boolean isSmsAuthEnabled() {
+        return getMustAuthMethods().contains("sms") || getOptionAuthMethods().contains("sms");
     }
 
     // --- Email ---
@@ -249,6 +285,104 @@ public class ConfigManager {
 
     public int getMaxAccountsPerEmail() {
         return getConfig().getInt("max_accounts_per_email", 2);
+    }
+
+    // --- SMS ---
+    public String getSmsProvider() {
+        return getConfig().getString("sms.provider", "aliyun").trim().toLowerCase();
+    }
+
+    public int getSmsCodeLength() {
+        int length = getConfig().getInt("sms.code_length", 6);
+        return Math.max(4, Math.min(length, 8));
+    }
+
+    public int getSmsExpireSeconds() {
+        return Math.max(60, getConfig().getInt("sms.expire_seconds", 300));
+    }
+
+    public int getSmsMaxAttempts() {
+        return Math.max(1, getConfig().getInt("sms.max_attempts", 5));
+    }
+
+    public int getSmsSendCooldownSeconds() {
+        return Math.max(1, getConfig().getInt("sms.send_cooldown_seconds", 60));
+    }
+
+    public int getSmsRateLimitIpMax() {
+        return Math.max(1, getConfig().getInt("sms.rate_limit.ip.max", 5));
+    }
+
+    public long getSmsRateLimitIpWindowMs() {
+        return Math.max(1000L, getConfig().getLong("sms.rate_limit.ip.window_ms", 60000L));
+    }
+
+    public int getSmsConnectTimeoutMs() {
+        return Math.max(1000, getConfig().getInt("sms.connect_timeout_ms", 5000));
+    }
+
+    public int getSmsRequestTimeoutMs() {
+        return Math.max(1000, getConfig().getInt("sms.request_timeout_ms", 10000));
+    }
+
+    public int getMaxAccountsPerPhone() {
+        return Math.max(1, getConfig().getInt("sms.phone.max_accounts_per_phone", 2));
+    }
+
+    public String getAliyunSmsAccessKeyId() {
+        return getConfig().getString("sms.aliyun.access_key_id", "");
+    }
+
+    public String getAliyunSmsAccessKeySecret() {
+        return getConfig().getString("sms.aliyun.access_key_secret", "");
+    }
+
+    public String getAliyunSmsEndpoint() {
+        return getConfig().getString("sms.aliyun.endpoint", "dysmsapi.aliyuncs.com");
+    }
+
+    public String getAliyunSmsSignName() {
+        return getConfig().getString("sms.aliyun.sign_name", "");
+    }
+
+    public String getAliyunSmsTemplateCode() {
+        return getConfig().getString("sms.aliyun.template_code", "");
+    }
+
+    public String getAliyunSmsCodeParamName() {
+        return getConfig().getString("sms.aliyun.template_param_name_code", "code");
+    }
+
+    public String getAliyunSmsExpireParamName() {
+        return getConfig().getString("sms.aliyun.template_param_name_expire", "expire");
+    }
+
+    public String getTencentSmsSecretId() {
+        return getConfig().getString("sms.tencent.secret_id", "");
+    }
+
+    public String getTencentSmsSecretKey() {
+        return getConfig().getString("sms.tencent.secret_key", "");
+    }
+
+    public String getTencentSmsEndpoint() {
+        return getConfig().getString("sms.tencent.endpoint", "sms.tencentcloudapi.com");
+    }
+
+    public String getTencentSmsRegion() {
+        return getConfig().getString("sms.tencent.region", "ap-guangzhou");
+    }
+
+    public String getTencentSmsSdkAppId() {
+        return getConfig().getString("sms.tencent.sdk_app_id", "");
+    }
+
+    public String getTencentSmsSignName() {
+        return getConfig().getString("sms.tencent.sign_name", "");
+    }
+
+    public String getTencentSmsTemplateId() {
+        return getConfig().getString("sms.tencent.template_id", "");
     }
 
     // --- Whitelist ---

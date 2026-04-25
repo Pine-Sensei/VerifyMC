@@ -73,6 +73,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS users (" +
                     "username VARCHAR(32) PRIMARY KEY," +
                     "email VARCHAR(64)," +
+                    "phone VARCHAR(32)," +
                     "status VARCHAR(16)," +
                     "password VARCHAR(255)," +
                     "regTime BIGINT," +
@@ -93,6 +94,12 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
             } catch (SQLException e) {
                 stmt.executeUpdate("ALTER TABLE users ADD COLUMN regTime BIGINT");
                 stmt.executeUpdate("UPDATE users SET regTime = " + System.currentTimeMillis() + " WHERE regTime IS NULL");
+            }
+
+            try {
+                stmt.executeQuery("SELECT phone FROM users LIMIT 1");
+            } catch (SQLException e) {
+                stmt.executeUpdate("ALTER TABLE users ADD COLUMN phone VARCHAR(32)");
             }
 
             try {
@@ -123,6 +130,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
             }
 
             ensureIndex(stmt, "idx_email", "CREATE INDEX idx_email ON users(email)");
+            ensureIndex(stmt, "idx_phone", "CREATE INDEX idx_phone ON users(phone)");
             ensureIndex(stmt, "idx_discord_id", "CREATE INDEX idx_discord_id ON users(discord_id)");
         }
     }
@@ -147,17 +155,18 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
 
     @Override
     public boolean registerUserWithStoredPassword(String username, String email, String status, String storedPassword) {
-        String sql = "INSERT IGNORE INTO users (username, email, status, password, regTime, questionnaire_score, questionnaire_passed, questionnaire_review_summary, questionnaire_scored_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT IGNORE INTO users (username, email, phone, status, password, regTime, questionnaire_score, questionnaire_passed, questionnaire_review_summary, questionnaire_scored_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, username);
             ps.setString(2, email);
-            ps.setString(3, status);
-            ps.setString(4, storedPassword);
-            ps.setLong(5, System.currentTimeMillis());
-            ps.setNull(6, Types.INTEGER);
-            ps.setNull(7, Types.BOOLEAN);
-            ps.setString(8, null);
-            ps.setNull(9, Types.BIGINT);
+            ps.setString(3, null);
+            ps.setString(4, status);
+            ps.setString(5, storedPassword);
+            ps.setLong(6, System.currentTimeMillis());
+            ps.setNull(7, Types.INTEGER);
+            ps.setNull(8, Types.BOOLEAN);
+            ps.setString(9, null);
+            ps.setNull(10, Types.BIGINT);
             int rows = ps.executeUpdate();
             if (rows == 0) {
                 debugLog("User already exists with username: " + username + ", skipping stored-password registration");
@@ -175,26 +184,35 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
     public boolean registerUser(String username, String email, String status, String password,
             Integer questionnaireScore, Boolean questionnairePassed,
             String questionnaireReviewSummary, Long questionnaireScoredAt) {
-        String sql = "INSERT IGNORE INTO users (username, email, status, password, regTime, questionnaire_score, questionnaire_passed, questionnaire_review_summary, questionnaire_scored_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        return registerUser(username, email, null, status, password, questionnaireScore, questionnairePassed,
+                questionnaireReviewSummary, questionnaireScoredAt);
+    }
+
+    @Override
+    public boolean registerUser(String username, String email, String phone, String status, String password,
+            Integer questionnaireScore, Boolean questionnairePassed,
+            String questionnaireReviewSummary, Long questionnaireScoredAt) {
+        String sql = "INSERT IGNORE INTO users (username, email, phone, status, password, regTime, questionnaire_score, questionnaire_passed, questionnaire_review_summary, questionnaire_scored_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, username);
             ps.setString(2, email);
-            ps.setString(3, status);
-            ps.setString(4, PasswordUtil.hash(password));
-            ps.setLong(5, System.currentTimeMillis());
+            ps.setString(3, phone);
+            ps.setString(4, status);
+            ps.setString(5, PasswordUtil.hash(password));
+            ps.setLong(6, System.currentTimeMillis());
             if (questionnaireScore != null)
-                ps.setInt(6, questionnaireScore);
+                ps.setInt(7, questionnaireScore);
             else
-                ps.setNull(6, Types.INTEGER);
+                ps.setNull(7, Types.INTEGER);
             if (questionnairePassed != null)
-                ps.setBoolean(7, questionnairePassed);
+                ps.setBoolean(8, questionnairePassed);
             else
-                ps.setNull(7, Types.BOOLEAN);
-            ps.setString(8, questionnaireReviewSummary);
+                ps.setNull(8, Types.BOOLEAN);
+            ps.setString(9, questionnaireReviewSummary);
             if (questionnaireScoredAt != null)
-                ps.setLong(9, questionnaireScoredAt);
+                ps.setLong(10, questionnaireScoredAt);
             else
-                ps.setNull(9, Types.BIGINT);
+                ps.setNull(10, Types.BIGINT);
             int rows = ps.executeUpdate();
             if (rows == 0) {
                 debugLog("User already exists with username: " + username + ", skipping registration");
@@ -269,6 +287,21 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
     }
 
     @Override
+    public boolean updateUserPhone(String username, String phone) {
+        String sql = "UPDATE users SET phone=? WHERE username=?";
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
+            ps.setString(1, phone);
+            ps.setString(2, username);
+            int rows = ps.executeUpdate();
+            debugLog("User phone updated: " + username);
+            return rows > 0;
+        } catch (SQLException e) {
+            debugLog("Error updating user phone: " + e.getMessage());
+            return false;
+        }
+    }
+
+    @Override
     public List<Map<String, Object>> getAllUsers() {
         List<Map<String, Object>> result = new ArrayList<>();
         String sql = "SELECT * FROM users";
@@ -300,6 +333,7 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
         Map<String, Object> user = new HashMap<>();
         user.put("username", rs.getString("username"));
         user.put("email", rs.getString("email"));
+        user.put("phone", rs.getString("phone"));
         user.put("status", rs.getString("status"));
         user.put("password", rs.getString("password"));
         user.put("regTime", rs.getLong("regTime"));
@@ -366,6 +400,28 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
     }
 
     @Override
+    public Map<String, Object> getUserByPhone(String phone) {
+        debugLog("Getting user by phone: " + phone);
+        if (phone == null || phone.isEmpty()) {
+            return null;
+        }
+        String sql = "SELECT * FROM users WHERE phone=?";
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
+            ps.setString(1, phone);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    debugLog("User found by phone: " + rs.getString("username"));
+                    return mapUserFromResultSet(rs);
+                }
+            }
+        } catch (SQLException e) {
+            debugLog("Error getting user by phone: " + e.getMessage());
+        }
+        debugLog("User not found by phone");
+        return null;
+    }
+
+    @Override
     public boolean deleteUser(String username) {
         String sql = "DELETE FROM users WHERE username=?";
         try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
@@ -392,6 +448,26 @@ public class MysqlUserDao implements UserDao, AutoCloseable {
             }
         } catch (SQLException e) {
             debugLog("Error counting users by email: " + e.getMessage());
+        }
+        return count;
+    }
+
+    @Override
+    public int countUsersByPhone(String phone) {
+        int count = 0;
+        if (phone == null || phone.isEmpty()) {
+            return count;
+        }
+        String sql = "SELECT COUNT(*) FROM users WHERE phone=?";
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
+            ps.setString(1, phone);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    count = rs.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            debugLog("Error counting users by phone: " + e.getMessage());
         }
         return count;
     }

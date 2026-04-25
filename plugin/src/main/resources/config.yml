@@ -13,6 +13,11 @@ ssl:
     type: PKCS12
 auth_methods:
   - email
+auth:
+  must_auth_methods:
+    - email
+  option_auth_methods: []
+  min_option_auth_methods: 0
 max_accounts_per_email: 2
 whitelist_mode: plugin
 web_register_url: https://domain.com/
@@ -51,6 +56,36 @@ email_domain_whitelist:
   - icloud.com
   - yahoo.com
   - foxmail.com
+sms:
+  provider: aliyun
+  code_length: 6
+  expire_seconds: 300
+  max_attempts: 5
+  send_cooldown_seconds: 60
+  connect_timeout_ms: 5000
+  request_timeout_ms: 10000
+  rate_limit:
+    ip:
+      max: 5
+      window_ms: 60000
+  phone:
+    max_accounts_per_phone: 2
+  aliyun:
+    access_key_id: ""
+    access_key_secret: ""
+    endpoint: dysmsapi.aliyuncs.com
+    sign_name: ""
+    template_code: ""
+    template_param_name_code: code
+    template_param_name_expire: expire
+  tencent:
+    secret_id: ""
+    secret_key: ""
+    sdk_app_id: ""
+    endpoint: sms.tencentcloudapi.com
+    region: ap-guangzhou
+    sign_name: ""
+    template_id: ""
 storage: file
 mysql:
     host: localhost

@@ -35,8 +35,8 @@ ssl:
 # ----------------------------------------
 # 验证与白名单
 # ----------------------------------------
-# 支持的验证方式。可选: 'email'（邮箱验证码）, 'captcha'（图形验证码）。
-# 可以同时使用多种方式，例如: [email, captcha]
+# 旧版验证方式配置。仍兼容；如果 auth.must_auth_methods 未配置，将使用这里的值。
+# 可选: 'email'（邮箱验证码）, 'captcha'（图形验证码）, 'sms'（短信验证码）。
 # 
 # 【重要】仅配置下方的 captcha: 部分不会启用图形验证码！
 # 要启用图形验证码，必须在此列表中添加 'captcha'：
@@ -44,6 +44,12 @@ ssl:
 #   同时使用邮箱和图形验证码: auth_methods: [email, captcha]
 auth_methods:
   - email
+# 注册验证规则。must_auth_methods 中的方式必须全部完成；option_auth_methods 中的方式按 min_option_auth_methods 要求完成。
+auth:
+  must_auth_methods:
+    - email
+  option_auth_methods: []
+  min_option_auth_methods: 0
 # 单个邮箱最多可以绑定的游戏账号数量。
 max_accounts_per_email: 2
 # 白名单模式: 'bukkit' (与服务器的 whitelist.json 同步) 或 'plugin' (使用插件内部数据库)。
@@ -137,6 +143,44 @@ email_domain_whitelist:
   - icloud.com
   - yahoo.com
   - foxmail.com 
+
+# ----------------------------------------
+# 短信验证
+# ----------------------------------------
+sms:
+  # 短信服务商: aliyun 或 tencent
+  provider: aliyun
+  # 验证码长度、过期时间、最大尝试次数和发送冷却
+  code_length: 6
+  expire_seconds: 300
+  max_attempts: 5
+  send_cooldown_seconds: 60
+  connect_timeout_ms: 5000
+  request_timeout_ms: 10000
+  rate_limit:
+    ip:
+      # 单个 IP 在窗口期内最多发送短信验证码次数
+      max: 5
+      window_ms: 60000
+  phone:
+    # 单个手机号最多绑定的账号数量
+    max_accounts_per_phone: 2
+  aliyun:
+    access_key_id: ""
+    access_key_secret: ""
+    endpoint: dysmsapi.aliyuncs.com
+    sign_name: ""
+    template_code: ""
+    template_param_name_code: code
+    template_param_name_expire: expire
+  tencent:
+    secret_id: ""
+    secret_key: ""
+    sdk_app_id: ""
+    endpoint: sms.tencentcloudapi.com
+    region: ap-guangzhou
+    sign_name: ""
+    template_id: ""
 
 # ----------------------------------------
 # 存储

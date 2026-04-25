@@ -34,8 +34,8 @@ ssl:
 # ----------------------------------------
 # Verification & Whitelist
 # ----------------------------------------
-# Supported authentication methods. Options: 'email' (email verification), 'captcha' (graphical captcha).
-# You can use multiple methods, e.g.: [email, captcha]
+# Legacy authentication methods. Still supported; used when auth.must_auth_methods is not configured.
+# Options: 'email' (email verification), 'captcha' (graphical captcha), 'sms' (SMS verification).
 # 
 # [IMPORTANT] Configuring the captcha: section below does NOT enable captcha!
 # To enable captcha, you MUST add 'captcha' to this list:
@@ -43,6 +43,12 @@ ssl:
 #   Both email and captcha: auth_methods: [email, captcha]
 auth_methods:
   - email
+# Registration authentication rules. Every must_auth_methods entry is required; option_auth_methods entries count toward min_option_auth_methods.
+auth:
+  must_auth_methods:
+    - email
+  option_auth_methods: []
+  min_option_auth_methods: 0
 # Maximum number of game accounts that can be linked to a single email address.
 max_accounts_per_email: 2
 # Whitelist mode: 'bukkit' (syncs with server's whitelist.json) or 'plugin' (uses internal database).
@@ -136,6 +142,44 @@ email_domain_whitelist:
   - icloud.com
   - yahoo.com
   - foxmail.com 
+
+# ----------------------------------------
+# SMS Verification
+# ----------------------------------------
+sms:
+  # SMS provider: aliyun or tencent
+  provider: aliyun
+  # Verification code length, expiry, max attempts, and send cooldown
+  code_length: 6
+  expire_seconds: 300
+  max_attempts: 5
+  send_cooldown_seconds: 60
+  connect_timeout_ms: 5000
+  request_timeout_ms: 10000
+  rate_limit:
+    ip:
+      # Maximum SMS verification sends by one IP inside the window
+      max: 5
+      window_ms: 60000
+  phone:
+    # Maximum accounts linked to one phone number
+    max_accounts_per_phone: 2
+  aliyun:
+    access_key_id: ""
+    access_key_secret: ""
+    endpoint: dysmsapi.aliyuncs.com
+    sign_name: ""
+    template_code: ""
+    template_param_name_code: code
+    template_param_name_expire: expire
+  tencent:
+    secret_id: ""
+    secret_key: ""
+    sdk_app_id: ""
+    endpoint: sms.tencentcloudapi.com
+    region: ap-guangzhou
+    sign_name: ""
+    template_id: ""
 
 # ----------------------------------------
 # Storage

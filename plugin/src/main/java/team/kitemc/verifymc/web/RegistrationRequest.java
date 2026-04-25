@@ -3,10 +3,13 @@ package team.kitemc.verifymc.web;
 import java.util.function.BiFunction;
 import org.json.JSONObject;
 import team.kitemc.verifymc.util.EmailAddressUtil;
+import team.kitemc.verifymc.util.PhoneNumberUtil;
 
 public record RegistrationRequest(
         String email,
         String code,
+        String phone,
+        String smsCode,
         String username,
         String normalizedUsername,
         String password,
@@ -19,6 +22,8 @@ public record RegistrationRequest(
     public static RegistrationRequest fromJson(JSONObject req, BiFunction<String, String, String> usernameNormalizer) {
         String email = EmailAddressUtil.normalize(req.optString("email", ""));
         String code = req.optString("code");
+        String phone = PhoneNumberUtil.normalize(req.optString("phone", ""));
+        String smsCode = req.optString("smsCode", req.optString("phoneCode", ""));
         String username = req.optString("username");
         String password = req.optString("password", "");
         String captchaToken = req.optString("captchaToken", "");
@@ -27,6 +32,7 @@ public record RegistrationRequest(
         String platform = req.optString("platform", "java");
         JSONObject questionnaire = req.optJSONObject("questionnaire");
         String normalizedUsername = usernameNormalizer.apply(username, platform);
-        return new RegistrationRequest(email, code, username, normalizedUsername, password, captchaToken, captchaAnswer, language, platform, questionnaire);
+        return new RegistrationRequest(email, code, phone, smsCode, username, normalizedUsername, password,
+                captchaToken, captchaAnswer, language, platform, questionnaire);
     }
 }

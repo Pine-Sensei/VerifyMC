@@ -24,6 +24,7 @@ import team.kitemc.verifymc.service.RegistrationApplicationService;
 import team.kitemc.verifymc.service.VerifyCodeService;
 import team.kitemc.verifymc.util.EmailAddressUtil;
 import team.kitemc.verifymc.util.FoliaCompat;
+import team.kitemc.verifymc.util.PhoneNumberUtil;
 
 public class RegistrationProcessingHandler implements HttpHandler {
     private static final long QUESTIONNAIRE_SUBMISSION_TTL_MS = 10 * 60 * 1000;
@@ -45,6 +46,7 @@ public class RegistrationProcessingHandler implements HttpHandler {
     private final Supplier<Boolean> usernameCaseSensitiveProvider;
     private final BiFunction<String, String, String> usernameNormalizer;
     private final Function<String, Boolean> emailValidator;
+    private final Function<String, Boolean> phoneValidator;
     private final Consumer<String> debugLogger;
 
     public RegistrationProcessingHandler(
@@ -65,6 +67,7 @@ public class RegistrationProcessingHandler implements HttpHandler {
             Supplier<Boolean> usernameCaseSensitiveProvider,
             BiFunction<String, String, String> usernameNormalizer,
             Function<String, Boolean> emailValidator,
+            Function<String, Boolean> phoneValidator,
             Consumer<String> debugLogger
     ) {
         this.plugin = plugin;
@@ -84,6 +87,7 @@ public class RegistrationProcessingHandler implements HttpHandler {
         this.usernameCaseSensitiveProvider = usernameCaseSensitiveProvider;
         this.usernameNormalizer = usernameNormalizer;
         this.emailValidator = emailValidator;
+        this.phoneValidator = phoneValidator;
         this.debugLogger = debugLogger;
     }
 
@@ -140,8 +144,11 @@ public class RegistrationProcessingHandler implements HttpHandler {
         if (request.normalizedUsername() == null || request.normalizedUsername().trim().isEmpty()) {
             return RegistrationValidationResult.reject("register.invalid_username");
         }
-        if (!emailValidator.apply(request.email())) {
+        if ((isMustAuthMethod("email") || !request.email().isEmpty()) && !emailValidator.apply(request.email())) {
             return RegistrationValidationResult.reject("register.invalid_email");
+        }
+        if ((isMustAuthMethod("sms") || !request.phone().isEmpty()) && !phoneValidator.apply(request.phone())) {
+            return RegistrationValidationResult.reject("register.invalid_phone");
         }
 
         // 2. Format validation
@@ -159,10 +166,10 @@ public class RegistrationProcessingHandler implements HttpHandler {
         }
 
         // 3. Email policy checks
-        if (plugin.getConfig().getBoolean("enable_email_alias_limit", false) && EmailAddressUtil.hasAlias(request.email())) {
+        if (!request.email().isEmpty() && plugin.getConfig().getBoolean("enable_email_alias_limit", false) && EmailAddressUtil.hasAlias(request.email())) {
             return RegistrationValidationResult.reject("register.alias_not_allowed");
         }
-        if (plugin.getConfig().getBoolean("enable_email_domain_whitelist", true)) {
+        if (!request.email().isEmpty() && plugin.getConfig().getBoolean("enable_email_domain_whitelist", true)) {
             String domain = EmailAddressUtil.extractDomain(request.email());
             if (!emailDomainWhitelistProvider.get().contains(domain)) {
                 return RegistrationValidationResult.reject("register.domain_not_allowed");
@@ -182,9 +189,14 @@ public class RegistrationProcessingHandler implements HttpHandler {
         }
 
         int maxAccounts = plugin.getConfig().getInt("max_accounts_per_email", 2);
-        int emailCount = userDao.countUsersByEmail(request.email());
-        if (emailCount >= maxAccounts) {
+        int emailCount = request.email().isEmpty() ? 0 : userDao.countUsersByEmail(request.email());
+        if (!request.email().isEmpty() && emailCount >= maxAccounts) {
             return RegistrationValidationResult.reject("register.email_limit");
+        }
+        int maxPhoneAccounts = plugin.getConfig().getInt("sms.phone.max_accounts_per_phone", 2);
+        int phoneCount = request.phone().isEmpty() ? 0 : userDao.countUsersByPhone(request.phone());
+        if (!request.phone().isEmpty() && phoneCount >= maxPhoneAccounts) {
+            return RegistrationValidationResult.reject("register.phone_limit");
         }
         return RegistrationValidationResult.pass();
     }
@@ -236,29 +248,121 @@ public class RegistrationProcessingHandler implements HttpHandler {
 
     private RegistrationValidationResult validateVerificationMethod(RegistrationRequest request, String requestId) {
         logRegistrationStage(requestId, "validate_verification_method", null);
-        List<String> authMethods = plugin.getConfig().getStringList("auth_methods");
-        boolean useCaptcha = authMethods.contains("captcha");
-        boolean useEmail = authMethods.contains("email");
-        if (!useCaptcha && !useEmail) {
+        List<String> mustAuthMethods = getConfiguredAuthMethods("auth.must_auth_methods");
+        if (mustAuthMethods.isEmpty()) {
+            mustAuthMethods = plugin.getConfig().getStringList("auth_methods");
+        }
+        List<String> optionAuthMethods = getConfiguredAuthMethods("auth.option_auth_methods");
+        int minOptionAuthMethods = Math.max(0, Math.min(plugin.getConfig().getInt("auth.min_option_auth_methods", 0), optionAuthMethods.size()));
+
+        if (mustAuthMethods.isEmpty() && optionAuthMethods.isEmpty()) {
             return RegistrationValidationResult.pass();
         }
 
-        if (useCaptcha) {
-            if (request.captchaToken().isEmpty() || request.captchaAnswer().isEmpty()) {
-                return RegistrationValidationResult.reject("captcha.required");
-            }
-            if (!captchaService.validateCaptcha(request.captchaToken(), request.captchaAnswer())) {
-                return RegistrationValidationResult.reject("captcha.invalid");
+        for (String method : mustAuthMethods) {
+            RegistrationValidationResult result = validateSingleAuthMethod(method, request);
+            if (!result.passed()) {
+                return result;
             }
         }
 
-        if (useEmail) {
-            if (!codeService.checkCode(request.email(), request.code())) {
-                return RegistrationValidationResult.reject("verify.wrong_code");
+        int passedOptionMethods = 0;
+        JSONObject lastFailureFields = null;
+        for (String method : optionAuthMethods) {
+            if (!hasAuthInput(method, request)) {
+                continue;
             }
+            RegistrationValidationResult result = validateSingleAuthMethod(method, request);
+            if (result.passed()) {
+                passedOptionMethods++;
+            } else {
+                lastFailureFields = result.responseFields();
+            }
+        }
+
+        if (passedOptionMethods < minOptionAuthMethods) {
+            JSONObject fields = lastFailureFields != null ? lastFailureFields : new JSONObject();
+            fields.put("required", minOptionAuthMethods);
+            fields.put("completed", passedOptionMethods);
+            return RegistrationValidationResult.reject("auth.option_methods_required", fields);
         }
 
         return RegistrationValidationResult.pass();
+    }
+
+    private RegistrationValidationResult validateSingleAuthMethod(String method, RegistrationRequest request) {
+        return switch (method) {
+            case "captcha" -> validateCaptchaMethod(request);
+            case "email" -> validateEmailMethod(request);
+            case "sms" -> validateSmsMethod(request);
+            default -> RegistrationValidationResult.pass();
+        };
+    }
+
+    private RegistrationValidationResult validateCaptchaMethod(RegistrationRequest request) {
+        if (request.captchaToken().isEmpty() || request.captchaAnswer().isEmpty()) {
+            return RegistrationValidationResult.reject("captcha.required");
+        }
+        if (!captchaService.validateCaptcha(request.captchaToken(), request.captchaAnswer())) {
+            return RegistrationValidationResult.reject("captcha.invalid");
+        }
+        return RegistrationValidationResult.pass();
+    }
+
+    private RegistrationValidationResult validateEmailMethod(RegistrationRequest request) {
+        if (request.email().isEmpty() || request.code().isEmpty()) {
+            return RegistrationValidationResult.reject("email.required");
+        }
+        VerifyCodeService.VerifyResult result = codeService.verifyCode(VerifyCodeService.Channel.EMAIL, request.email(), request.code());
+        if (!result.success()) {
+            return RegistrationValidationResult.reject("verify.wrong_code",
+                    new JSONObject().put("remainingAttempts", result.remainingAttempts()));
+        }
+        return RegistrationValidationResult.pass();
+    }
+
+    private RegistrationValidationResult validateSmsMethod(RegistrationRequest request) {
+        if (request.phone().isEmpty()) {
+            return RegistrationValidationResult.reject("register.invalid_phone");
+        }
+        if (request.smsCode().isEmpty()) {
+            return RegistrationValidationResult.reject("sms.required");
+        }
+        VerifyCodeService.VerifyResult result = codeService.verifyCode(VerifyCodeService.Channel.SMS, request.phone(), request.smsCode());
+        if (!result.success()) {
+            return RegistrationValidationResult.reject("verify.wrong_code",
+                    new JSONObject().put("remainingAttempts", result.remainingAttempts()));
+        }
+        return RegistrationValidationResult.pass();
+    }
+
+    private boolean hasAuthInput(String method, RegistrationRequest request) {
+        return switch (method) {
+            case "captcha" -> !request.captchaToken().isEmpty() || !request.captchaAnswer().isEmpty();
+            case "email" -> !request.email().isEmpty() || !request.code().isEmpty();
+            case "sms" -> !request.phone().isEmpty() || !request.smsCode().isEmpty();
+            default -> false;
+        };
+    }
+
+    private boolean isMustAuthMethod(String method) {
+        List<String> must = getConfiguredAuthMethods("auth.must_auth_methods");
+        if (must.isEmpty()) {
+            must = plugin.getConfig().getStringList("auth_methods");
+        }
+        return must.contains(method);
+    }
+
+    private List<String> getConfiguredAuthMethods(String path) {
+        List<String> methods = plugin.getConfig().getStringList(path);
+        if (methods == null || methods.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        return methods.stream()
+                .filter(method -> method != null && !method.trim().isEmpty())
+                .map(method -> method.trim().toLowerCase())
+                .distinct()
+                .toList();
     }
 
     private RegistrationValidationResult validateDiscordRequirement(RegistrationRequest request, String requestId) {
@@ -285,7 +389,7 @@ public class RegistrationProcessingHandler implements HttpHandler {
         String questionnaireReviewSummary = submissionRecord != null ? buildQuestionnaireReviewSummary(submissionRecord.details()) : null;
         Long questionnaireScoredAt = submissionRecord != null ? submissionRecord.submittedAt() : null;
 
-        boolean ok = userDao.registerUser(request.normalizedUsername(), request.email(), status, request.password(),
+        boolean ok = userDao.registerUser(request.normalizedUsername(), request.email(), PhoneNumberUtil.normalize(request.phone()), status, request.password(),
                 questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
 
         RegistrationApplicationService.RegistrationDecision decision =
@@ -328,6 +432,11 @@ public class RegistrationProcessingHandler implements HttpHandler {
         JSONObject responseFields = result.responseFields();
         if (responseFields != null && responseFields.has("regex")) {
             message = message.replace("{regex}", responseFields.optString("regex", ""));
+        }
+        if (responseFields != null) {
+            for (String key : responseFields.keySet()) {
+                message = message.replace("{" + key + "}", String.valueOf(responseFields.opt(key)));
+            }
         }
         JSONObject resp = ApiResponseFactory.failure(message);
         if (responseFields != null) {

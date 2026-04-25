@@ -10,6 +10,11 @@ export interface ApiResponse<T = unknown> {
 
 export interface ConfigResponse {
   authMethods: string[]
+  auth?: {
+    mustAuthMethods: string[]
+    optionAuthMethods: string[]
+    minOptionAuthMethods: number
+  }
   theme: string
   logoUrl: string
   announcement: string
@@ -28,6 +33,12 @@ export interface ConfigResponse {
   discord?: {
     enabled: boolean
     required: boolean
+  }
+  sms?: {
+    enabled: boolean
+    provider: string
+    codeLength: number
+    cooldownSeconds: number
   }
   questionnaire?: {
     enabled: boolean
@@ -107,7 +118,9 @@ export interface CaptchaResponse {
 }
 
 export interface SendCodeRequest {
-  email: string
+  channel?: 'email' | 'sms'
+  email?: string
+  phone?: string
   language: string
 }
 
@@ -120,6 +133,8 @@ export interface SendCodeResponse {
 export interface RegisterRequest {
   email: string
   code?: string
+  phone?: string
+  smsCode?: string
   username: string
   password: string
   captchaToken?: string

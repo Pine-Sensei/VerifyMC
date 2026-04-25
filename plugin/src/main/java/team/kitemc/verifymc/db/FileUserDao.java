@@ -107,6 +107,12 @@ public class FileUserDao implements UserDao {
                             debugLog("Added missing password field for user: " + user.get("username"));
                         }
 
+                        if (!user.containsKey("phone")) {
+                            user.put("phone", null);
+                            hasUpgraded = true;
+                            debugLog("Added missing phone field for user: " + user.get("username"));
+                        }
+
                         if (!user.containsKey("regTime")) {
                             user.put("regTime", System.currentTimeMillis());
                             hasUpgraded = true;
@@ -238,6 +244,7 @@ public class FileUserDao implements UserDao {
             Map<String, Object> user = new HashMap<>();
             user.put("username", username);
             user.put("email", email);
+            user.put("phone", null);
             user.put("status", status);
             user.put("password", storedPassword);
             user.put("regTime", System.currentTimeMillis());
@@ -256,6 +263,14 @@ public class FileUserDao implements UserDao {
     public boolean registerUser(String username, String email, String status, String password,
                                 Integer questionnaireScore, Boolean questionnairePassed,
                                 String questionnaireReviewSummary, Long questionnaireScoredAt) {
+        return registerUser(username, email, null, status, password, questionnaireScore, questionnairePassed,
+                questionnaireReviewSummary, questionnaireScoredAt);
+    }
+
+    @Override
+    public boolean registerUser(String username, String email, String phone, String status, String password,
+                                Integer questionnaireScore, Boolean questionnairePassed,
+                                String questionnaireReviewSummary, Long questionnaireScoredAt) {
         debugLog("registerUser with password called: username=" + username + ", email=" + email + ", status=" + status);
         try {
             String key = username.toLowerCase();
@@ -267,6 +282,7 @@ public class FileUserDao implements UserDao {
             Map<String, Object> user = new HashMap<>();
             user.put("username", username);
             user.put("email", email);
+            user.put("phone", phone);
             user.put("status", status);
             user.put("password", PasswordUtil.hash(password));
             user.put("regTime", System.currentTimeMillis());
@@ -357,6 +373,23 @@ public class FileUserDao implements UserDao {
     }
 
     @Override
+    public boolean updateUserPhone(String username, String phone) {
+        debugLog("updateUserPhone called: username=" + username);
+        String key = username.toLowerCase();
+        Map<String, Object> user = users.get(key);
+
+        if (user == null) {
+            debugLog("User not found: " + username);
+            return false;
+        }
+
+        user.put("phone", phone);
+        saveLater();
+        debugLog("User phone updated: " + user.get("username"));
+        return true;
+    }
+
+    @Override
     public Map<String, Object> getUserByUsername(String username) {
         debugLog("Getting user by username: " + username);
         String key = username.toLowerCase();
@@ -400,6 +433,23 @@ public class FileUserDao implements UserDao {
     }
 
     @Override
+    public Map<String, Object> getUserByPhone(String phone) {
+        debugLog("Getting user by phone: " + phone);
+        if (phone == null || phone.isEmpty()) {
+            return null;
+        }
+        for (Map<String, Object> user : users.values()) {
+            Object userPhone = user.get("phone");
+            if (userPhone != null && userPhone.toString().equalsIgnoreCase(phone)) {
+                debugLog("User found by phone: " + user.get("username"));
+                return user;
+            }
+        }
+        debugLog("User not found by phone");
+        return null;
+    }
+
+    @Override
     public boolean deleteUser(String username) {
         debugLog("deleteUser called: username=" + username);
         try {
@@ -430,6 +480,22 @@ public class FileUserDao implements UserDao {
             }
         }
         debugLog("Found " + count + " users with email: " + email);
+        return count;
+    }
+
+    @Override
+    public int countUsersByPhone(String phone) {
+        debugLog("Counting users by phone: " + phone);
+        if (phone == null || phone.isEmpty()) {
+            return 0;
+        }
+        int count = 0;
+        for (Map<String, Object> user : users.values()) {
+            if (user.get("phone") != null && user.get("phone").toString().equalsIgnoreCase(phone)) {
+                count++;
+            }
+        }
+        debugLog("Found " + count + " users with phone: " + phone);
         return count;
     }
 

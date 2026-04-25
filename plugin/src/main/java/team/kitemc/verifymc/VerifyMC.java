@@ -9,6 +9,7 @@ import team.kitemc.verifymc.listener.PlayerLoginListener;
 import team.kitemc.verifymc.command.VmcCommandExecutor;
 import team.kitemc.verifymc.mail.MailService;
 import team.kitemc.verifymc.service.*;
+import team.kitemc.verifymc.sms.SmsService;
 import team.kitemc.verifymc.web.ReviewWebSocketServer;
 import team.kitemc.verifymc.web.ServerSslContextFactory;
 import team.kitemc.verifymc.web.WebAuthHelper;
@@ -173,8 +174,11 @@ public class VerifyMC extends JavaPlugin {
         // Mail service
         context.setMailService(new MailService(this, context.getResourceManager()));
 
+        // SMS service
+        context.setSmsService(new SmsService(this, context.getConfigManager()));
+
         // Verify code service
-        context.setVerifyCodeService(new VerifyCodeService(this));
+        context.setVerifyCodeService(new VerifyCodeService(this, context.getConfigManager()));
         // AuthMe service
         AuthmeService authmeService = new AuthmeService(this);
         authmeService.setUserDao(context.getUserDao());
